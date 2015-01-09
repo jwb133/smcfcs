@@ -2,7 +2,7 @@
 % Please edit documentation in R/smcfcs.r
 \name{smcfcs.logistic}
 \alias{smcfcs.logistic}
-\title{Logistic regression substantive model compatible fully conditional specificiation
+\title{Logistic regression substantive model compatible fully conditional specification
 multiple imputation of covariates.}
 \usage{
 smcfcs.logistic(originaldata, smformula, method, predictorMatrix = NULL,
@@ -10,6 +10,11 @@ smcfcs.logistic(originaldata, smformula, method, predictorMatrix = NULL,
 }
 \arguments{
 \item{originaldata}{Original data frame}
+
+\item{smformula}{The formula of the substantive model}
+
+\item{method}{A vector of strings specifying what type of regression model
+should be used to impute each variable}
 }
 \description{
 Multiple imputes missing covariates values using substantive model compatible

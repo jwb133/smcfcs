@@ -32,6 +32,7 @@ modPostDraw <- function(modobj) {
 #' should be used to impute each variable
 #'
 #' @return a list of data frames containing the multiply imputed datasets.
+#' @export
 smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
   smcfcs.int(smtype="lm",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
 }
@@ -42,8 +43,9 @@ smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,max
 #' Multiple imputes missing covariates values using substantive model compatible
 #' fully conditional specification multiple imputation for logistic regression
 #' substantive models.
-#' @inheritParams smcfcs.lm
 #'
+#' @inheritParams smcfcs.lm
+#' @export
 smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
   smcfcs.int(smtype="logistic",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
 }
@@ -54,12 +56,23 @@ smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m
 #' Multiply imputes missing covariate values using substantive model compatible
 #' fully conditional specification multiple imputation for a Cox proportional
 #' hazards substantive model.
+#'
+#' @inheritParams smcfcs.lm
+#' @export
 smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
   library(survival)
   smcfcs.int(smtype="coxph",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
 }
 
-#' Competing risks
+#' Competing risks model compatible fully conditional specification
+#' multiple imputation of covariates.
+#'
+#' Multiply imputes missing covariate values using substantive model compatible
+#' fully conditional specification multiple imputation for competing risks
+#' data, assuming Cox models for the cause specific hazard functions.
+#'
+#' @inheritParams smcfcs.lm
+#' @export
 smcfcs.compet <- function(originaldata,timevar,causevar,linpred,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
   library(survival)
   smcfcs.int(smtype="compet",originaldata,smformula=c(timevar,causevar,linpred),method,predictorMatrix,m,maxit,rjlimit,noisy)

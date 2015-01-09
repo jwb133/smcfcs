@@ -2,7 +2,7 @@
 % Please edit documentation in R/smcfcs.r
 \name{smcfcs.lm}
 \alias{smcfcs.lm}
-\title{Linear regression substantive model compatible fully conditional specificiation
+\title{Linear regression substantive model compatible fully conditional specification
 multiple imputation of covariates.}
 \usage{
 smcfcs.lm(originaldata, smformula, method, predictorMatrix = NULL, m = 5,
@@ -10,12 +10,17 @@ smcfcs.lm(originaldata, smformula, method, predictorMatrix = NULL, m = 5,
 }
 \arguments{
 \item{originaldata}{Original data frame}
+
+\item{smformula}{The formula of the substantive model}
+
+\item{method}{A vector of strings specifying what type of regression model
+should be used to impute each variable}
 }
 \value{
 a list of data frames containing the multiply imputed datasets.
 }
 \description{
-Multiple imputes missing covariates values using substantive model compatible
+Multiple imputes missing covariate values using substantive model compatible
 fully conditional specification multiple imputation for linear regression
 substantive models.
 }
