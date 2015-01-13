@@ -14,6 +14,12 @@ smcfcs.compet(originaldata, timevar, causevar, linpred, method,
 
 \item{method}{A vector of strings specifying what type of regression model
 should be used to impute each variable}
+
+\item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
+variables will be used as predictors in the imputation models
+(not including the outcome). The i'th row of the matrix should consist of
+0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
+as a covariate when imputing the i'th variable.}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible

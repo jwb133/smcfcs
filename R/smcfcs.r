@@ -30,7 +30,11 @@ modPostDraw <- function(modobj) {
 #' @param smformula The formula of the substantive model
 #' @param method A vector of strings specifying what type of regression model
 #' should be used to impute each variable
-#'
+#' @param predictorMatrix An optional predictor matrix. If specified, the matrix defines which
+#' variables will be used as predictors in the imputation models
+#' (not including the outcome). The i'th row of the matrix should consist of
+#' 0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
+#' as a covariate when imputing the i'th variable.
 #' @return a list of data frames containing the multiply imputed datasets.
 #' @export
 smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
