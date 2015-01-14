@@ -37,7 +37,7 @@ modPostDraw <- function(modobj) {
 #' as a covariate when imputing the i'th variable.
 #' @return a list of data frames containing the multiply imputed datasets.
 #' @export
-smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
+smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
   smcfcs.int(smtype="lm",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
 }
 
@@ -50,7 +50,7 @@ smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,max
 #'
 #' @inheritParams smcfcs.lm
 #' @export
-smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
+smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
   smcfcs.int(smtype="logistic",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
 }
 
@@ -63,7 +63,7 @@ smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m
 #'
 #' @inheritParams smcfcs.lm
 #' @export
-smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
+smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
   library(survival)
   smcfcs.int(smtype="coxph",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
 }
@@ -77,7 +77,7 @@ smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,
 #'
 #' @inheritParams smcfcs.lm
 #' @export
-smcfcs.compet <- function(originaldata,timevar,causevar,linpred,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=NULL) {
+smcfcs.compet <- function(originaldata,timevar,causevar,linpred,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
   library(survival)
   smcfcs.int(smtype="compet",originaldata,smformula=c(timevar,causevar,linpred),method,predictorMatrix,m,maxit,rjlimit,noisy)
 }
@@ -134,7 +134,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,ma
   fullObsVars <- which(colSums(r)==n)
   fullObsVars <- fullObsVars[! fullObsVars %in% outcomeCol]
 
-  if (is.null(noisy)==FALSE) {
+  if (noisy==TRUE) {
     print(paste("Outcome variable:", colnames(originaldata)[outcomeCol]))
     print(paste("Passive variables:", colnames(originaldata)[passiveVars]))
     print(paste("Partially obs. variables:", colnames(originaldata)[partialVars]))
@@ -157,7 +157,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,ma
 
     for (cyclenum in 1:maxit) {
 
-      if (is.null(noisy)==FALSE) {
+      if (noisy==TRUE) {
         print(paste("Iteration ",cyclenum))
       }
       #update passive variable(s)
@@ -173,7 +173,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,ma
           #ensure that user has not included outcome variable(s) here
           predictorCols <- predictorCols[! predictorCols %in% outcomeCol]
         }
-        if (is.null(noisy)==FALSE) {
+        if (noisy==TRUE) {
           print(paste("Variable being imputed: ",colnames(imputations[[imp]])[targetCol]))
           print(paste("Predictor variables used: ",colnames(imputations[[imp]])[predictorCols]))
         }
@@ -217,7 +217,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,ma
           denom <- 1+rowSums(exp(linpreds))
           xfitted <-cbind(1/denom, exp(linpreds) / denom)
         }
-        if (is.null(noisy)==FALSE) {
+        if (noisy==TRUE) {
           print(summary(xmod))
         }
 
@@ -249,7 +249,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,ma
             H0[[cause]] <- basehaz(ymod, centered=FALSE)[,1]
           }
         }
-        if (is.null(noisy)==FALSE) {
+        if (noisy==TRUE) {
           print(summary(ymod))
         }
 
