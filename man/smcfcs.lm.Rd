@@ -6,21 +6,38 @@
 multiple imputation of covariates.}
 \usage{
 smcfcs.lm(originaldata, smformula, method, predictorMatrix = NULL, m = 5,
-  maxit = 10, rjlimit = 1000, noisy = NULL)
+  numit = 10, rjlimit = 1000, noisy = FALSE)
 }
 \arguments{
-\item{originaldata}{Original data frame}
+\item{originaldata}{The original data frame with missing values.}
 
-\item{smformula}{The formula of the substantive model}
+\item{smformula}{The formula of the substantive model.}
 
-\item{method}{A vector of strings specifying what type of regression model
-should be used to impute each variable}
+\item{method}{A required vector of strings specifying for each variable either
+that it does not need to be imputed (""), the type of regression model to be
+be used to impute (possible values are "norm", "logreg", "poisson", "podds"
+and "mlogit") or an expression to passively impute the variable. See the
+examples.}
 
 \item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
-variables will be used as predictors in the imputation models
-(not including the outcome). The i'th row of the matrix should consist of
+covariates will be used as predictors in the imputation models
+(the outcome must not be included). The i'th row of the matrix should consist of
 0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
-as a covariate when imputing the i'th variable.}
+as a covariate when imputing the i'th variable. If not specified, when
+imputing a given variable, the imputation model covariates are the other
+partially observed variables and any fully observed variables (if present).
+Note that the outcome variable is implicitly conditioned on by the rejection
+sampling scheme used by smcfcs.}
+
+\item{m}{The number of imputed datasets to generate.}
+
+\item{numit}{The number of iterations to run when generating each imputation.}
+
+\item{rjlimit}{Specifies the maximum number of attempts which should be made
+when using rejection sampling to draw from imputation models.}
+
+\item{logical}{value indicating whether output should be noisy, which can
+be useful for debugging or checking that models being used are as desired.}
 }
 \value{
 a list of data frames containing the multiply imputed datasets.

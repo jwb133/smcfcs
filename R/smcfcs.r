@@ -26,19 +26,33 @@ modPostDraw <- function(modobj) {
 #' fully conditional specification multiple imputation for linear regression
 #' substantive models.
 #'
-#' @param originaldata Original data frame
-#' @param smformula The formula of the substantive model
-#' @param method A vector of strings specifying what type of regression model
-#' should be used to impute each variable
+#'
+#' @param originaldata The original data frame with missing values.
+#' @param smformula The formula of the substantive model.
+#' @param method A required vector of strings specifying for each variable either
+#' that it does not need to be imputed (""), the type of regression model to be
+#' be used to impute (possible values are "norm", "logreg", "poisson", "podds"
+#' and "mlogit") or an expression to passively impute the variable. See the
+#' examples.
 #' @param predictorMatrix An optional predictor matrix. If specified, the matrix defines which
-#' variables will be used as predictors in the imputation models
-#' (not including the outcome). The i'th row of the matrix should consist of
+#' covariates will be used as predictors in the imputation models
+#' (the outcome must not be included). The i'th row of the matrix should consist of
 #' 0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
-#' as a covariate when imputing the i'th variable.
+#' as a covariate when imputing the i'th variable. If not specified, when
+#' imputing a given variable, the imputation model covariates are the other
+#' partially observed variables and any fully observed variables (if present).
+#' Note that the outcome variable is implicitly conditioned on by the rejection
+#' sampling scheme used by smcfcs.
+#' @param m The number of imputed datasets to generate.
+#' @param numit The number of iterations to run when generating each imputation.
+#' @param rjlimit Specifies the maximum number of attempts which should be made
+#' when using rejection sampling to draw from imputation models.
+#' @param logical value indicating whether output should be noisy, which can
+#' be useful for debugging or checking that models being used are as desired.
 #' @return a list of data frames containing the multiply imputed datasets.
 #' @export
-smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
-  smcfcs.int(smtype="lm",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
+smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
+  smcfcs.int(smtype="lm",originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
 }
 
 #' Logistic regression substantive model compatible fully conditional specification
@@ -50,8 +64,8 @@ smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,max
 #'
 #' @inheritParams smcfcs.lm
 #' @export
-smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
-  smcfcs.int(smtype="logistic",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
+smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
+  smcfcs.int(smtype="logistic",originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
 }
 
 #' Cox proportional hazards model compatible fully conditional specification
@@ -62,10 +76,13 @@ smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m
 #' hazards substantive model.
 #'
 #' @inheritParams smcfcs.lm
+#' @param smformula The Cox substantive model formula, with the left hand side
+#' of the formula of the form "Surv(t,delta)", where t specifies the event time
+#' variable and delta specifies the binary event indicator variable.
 #' @export
-smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
+smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   library(survival)
-  smcfcs.int(smtype="coxph",originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy)
+  smcfcs.int(smtype="coxph",originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
 }
 
 #' Competing risks model compatible fully conditional specification
@@ -76,14 +93,19 @@ smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,
 #' data, assuming Cox models for the cause specific hazard functions.
 #'
 #' @inheritParams smcfcs.lm
+#' @param timevar The name of the variable containing the time of failure.
+#' @param causevar The name of the integer variable containing the cause of
+#' failure, with 0 indicating censoring.
+#' @param linpred A list of strings giving the right hand sides of the
+#' Cox models for each of the competing causes of failure.
 #' @export
-smcfcs.compet <- function(originaldata,timevar,causevar,linpred,method,predictorMatrix=NULL,m=5,maxit=10,rjlimit=1000,noisy=FALSE) {
+smcfcs.compet <- function(originaldata,timevar,causevar,linpred,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   library(survival)
-  smcfcs.int(smtype="compet",originaldata,smformula=c(timevar,causevar,linpred),method,predictorMatrix,m,maxit,rjlimit,noisy)
+  smcfcs.int(smtype="compet",originaldata,smformula=c(timevar,causevar,linpred),method,predictorMatrix,m,numit,rjlimit,noisy)
 }
 
 
-smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,maxit,rjlimit,noisy) {
+smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy) {
   library("MASS")
   stopifnot(is.data.frame(originaldata))
 
@@ -155,7 +177,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,ma
       imputations[[imp]][r[,partialVars[var]]==0,partialVars[var]] <- sample(imputations[[imp]][r[,partialVars[var]]==1,partialVars[var]], size=sum(r[,partialVars[var]]==0), replace=TRUE)
     }
 
-    for (cyclenum in 1:maxit) {
+    for (cyclenum in 1:numit) {
 
       if (noisy==TRUE) {
         print(paste("Iteration ",cyclenum))

@@ -6,20 +6,42 @@
 multiple imputation of covariates.}
 \usage{
 smcfcs.compet(originaldata, timevar, causevar, linpred, method,
-  predictorMatrix = NULL, m = 5, maxit = 10, rjlimit = 1000,
-  noisy = NULL)
+  predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000,
+  noisy = FALSE)
 }
 \arguments{
-\item{originaldata}{Original data frame}
+\item{originaldata}{The original data frame with missing values.}
 
-\item{method}{A vector of strings specifying what type of regression model
-should be used to impute each variable}
+\item{timevar}{The name of the variable containing the time of failure.}
+
+\item{causevar}{The name of the integer variable containing the cause of
+failure, with 0 indicating censoring.}
+
+\item{linpred}{A list of strings giving the right hand sides of the
+Cox models for each of the competing causes of failure.}
+
+\item{method}{A required vector of strings specifying for each variable either
+that it does not need to be imputed (""), the type of regression model to be
+be used to impute (possible values are "norm", "logreg", "poisson", "podds"
+and "mlogit") or an expression to passively impute the variable. See the
+examples.}
 
 \item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
-variables will be used as predictors in the imputation models
-(not including the outcome). The i'th row of the matrix should consist of
+covariates will be used as predictors in the imputation models
+(the outcome must not be included). The i'th row of the matrix should consist of
 0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
-as a covariate when imputing the i'th variable.}
+as a covariate when imputing the i'th variable. If not specified, when
+imputing a given variable, the imputation model covariates are the other
+partially observed variables and any fully observed variables (if present).
+Note that the outcome variable is implicitly conditioned on by the rejection
+sampling scheme used by smcfcs.}
+
+\item{m}{The number of imputed datasets to generate.}
+
+\item{numit}{The number of iterations to run when generating each imputation.}
+
+\item{rjlimit}{Specifies the maximum number of attempts which should be made
+when using rejection sampling to draw from imputation models.}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible
