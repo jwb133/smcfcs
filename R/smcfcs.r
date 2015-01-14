@@ -92,6 +92,10 @@ smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,
 #' fully conditional specification multiple imputation for competing risks
 #' data, assuming Cox models for the cause specific hazard functions.
 #'
+#' This function generates multiple imputations of missing covariates
+#' with competing risks data using the substantive model compatible fully
+#' conditional specificaion algorithm.
+#'
 #' @inheritParams smcfcs.lm
 #' @param timevar The name of the variable containing the time of failure.
 #' @param causevar The name of the integer variable containing the cause of
