@@ -151,7 +151,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,nu
 
   passiveVars <- which((method!="") & (method!="norm") & (method!="logreg") & (method!="poisson") & (method!="podds") & (method!="mlogit"))
 
-  if (is.null(c(which(method=="podds"),which(method=="mlogit")))==FALSE) {
+  if (length(c(which(method=="podds"),which(method=="mlogit")))>0) {
     library("VGAM")
   }
 
@@ -160,12 +160,10 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,nu
   fullObsVars <- which(colSums(r)==n)
   fullObsVars <- fullObsVars[! fullObsVars %in% outcomeCol]
 
-  if (noisy==TRUE) {
-    print(paste("Outcome variable:", colnames(originaldata)[outcomeCol]))
-    print(paste("Passive variables:", colnames(originaldata)[passiveVars]))
-    print(paste("Partially obs. variables:", colnames(originaldata)[partialVars]))
-    print(paste("Fully obs. variables:", colnames(originaldata)[fullObsVars]))
-  }
+  print(paste("Outcome variable:", colnames(originaldata)[outcomeCol]))
+  print(paste("Passive variables:", colnames(originaldata)[passiveVars]))
+  print(paste("Partially obs. variables:", colnames(originaldata)[partialVars]))
+  print(paste("Fully obs. variables:", colnames(originaldata)[fullObsVars]))
 
   imputations <- list()
   for (imp in 1:m) {
