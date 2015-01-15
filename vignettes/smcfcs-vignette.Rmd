@@ -1,0 +1,60 @@
+---
+title: "smcfcs"
+author: "Jonathan Bartlett"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{smcfcs}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+## Introduction
+
+Missing data are a common issue in many fields of empirical research. An extremely popular approach to handling missing data is the method of multiple imputation (MI). Multiple imputation involves replacing missing values by a number of imputations, creating multiple imputed datasets. Each completed dataset is then analysed as usual, and estimates and standard errors are combined across imputations using rules developed by Rubin.
+
+The most popular approach to imputation uses parametric models for the missing variables given the observed. Multiple imputation gives valid inferences provided that the missing data satisfy the so called missing at random (MAR) assumption and that the imputation models used are correctly specified.
+
+### Joint model and FCS multiple imputation
+
+When multiple variables are affected by missingness, a joint multivariate model can be specified for the partially observed variables. A popular alternative is the fully conditional specification (FCS) approach. Rather than imputing directly from a joint model, FCS MI involves, for each partially observed variable, specifying and imputing from a conditional model in which the other variables (partially observed and fully observed) serve as predictors.
+
+### Imputation model compatibility
+
+When missing values are imputed from a misspecified model, in general invalid inferences will result. One way in which misspecification can occur is when the imputation and substantive model of interest are incompatible. That is, there exists no joint model which contains the imputation model and the substantive model as the corresponding conditionals. In this case, as described by Bartlett etal, assuming that the substantive model is correctly specified, unless the imputation and substantive models can be made compatible by imposing a restriction on the imputation model, incompatiblity implies the imputation model is misspecified.
+
+Within the joint modelling approach, one can impute missing covariates compatibly with a particular substantive model (ref Goldstein et al).
+
+## Substantive Model Compatible Fully Conditional Specification multiple imputation
+
+
+
+## Figures
+
+The figure sizes have been customised so that you can easily put two images side-by-side. 
+
+```{r, fig.show='hold'}
+plot(1:10)
+plot(10:1)
+```
+
+You can enable figure captions by `fig_caption: yes` in YAML:
+
+    output:
+      rmarkdown::html_vignette:
+        fig_caption: yes
+
+Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
+
+## More Examples
+
+You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
+
+```{r, echo=FALSE, results='asis'}
+knitr::kable(head(mtcars, 10))
+```
+
+Also a quote using `>`:
+
+> "He who gives up [code] safety for [code] speed deserves neither."
+([via](https://twitter.com/hadleywickham/status/504368538874703872))

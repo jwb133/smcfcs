@@ -48,4 +48,9 @@ Multiply imputes missing covariate values using substantive model compatible
 fully conditional specification multiple imputation for competing risks
 data, assuming Cox models for the cause specific hazard functions.
 }
+\details{
+This function generates multiple imputations of missing covariates
+with competing risks data using the substantive model compatible fully
+conditional specificaion algorithm.
+}
 

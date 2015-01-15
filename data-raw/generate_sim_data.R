@@ -14,8 +14,6 @@ ex_linquad <- data.frame(y,z,x,xsq=x^2)
 
 devtools::use_data(ex_linquad, overwrite=TRUE)
 
-imp <- smcfcs.lm(ex_linquad, smformula="y~z+x+xsq",method=c("","","norm","x^2"))
-
 #linear substantive model with interaction
 set.seed(1234)
 n <- 1000
@@ -24,11 +22,9 @@ x2 <- 1*(runif(n)<0.5)
 y <- 1+x1+x2+x1*x2+rnorm(n)
 
 #make some x1 and x2 values missing
-x1[runif(n)>0.25] <- NA
-x2[runif(n)>0.25] <- NA
+x1[runif(n)>0.5] <- NA
+x2[runif(n)>0.5] <- NA
 
 ex_lininter <- data.frame(y,x1,x2,x1x2=x1*x2)
 
 devtools::use_data(ex_lininter, overwrite=TRUE)
-
-imp <- smcfcs.lm(ex_lininter, smformula="y~x1+x2+x1x2",method=c("","norm","logreg","x1*x2"),noisy=TRUE)
