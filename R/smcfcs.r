@@ -149,16 +149,21 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,nu
   #create matrix of response indicators
   r <- 1*(is.na(originaldata)==0)
 
-  passiveVars <- which((method!="") & (method!="norm") & (method!="logreg") & (method!="poisson") & (method!="podds") & (method!="mlogit"))
-
   if (length(c(which(method=="podds"),which(method=="mlogit")))>0) {
     library("VGAM")
   }
 
-  partialVars <- which(colSums(r)<n)
-  partialVars <- partialVars[! partialVars %in% passiveVars]
-  fullObsVars <- which(colSums(r)==n)
-  fullObsVars <- fullObsVars[! fullObsVars %in% outcomeCol]
+  smcovnames <- attr(terms(as.formula(smformula)), "term.labels")
+  smcovcols <- (1:ncol(originaldata))[colnames(originaldata) %in% smcovnames]
+
+  #partial vars are those variables for which an imputation method has been specified among the available regression types
+  partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit"))
+
+  #fully observed vars are those that are fully observed and are covariates in the substantive model
+  fullObsVars <- which((colSums(r)==n) & (colnames(originaldata) %in% smcovnames))
+
+  #passive variables
+  passiveVars <- which((method!="") & (method!="norm") & (method!="logreg") & (method!="poisson") & (method!="podds") & (method!="mlogit"))
 
   print(paste("Outcome variable:", colnames(originaldata)[outcomeCol]))
   print(paste("Passive variables:", colnames(originaldata)[passiveVars]))
@@ -197,9 +202,9 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,nu
           #ensure that user has not included outcome variable(s) here
           predictorCols <- predictorCols[! predictorCols %in% outcomeCol]
         }
-        if (noisy==TRUE) {
+        if ((imp==1) & (cyclenum==1)) {
           print(paste("Variable being imputed: ",colnames(imputations[[imp]])[targetCol]))
-          print(paste("Predictor variables used: ",colnames(imputations[[imp]])[predictorCols]))
+          print(paste("Predictor variables used: ",paste(colnames(imputations[[imp]])[predictorCols],collapse=',')))
         }
 
         xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
