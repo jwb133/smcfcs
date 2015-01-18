@@ -60,8 +60,8 @@ z <- rnorm(n)
 v <- x+rnorm(n)
 xb <- z+x+x^2
 t <- -log(runif(n))/exp(xb)
-delta <- rep(1,n)
-#t[delta==0] <- 20
+delta <- 1*(t<20)
+t[delta==0] <- 20
 
 #make some x values missing
 xobsxb <- (t-mean(t))/sd(t)
@@ -87,8 +87,8 @@ d[(t2<c) & (t2<t1)] <- 2
 t <- c
 t[d==1] <- t1[d==1]
 t[d==2] <- t2[d==2]
-x1[runif(n)>0.7] <- NA
-x2[runif(n)>0.7] <- NA
+x1[runif(n)>0.5] <- NA
+x2[runif(n)>0.5] <- NA
 
 ex_compet <- data.frame(t,d,x1,x2)
 

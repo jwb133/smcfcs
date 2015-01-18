@@ -28,19 +28,28 @@ modPostDraw <- function(modobj) {
 #' Fully Conditional Specification multiple imputation approach proposed by
 #' Bartlett et al 2014.
 #'
+#' Currently imputation is supported for linear regression ("lm"), logistic
+#' regression ("logistic"), Cox regression for time to event
+#' data ("coxph"), and Cox models for competing risks data. For the latter, a Cox
+#' model is assumed for each cause of failure, and the event indicator should be integer
+#' coded with 0 corresponding to censoring, 1 corresponding to failure from the first
+#' cause etc.
+#'
+#' At present, in the case of linear or logistic substantive models the outcome  must
+#' be fully observed, but this will be relaxed in a future version so that missing outcomes
+#' are also imputed.
+#'
 #' The function returns a list of imputated datasets. Models (e.g. the substantive model)
 #' can be fitted to each and results combined using Rubin's rules using the mitools
-#' package, as illustrated in the vignette.
+#' package, as illustrated in the examples.
 #'
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible
 #' values are "lm", "logistic", "coxph" and "compet".
 #' @param smformula The formula of the substantive model. For "coxph" substantive
 #' models the left hand side should be of the form "Surv(t,delta)". For "compet"
-#' substantive models, a named vector c(timevar,causevar,linpred) should be passed
-#' with the name of the time variable, name of the variable giving the cause of
-#' failure, and a list of linear predictors for each of the cause specific models
-#' (see examples).
+#' substantive models, a list should be passed consisting of the Cox models
+#' for each cause of failure (see example).
 #' @param method A required vector of strings specifying for each variable either
 #' that it does not need to be imputed (""), the type of regression model to be
 #' be used to impute. Possible values are "norm" (normal linear regression),
@@ -74,22 +83,12 @@ modPostDraw <- function(modobj) {
 #'
 #' @return a list of data frames containing the multiply imputed datasets.
 #'
-#' @examples
-#' # Imputation for a linear substantive model with quadratic covariate effects. Only
-#' # x which is normally distributed given z has missing values and needs imputing
-#' data(ex_linquad)
-#' imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
+#' @example data-raw/examples.r
 #'
-#' # Imputation for a linear substantive model with an interaction. Both x1 and x2
-#' # have missing values. x1 is imputed using normal linear regression, x2 using
-#' # logistic regression.
-#' data(ex_lininter)
-#' imps <- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1x2",method=c("","norm","logreg","x1*x2"))
-#'
-#' # Imputation for a Cox substantive model.
-#' imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,delta)~z+x+xsq",method=c("","","","norm","x^2",""))
-#'
-#'
+#' @references Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
+#' by fully conditional specification: accommodating the substantive model. Statistical Methods
+#' in Medical Research 2014. \url{http://doi.org/10.1177/0962280214521348}
+
 #' @export
 smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   library("MASS")
@@ -97,7 +96,6 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
 
   n <- dim(originaldata)[1]
-
   #find column numbers of partially observed, fully observed variables, and outcome
   if (smtype=="coxph") {
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
@@ -111,19 +109,23 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     rm(nullMod)
   }
   else if (smtype=="compet") {
-    timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% smformula[[1]]]
-    dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% smformula[[2]]]
+    timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[2]])]
+    dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[3]][[2]])]
     outcomeCol <- c(timeCol, dCol)
-    #sort data by event time
-    originaldata <- originaldata[order(originaldata[,timeCol]),]
     d <- originaldata[,dCol]
-    numCauses <- max(d)
-    linpred <- vector("list", numCauses)
-    outcomeModBeta <- vector("list", numCauses)
+    numCauses <- length(smformula)
     H0 <- vector("list", numCauses)
-    for (i in 1:numCauses) {
-      linpred[[i]] <- smformula[[i+2]]
+    H0indices <- vector("list", numCauses)
+    outcomeModBeta <- vector("list", numCauses)
+    linpred <- vector("list", numCauses)
+    for (cause in 1:numCauses) {
+      nullMod <- coxph(as.formula(paste(strsplit(smformula[[cause]],"~")[[1]][1],"~1")), originaldata)
+      basehaz <- basehaz(nullMod)
+      H0[[cause]] <- basehaz[,1]
+      H0indices[[cause]] <- match(originaldata[,timeCol], basehaz[,2])
+      linpred[[cause]] <- as.formula(smformula[[cause]])
     }
+    rm(nullMod)
   }
   else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
@@ -137,9 +139,9 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   }
 
   if (smtype=="compet") {
-    smcovnames <- attr(terms(as.formula(smformula$linpred[[1]])), "term.labels")
-    for (cause in 2:length(smformula$linpred)) {
-      smcovnames <- c(smcovnames, attr(terms(as.formula(smformula$linpred[[cause]])), "term.labels"))
+    smcovnames <- attr(terms(as.formula(smformula[[1]])), "term.labels")
+    for (cause in 2:numCauses) {
+      smcovnames <- c(smcovnames, attr(terms(as.formula(smformula[[cause]])), "term.labels"))
     }
     smcovnames <- unique(smcovnames)
   }
@@ -158,9 +160,9 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   passiveVars <- which((method!="") & (method!="norm") & (method!="logreg") & (method!="poisson") & (method!="podds") & (method!="mlogit"))
 
   print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol],collapse=',')))
-  print(paste("Passive variables:", colnames(originaldata)[passiveVars]))
-  print(paste("Partially obs. variables:", colnames(originaldata)[partialVars]))
-  print(paste("Fully obs. variables:", colnames(originaldata)[fullObsVars]))
+  print(paste("Passive variables:", paste(colnames(originaldata)[passiveVars],collapse=',')))
+  print(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars],collapse=',')))
+  print(paste("Fully obs. variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
 
   imputations <- list()
   for (imp in 1:m) {
@@ -195,8 +197,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           predictorCols <- predictorCols[! predictorCols %in% outcomeCol]
         }
         if ((imp==1) & (cyclenum==1)) {
-          print(paste("Variable being imputed: ",colnames(imputations[[imp]])[targetCol]))
-          print(paste("Predictor variables used: ",paste(colnames(imputations[[imp]])[predictorCols],collapse=',')))
+          print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",colnames(imputations[[imp]])[predictorCols],collapse=','))
         }
 
         xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
@@ -264,10 +265,11 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
         else if (smtype=="compet") {
           for (cause in 1:numCauses) {
-            ymod <- coxph(as.formula(paste("Surv(t,d==",toString(cause),")",linpred[cause],sep="")), imputations[[imp]])
+            ymod <- coxph(as.formula(smformula[[cause]]), imputations[[imp]])
             outcomeModBeta[[cause]] <- modPostDraw(ymod)
             ymod$coefficients <- outcomeModBeta[[cause]]
-            H0[[cause]] <- basehaz(ymod, centered=FALSE)[,1]
+            basehaz <- basehaz(ymod, centered=FALSE)[,1]
+            H0[[cause]] <- basehaz[H0indices[[cause]]]
           }
         }
         if (noisy==TRUE) {
@@ -321,7 +323,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             else if (smtype=="compet") {
               outcomeDens <- rep(1,length(imputationNeeded))
               for (cause in 1:numCauses) {
-                outmodxb <-  model.matrix(as.formula(linpred[[cause]]),imputations[[imp]])
+                outmodxb <-  model.matrix(linpred[[cause]],imputations[[imp]])
                 outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
                 outcomeDens <- outcomeDens * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded]))* (exp(outmodxb[imputationNeeded])^(d[imputationNeeded]==cause))
               }
@@ -386,7 +388,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             else if (smtype=="compet") {
               prob <- rep(1,length(imputationNeeded))
               for (cause in 1:numCauses) {
-                outmodxb <-  model.matrix(as.formula(linpred[[cause]]),imputations[[imp]])
+                outmodxb <-  model.matrix(linpred[[cause]],imputations[[imp]])
                 outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
                 prob = prob * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded]))* (H0[[cause]][imputationNeeded]*exp(1+outmodxb[imputationNeeded]))^(d[imputationNeeded]==cause)
               }
@@ -441,7 +443,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
               else if (smtype=="compet") {
                 prob <- rep(1,rjlimit)
                 for (cause in 1:numCauses) {
-                  outmodxb <-  model.matrix(as.formula(linpred[[cause]]),tempData)
+                  outmodxb <-  model.matrix(linpred[[cause]],tempData)
                   outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
                   prob = prob * exp(-H0[[cause]][i] * exp(outmodxb))* (H0[[cause]][i]*exp(1+outmodxb))^(d[i]==cause)
                 }

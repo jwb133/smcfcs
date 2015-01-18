@@ -15,10 +15,8 @@ values are "lm", "logistic", "coxph" and "compet".}
 
 \item{smformula}{The formula of the substantive model. For "coxph" substantive
 models the left hand side should be of the form "Surv(t,delta)". For "compet"
-substantive models, a vector c(timevar,causevar,linpred) should be passed
-with the name of the time variable, name of the variable giving the cause of
-failure, and a list of linear predictors for each of the cause specific models
-(see example).}
+substantive models, a list should be passed consisting of the Cox models
+for each cause of failure (see example).}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
@@ -53,7 +51,7 @@ when using rejection sampling to draw from imputation models. If the limit is re
 when running a warning will be issued. In this case it is usually advisable to
 increase the rjlimit.}
 
-\item{logical}{value indicating whether output should be noisy, which can
+\item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
 be useful for debugging or checking that models being used are as desired.}
 }
 \value{
@@ -67,17 +65,66 @@ fully conditional specification.
 smcfcs imputes missing values of covariates using the Substantive Model Compatible
 Fully Conditional Specification multiple imputation approach proposed by
 Bartlett et al 2014.
+
+Currently imputation is supported for linear regression ("lm"), logistic
+regression ("logistic"), Cox regression for time to event
+data ("coxph"), and Cox models for competing risks data. For the latter, a Cox
+model is assumed for each cause of failure, and the event indicator should be integer
+coded with 0 corresponding to censoring, 1 corresponding to failure from the first
+cause etc.
+
+At present, in the case of linear or logistic substantive models the outcome  must
+be fully observed, but this will be relaxed in a future version so that missing outcomes
+are also imputed.
+
+The function returns a list of imputated datasets. Models (e.g. the substantive model)
+can be fitted to each and results combined using Rubin's rules using the mitools
+package, as illustrated in the examples.
 }
 \examples{
-# Imputation for a linear substantive model with quadratic covariate effects. Only
-# x which is normally distributed given z has missing values and needs imputing
-data(ex_linquad)
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
+#load mitools for fitting models to imputed datasets
+library(mitools)
 
-# Imputation for a linear substantive model with an interaction. Both x1 and x2
-# have missing values. x1 is imputed using normal linear regression, x2 using
-# logistic regression.
-data(ex_lininter)
-imps <- smcfcs.lm(ex_lininter, smtype="lm", smformula="y~x1+x2+x1x2",method=c("","norm","logreg","x1*x2"))
+#linear substantive model with quadratic covariate effect
+imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
+impobj <- imputationList(imps)
+models <- with(impobj, lm(y~z+x+xsq))
+summary(MIcombine(models))
+
+#include auxiliary variable assuming it is conditionally independent of Y (which it is here)
+predMatrix <- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
+predMatrix[3,] <- c(0,1,0,0,1)
+imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),predictorMatrix=predMatrix)
+
+#interaction model
+imps <- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1x2",method=c("","norm","logreg","x1*x2"))
+impobj <- imputationList(imps)
+models <- with(impobj, lm(y~x1+x2+x1x2))
+summary(MIcombine(models))
+
+#logistic regression substantive model
+imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
+impobj <- imputationList(imps)
+models <- with(impobj, glm(y~z+x+xsq, family=binomial))
+summary(MIcombine(models))
+
+#Cox regression substantive model
+imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,delta)~z+x+xsq",method=c("","","","norm","x^2",""))
+impobj <- imputationList(imps)
+models <- with(impobj, coxph(Surv(t,delta)~z+x+xsq))
+summary(MIcombine(models))
+
+#competing risks substantive model
+imps <- smcfcs(ex_compet, smtype="compet", smformula=c("Surv(t,d==1)~x1+x2", "Surv(t,d==2)~x1+x2"),method=c("","","logreg","norm"))
+impobj <- imputationList(imps)
+models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
+summary(MIcombine(models))
+models <- with(impobj, coxph(Surv(t,d==2)~x1+x2))
+summary(MIcombine(models))
+}
+\references{
+Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
+by fully conditional specification: accommodating the substantive model. Statistical Methods
+in Medical Research 2014. \url{http://doi.org/10.1177/0962280214521348}
 }
 
