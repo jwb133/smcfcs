@@ -40,9 +40,11 @@ modPostDraw <- function(modobj) {
 #' 0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
 #' as a covariate when imputing the i'th variable. If not specified, when
 #' imputing a given variable, the imputation model covariates are the other
-#' partially observed variables and any fully observed variables (if present).
+#' covariates of the substantive model which are partially observed
+#' (but which are not passively imputed) and any fully observed variables (if present).
 #' Note that the outcome variable is implicitly conditioned on by the rejection
-#' sampling scheme used by smcfcs.
+#' sampling scheme used by smcfcs, and should not be specified as a predictor
+#' in the predictor matrix.
 #' @param m The number of imputed datasets to generate.
 #' @param numit The number of iterations to run when generating each imputation.
 #' @param rjlimit Specifies the maximum number of attempts which should be made
