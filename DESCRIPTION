@@ -15,5 +15,6 @@ License: GPL-3
 LazyData: true
 Imports: VGAM,
     MASS
-Suggests: knitr
+Suggests: knitr,
+    mitools
 VignetteBuilder: knitr

@@ -19,21 +19,36 @@ modPostDraw <- function(modobj) {
   beta + mvrnorm(1, mu=rep(0,ncol(varcov)), Sigma=varcov)
 }
 
-#' Linear regression substantive model compatible fully conditional specification
-#' multiple imputation of covariates.
+#' Substantive model compatible fully conditional specification imputation of covariates.
 #'
 #' Multiple imputes missing covariate values using substantive model compatible
-#' fully conditional specification multiple imputation for linear regression
-#' substantive models.
+#' fully conditional specification.
 #'
+#' smcfcs imputes missing values of covariates using the Substantive Model Compatible
+#' Fully Conditional Specification multiple imputation approach proposed by
+#' Bartlett et al 2014.
+#'
+#' The function returns a list of imputated datasets. Models (e.g. the substantive model)
+#' can be fitted to each and results combined using Rubin's rules using the mitools
+#' package, as illustrated in the vignette.
 #'
 #' @param originaldata The original data frame with missing values.
-#' @param smformula The formula of the substantive model.
+#' @param smtype A string specifying the type of substantive model. Possible
+#' values are "lm", "logistic", "coxph" and "compet".
+#' @param smformula The formula of the substantive model. For "coxph" substantive
+#' models the left hand side should be of the form "Surv(t,delta)". For "compet"
+#' substantive models, a named vector c(timevar,causevar,linpred) should be passed
+#' with the name of the time variable, name of the variable giving the cause of
+#' failure, and a list of linear predictors for each of the cause specific models
+#' (see examples).
 #' @param method A required vector of strings specifying for each variable either
 #' that it does not need to be imputed (""), the type of regression model to be
-#' be used to impute (possible values are "norm", "logreg", "poisson", "podds"
-#' and "mlogit") or an expression to passively impute the variable. See the
-#' examples.
+#' be used to impute. Possible values are "norm" (normal linear regression),
+#' "logreg" (logistic regression), "poisson" (Poisson regression),
+#' "podds" (proportional odds regression for ordered categorical variables),
+#' "mlogit" (multinomial logistic regression for unordered categorical variables),
+#' or a custom expression which defines a passively imputed variable, e.g.
+#' "x^2" or "x1*x2".
 #' @param predictorMatrix An optional predictor matrix. If specified, the matrix defines which
 #' covariates will be used as predictors in the imputation models
 #' (the outcome must not be included). The i'th row of the matrix should consist of
@@ -45,75 +60,41 @@ modPostDraw <- function(modobj) {
 #' Note that the outcome variable is implicitly conditioned on by the rejection
 #' sampling scheme used by smcfcs, and should not be specified as a predictor
 #' in the predictor matrix.
-#' @param m The number of imputed datasets to generate.
+#' @param m The number of imputed datasets to generate. The default is 5.
 #' @param numit The number of iterations to run when generating each imputation.
+#' In a (limited) range of simulations good performance was obtained with the
+#' default of 10 iterations. However, particularly when the proportion of missingness
+#' is large, more iterations may be required for convergence to stationarity.
 #' @param rjlimit Specifies the maximum number of attempts which should be made
-#' when using rejection sampling to draw from imputation models.
-#' @param logical value indicating whether output should be noisy, which can
+#' when using rejection sampling to draw from imputation models. If the limit is reached
+#' when running a warning will be issued. In this case it is usually advisable to
+#' increase the rjlimit.
+#' @param noisy logical value (default FALSE) indicating whether output should be noisy, which can
 #' be useful for debugging or checking that models being used are as desired.
+#'
 #' @return a list of data frames containing the multiply imputed datasets.
+#'
+#' @examples
+#' # Imputation for a linear substantive model with quadratic covariate effects. Only
+#' # x which is normally distributed given z has missing values and needs imputing
+#' data(ex_linquad)
+#' imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
+#'
+#' # Imputation for a linear substantive model with an interaction. Both x1 and x2
+#' # have missing values. x1 is imputed using normal linear regression, x2 using
+#' # logistic regression.
+#' data(ex_lininter)
+#' imps <- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1x2",method=c("","norm","logreg","x1*x2"))
+#'
+#' # Imputation for a Cox substantive model.
+#' imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,delta)~z+x+xsq",method=c("","","","norm","x^2",""))
+#'
+#'
 #' @export
-smcfcs.lm <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
-  smcfcs.int(smtype="lm",originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
-}
-
-#' Logistic regression substantive model compatible fully conditional specification
-#' multiple imputation of covariates.
-#'
-#' Multiple imputes missing covariates values using substantive model compatible
-#' fully conditional specification multiple imputation for logistic regression
-#' substantive models.
-#'
-#' @inheritParams smcfcs.lm
-#' @export
-smcfcs.logistic <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
-  smcfcs.int(smtype="logistic",originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
-}
-
-#' Cox proportional hazards model compatible fully conditional specification
-#' multiple imputation of covariates.
-#'
-#' Multiply imputes missing covariate values using substantive model compatible
-#' fully conditional specification multiple imputation for a Cox proportional
-#' hazards substantive model.
-#'
-#' @inheritParams smcfcs.lm
-#' @param smformula The Cox substantive model formula, with the left hand side
-#' of the formula of the form "Surv(t,delta)", where t specifies the event time
-#' variable and delta specifies the binary event indicator variable.
-#' @export
-smcfcs.coxph <- function(originaldata,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
-  library(survival)
-  smcfcs.int(smtype="coxph",originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
-}
-
-#' Competing risks model compatible fully conditional specification
-#' multiple imputation of covariates.
-#'
-#' Multiply imputes missing covariate values using substantive model compatible
-#' fully conditional specification multiple imputation for competing risks
-#' data, assuming Cox models for the cause specific hazard functions.
-#'
-#' This function generates multiple imputations of missing covariates
-#' with competing risks data using the substantive model compatible fully
-#' conditional specificaion algorithm.
-#'
-#' @inheritParams smcfcs.lm
-#' @param timevar The name of the variable containing the time of failure.
-#' @param causevar The name of the integer variable containing the cause of
-#' failure, with 0 indicating censoring.
-#' @param linpred A list of strings giving the right hand sides of the
-#' Cox models for each of the competing causes of failure.
-#' @export
-smcfcs.compet <- function(originaldata,timevar,causevar,linpred,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
-  library(survival)
-  smcfcs.int(smtype="compet",originaldata,smformula=c(timevar,causevar,linpred),method,predictorMatrix,m,numit,rjlimit,noisy)
-}
-
-
-smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,numit,rjlimit,noisy) {
+smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   library("MASS")
   stopifnot(is.data.frame(originaldata))
+  if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
 
   n <- dim(originaldata)[1]
 
@@ -155,7 +136,16 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,nu
     library("VGAM")
   }
 
-  smcovnames <- attr(terms(as.formula(smformula)), "term.labels")
+  if (smtype=="compet") {
+    smcovnames <- attr(terms(as.formula(smformula$linpred[[1]])), "term.labels")
+    for (cause in 2:length(smformula$linpred)) {
+      smcovnames <- c(smcovnames, attr(terms(as.formula(smformula$linpred[[cause]])), "term.labels"))
+    }
+    smcovnames <- unique(smcovnames)
+  }
+  else {
+    smcovnames <- attr(terms(as.formula(smformula)), "term.labels")
+  }
   smcovcols <- (1:ncol(originaldata))[colnames(originaldata) %in% smcovnames]
 
   #partial vars are those variables for which an imputation method has been specified among the available regression types
@@ -167,7 +157,7 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,nu
   #passive variables
   passiveVars <- which((method!="") & (method!="norm") & (method!="logreg") & (method!="poisson") & (method!="podds") & (method!="mlogit"))
 
-  print(paste("Outcome variable:", colnames(originaldata)[outcomeCol]))
+  print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol],collapse=',')))
   print(paste("Passive variables:", colnames(originaldata)[passiveVars]))
   print(paste("Partially obs. variables:", colnames(originaldata)[partialVars]))
   print(paste("Fully obs. variables:", colnames(originaldata)[fullObsVars]))
@@ -469,6 +459,8 @@ smcfcs.int <- function(smtype,originaldata,smformula,method,predictorMatrix,m,nu
               print("Rejection sampling has failed for one record. You may want to increase the rejecton sampling limit.")
             }
           }
+          #update passive variables
+          imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
         }
       }
 
