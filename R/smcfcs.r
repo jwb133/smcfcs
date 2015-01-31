@@ -26,7 +26,7 @@ modPostDraw <- function(modobj) {
 #'
 #' smcfcs imputes missing values of covariates using the Substantive Model Compatible
 #' Fully Conditional Specification multiple imputation approach proposed by
-#' Bartlett et al 2014.
+#' Bartlett et al 2014 (see references).
 #'
 #' Currently imputation is supported for linear regression ("lm"), logistic
 #' regression ("logistic"), Cox regression for time to event
@@ -42,6 +42,11 @@ modPostDraw <- function(modobj) {
 #' The function returns a list of imputated datasets. Models (e.g. the substantive model)
 #' can be fitted to each and results combined using Rubin's rules using the mitools
 #' package, as illustrated in the examples.
+#'
+#' The development of this package was supported by a UK Medical Research Council
+#' Fellowship (MR/K02180X/1). Part of its development took place while the author was
+#' kindly hosted by the University of Michigan's Department of Biostatistics & Institute for
+#' Social Research.
 #'
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible

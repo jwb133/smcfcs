@@ -1,5 +1,5 @@
 ---
-title: "smcfcs"
+title: "smcfcs- vignette in progress"
 author: "Jonathan Bartlett"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -21,40 +21,17 @@ When multiple variables are affected by missingness, a joint multivariate model 
 
 ### Imputation model compatibility
 
-When missing values are imputed from a misspecified model, in general invalid inferences will result. One way in which misspecification can occur is when the imputation and substantive model of interest are incompatible. That is, there exists no joint model which contains the imputation model and the substantive model as the corresponding conditionals. In this case, as described by Bartlett etal, assuming that the substantive model is correctly specified, unless the imputation and substantive models can be made compatible by imposing a restriction on the imputation model, incompatiblity implies the imputation model is misspecified.
+When missing values are imputed from a misspecified model, in general invalid inferences will result. One way in which misspecification can occur is when the imputation and substantive model of interest are incompatible. That is, there exists no joint model which contains the imputation model and the substantive model as the corresponding conditionals. In this case, as described by <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a>, assuming that the substantive model is correctly specified, unless the imputation and substantive models can be made compatible by imposing a restriction on the imputation model, incompatiblity implies the imputation model is misspecified.
 
-Within the joint modelling approach, one can impute missing covariates compatibly with a particular substantive model (ref Goldstein et al).
+Such incompatibility between the imputation model used to impute a partially observed covariate and the substantive/outcome model can arise for example when the latter includes interactions or non-linear effects of variables. In these cases, it may be difficult or impossible to specify a compatible imputation model for a covariate using standard imputation models as available in existing packages.
 
 ## Substantive Model Compatible Fully Conditional Specification multiple imputation
+The substantive model compatible modification of the fully conditional specification (sometimes referred to as chained equations) imputation approach, proposed by <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a>, ensures that each partially observed variable is imputed from an imputation which is compatible with the user specific model for the outcome (the substantive model).
 
+## Imputing using auxiliary variables with smcfcs
 
+<h2 id="references">References</h3>
 
-## Figures
-
-The figure sizes have been customised so that you can easily put two images side-by-side. 
-
-```{r, fig.show='hold'}
-plot(1:10)
-plot(10:1)
-```
-
-You can enable figure captions by `fig_caption: yes` in YAML:
-
-    output:
-      rmarkdown::html_vignette:
-        fig_caption: yes
-
-Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
-
-## More Examples
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(mtcars, 10))
-```
-
-Also a quote using `>`:
-
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
+Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
+by fully conditional specification: accommodating the substantive model. 
+<a href="http://doi.org/10.1177/0962280214521348">Statistical Methods in Medical Research (2014)</a>
