@@ -1,24 +1,3 @@
-updatePassiveVars <- function(data, method, passivecols) {
-  for (i in passivecols) {
-    data[,i] <- with(data, eval(parse(text=method[i])))
-  }
-  data
-}
-
-expit <- function(x) {
-  exp(x)/(1+exp(x))
-}
-
-catdraw <- function(prob) {
-  (1:length(prob))[rmultinom(1,size=1,prob=prob)==1]
-}
-
-modPostDraw <- function(modobj) {
-  beta <- modobj$coef
-  varcov <- vcov(modobj)
-  beta + mvrnorm(1, mu=rep(0,ncol(varcov)), Sigma=varcov)
-}
-
 #' Substantive model compatible fully conditional specification imputation of covariates.
 #'
 #' Multiple imputes missing covariate values using substantive model compatible
@@ -26,7 +5,7 @@ modPostDraw <- function(modobj) {
 #'
 #' smcfcs imputes missing values of covariates using the Substantive Model Compatible
 #' Fully Conditional Specification multiple imputation approach proposed by
-#' Bartlett et al 2014 (see references).
+#' Bartlett \emph{et al} 2014 (see references).
 #'
 #' Currently imputation is supported for linear regression ("lm"), logistic
 #' regression ("logistic"), Cox regression for time to event
@@ -35,13 +14,18 @@ modPostDraw <- function(modobj) {
 #' coded with 0 corresponding to censoring, 1 corresponding to failure from the first
 #' cause etc.
 #'
+#' The function returns a list. The first element \code{impDataset} of the list is a list of the imputed
+#' datasets. Models (e.g. the substantive model) can be fitted to each and results
+#' combined using Rubin's rules using the mitools package, as illustrated in the examples.
+#'
+#' The second element \code{smCoefIter} is a three dimensional array containing the values
+#' of the substantive model parameters obtained at the end of each iteration of the algorithm.
+#' The array is indexed by: imputation number, parameter number, iteration.
+#'
 #' At present, in the case of linear or logistic substantive models the outcome  must
 #' be fully observed, but this will be relaxed in a future version so that missing outcomes
 #' are also imputed.
 #'
-#' The function returns a list of imputated datasets. Models (e.g. the substantive model)
-#' can be fitted to each and results combined using Rubin's rules using the mitools
-#' package, as illustrated in the examples.
 #'
 #' The development of this package was supported by a UK Medical Research Council
 #' Fellowship (MR/K02180X/1). Part of its development took place while the author was
@@ -50,19 +34,19 @@ modPostDraw <- function(modobj) {
 #'
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible
-#' values are "lm", "logistic", "coxph" and "compet".
-#' @param smformula The formula of the substantive model. For "coxph" substantive
-#' models the left hand side should be of the form "Surv(t,delta)". For "compet"
+#' values are \code{"lm"}, \code{"logistic"}, \code{"coxph"} and \code{"compet"}.
+#' @param smformula The formula of the substantive model. For \code{"coxph"} substantive
+#' models the left hand side should be of the form \code{"Surv(t,delta)"}. For \code{"compet"}
 #' substantive models, a list should be passed consisting of the Cox models
 #' for each cause of failure (see example).
 #' @param method A required vector of strings specifying for each variable either
 #' that it does not need to be imputed (""), the type of regression model to be
-#' be used to impute. Possible values are "norm" (normal linear regression),
-#' "logreg" (logistic regression), "poisson" (Poisson regression),
-#' "podds" (proportional odds regression for ordered categorical variables),
-#' "mlogit" (multinomial logistic regression for unordered categorical variables),
+#' be used to impute. Possible values are \code{"norm"} (normal linear regression),
+#' \code{"logreg"} (logistic regression), \code{"poisson"} (Poisson regression),
+#' \code{"podds"} (proportional odds regression for ordered categorical variables),
+#' \code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 #' or a custom expression which defines a passively imputed variable, e.g.
-#' "x^2" or "x1*x2".
+#' \code{"x^2"} or \code{"x1*x2"}.
 #' @param predictorMatrix An optional predictor matrix. If specified, the matrix defines which
 #' covariates will be used as predictors in the imputation models
 #' (the outcome must not be included). The i'th row of the matrix should consist of
@@ -81,12 +65,19 @@ modPostDraw <- function(modobj) {
 #' is large, more iterations may be required for convergence to stationarity.
 #' @param rjlimit Specifies the maximum number of attempts which should be made
 #' when using rejection sampling to draw from imputation models. If the limit is reached
-#' when running a warning will be issued. In this case it is usually advisable to
-#' increase the rjlimit.
+#' when running a warning will be issued. In this case it is probably advisable to
+#' increase the \code{rjlimit} until the warning does not appear.
 #' @param noisy logical value (default FALSE) indicating whether output should be noisy, which can
 #' be useful for debugging or checking that models being used are as desired.
 #'
-#' @return a list of data frames containing the multiply imputed datasets.
+#' @return A list containing:
+#'
+#' \code{impDatasets} a list containing the imputed datasets
+#'
+#' \code{smCoefIter} a three dimension matrix containing the substantive model parameter
+#' values. The matrix is indexed by [imputation,parameter number,iteration]
+#'
+#' @author Jonathan Bartlett \email{jonathan.bartlett@@lshtm.ac.uk}
 #'
 #' @example data-raw/examples.r
 #'
@@ -206,7 +197,6 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
 
         xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
-        #print(xmodformula)
         if (method[targetCol]=="norm") {
           #estimate parameters of covariate model
           xmod <- lm(xmodformula, data=imputations[[imp]])
@@ -215,7 +205,6 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           sigmasq <- summary(xmod)$sigma^2
           newsigmasq <- (sigmasq*xmod$df) / rchisq(1,xmod$df)
           covariance <- (newsigmasq/sigmasq)*vcov(xmod)
-          #newbeta = beta + chol(covariance) %*% rnorm(length(beta))
           newbeta = beta + mvrnorm(1, mu=rep(0,ncol(covariance)), Sigma=covariance)
           #calculate fitted values
           xfitted <- model.matrix(xmod) %*% newbeta
@@ -279,6 +268,33 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
         if (noisy==TRUE) {
           print(summary(ymod))
+        }
+
+        if ((imp==1) & (cyclenum==1) & (var==1)) {
+          if (smtype=="compet") {
+            totalCoefVec <- outcomeModBeta[[1]]
+            for (cause in 1:numCauses) {
+              totalCoefVec <- c(totalCoefVec, outcomeModBeta[[cause]])
+            }
+            smCoefIter <- array(0, dim=c(m, length(totalCoefVec), numit))
+          }
+          else {
+            smCoefIter <- array(0, dim=c(m, length(outcomeModBeta), numit))
+          }
+        }
+
+        if (var==length(partialVars)) {
+          #then we have reached end of a cycle
+          if (smtype=="compet") {
+            totalCoefVec <- outcomeModBeta[[1]]
+            for (cause in 1:numCauses) {
+              totalCoefVec <- c(totalCoefVec, outcomeModBeta[[cause]])
+            }
+            smCoefIter[imp,,cyclenum] <- totalCoefVec
+          }
+          else {
+            smCoefIter[imp,,cyclenum] <- outcomeModBeta
+          }
         }
 
         #impute x, either directly where possibly, or using rejection sampling otherwise
@@ -476,7 +492,28 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 
   }
 
-  imputations
+  list(impDatasets=imputations, smCoefIter=smCoefIter)
 
+}
+
+updatePassiveVars <- function(data, method, passivecols) {
+  for (i in passivecols) {
+    data[,i] <- with(data, eval(parse(text=method[i])))
+  }
+  data
+}
+
+expit <- function(x) {
+  exp(x)/(1+exp(x))
+}
+
+catdraw <- function(prob) {
+  (1:length(prob))[rmultinom(1,size=1,prob=prob)==1]
+}
+
+modPostDraw <- function(modobj) {
+  beta <- modobj$coef
+  varcov <- vcov(modobj)
+  beta + mvrnorm(1, mu=rep(0,ncol(varcov)), Sigma=varcov)
 }
 
