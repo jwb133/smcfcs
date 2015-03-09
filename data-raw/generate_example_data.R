@@ -52,23 +52,24 @@ ex_logisticquad <- data.frame(y,z,x,xsq=x^2,v)
 devtools::use_data(ex_logisticquad, overwrite=TRUE)
 
 #Cox substantive model with quadratic covariate effect
-#set.seed(1234)
+set.seed(1234)
 n <- 1000
 x <- rnorm(n)
 z <- rnorm(n)
 #v is an auxiliary variable
 v <- x+rnorm(n)
 xb <- z+x+x^2
+c <- -log(runif(n))/1
 t <- -log(runif(n))/exp(xb)
-delta <- 1*(t<20)
-t[delta==0] <- 20
+d <- 1*(t<c)
+t[d==0] <- c[d==0]
 
 #make some x values missing
 xobsxb <- (t-mean(t))/sd(t)
 xobspr <- exp(xobsxb)/(1+exp(xobsxb))
 x[runif(n)>xobspr] <- NA
 
-ex_coxquad <- data.frame(t,delta,z,x,xsq=x^2,v)
+ex_coxquad <- data.frame(t,d,z,x,xsq=x^2,v)
 
 devtools::use_data(ex_coxquad, overwrite=TRUE)
 
