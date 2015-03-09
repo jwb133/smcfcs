@@ -103,6 +103,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   n <- dim(originaldata)[1]
   #find column numbers of partially observed, fully observed variables, and outcome
   if (smtype=="coxph") {
+    library("survival")
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     outcomeCol <- c(timeCol, dCol)
@@ -114,6 +115,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     rm(nullMod)
   }
   else if (smtype=="compet") {
+    library("survival")
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[3]][[2]])]
     outcomeCol <- c(timeCol, dCol)
