@@ -11,21 +11,21 @@ smcfcs(originaldata, smtype, smformula, method, predictorMatrix = NULL,
 \item{originaldata}{The original data frame with missing values.}
 
 \item{smtype}{A string specifying the type of substantive model. Possible
-values are "lm", "logistic", "coxph" and "compet".}
+values are \code{"lm"}, \code{"logistic"}, \code{"coxph"} and \code{"compet"}.}
 
-\item{smformula}{The formula of the substantive model. For "coxph" substantive
-models the left hand side should be of the form "Surv(t,delta)". For "compet"
+\item{smformula}{The formula of the substantive model. For \code{"coxph"} substantive
+models the left hand side should be of the form \code{"Surv(t,delta)"}. For \code{"compet"}
 substantive models, a list should be passed consisting of the Cox models
 for each cause of failure (see example).}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
-be used to impute. Possible values are "norm" (normal linear regression),
-"logreg" (logistic regression), "poisson" (Poisson regression),
-"podds" (proportional odds regression for ordered categorical variables),
-"mlogit" (multinomial logistic regression for unordered categorical variables),
+be used to impute. Possible values are \code{"norm"} (normal linear regression),
+\code{"logreg"} (logistic regression), \code{"poisson"} (Poisson regression),
+\code{"podds"} (proportional odds regression for ordered categorical variables),
+\code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 or a custom expression which defines a passively imputed variable, e.g.
-"x^2" or "x1*x2".}
+\code{"x^2"} or \code{"x1*x2"}.}
 
 \item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
 covariates will be used as predictors in the imputation models
@@ -48,14 +48,19 @@ is large, more iterations may be required for convergence to stationarity.}
 
 \item{rjlimit}{Specifies the maximum number of attempts which should be made
 when using rejection sampling to draw from imputation models. If the limit is reached
-when running a warning will be issued. In this case it is usually advisable to
-increase the rjlimit.}
+when running a warning will be issued. In this case it is probably advisable to
+increase the \code{rjlimit} until the warning does not appear.}
 
 \item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
 be useful for debugging or checking that models being used are as desired.}
 }
 \value{
-a list of data frames containing the multiply imputed datasets.
+A list containing:
+
+\code{impDatasets} a list containing the imputed datasets
+
+\code{smCoefIter} a three dimension matrix containing the substantive model parameter
+values. The matrix is indexed by [imputation,parameter number,iteration]
 }
 \description{
 Multiple imputes missing covariate values using substantive model compatible
@@ -64,7 +69,7 @@ fully conditional specification.
 \details{
 smcfcs imputes missing values of covariates using the Substantive Model Compatible
 Fully Conditional Specification multiple imputation approach proposed by
-Bartlett et al 2014 (see references).
+Bartlett \emph{et al} 2014 (see references).
 
 Currently imputation is supported for linear regression ("lm"), logistic
 regression ("logistic"), Cox regression for time to event
@@ -73,13 +78,17 @@ model is assumed for each cause of failure, and the event indicator should be in
 coded with 0 corresponding to censoring, 1 corresponding to failure from the first
 cause etc.
 
+The function returns a list. The first element \code{impDataset} of the list is a list of the imputed
+datasets. Models (e.g. the substantive model) can be fitted to each and results
+combined using Rubin's rules using the mitools package, as illustrated in the examples.
+
+The second element \code{smCoefIter} is a three dimensional array containing the values
+of the substantive model parameters obtained at the end of each iteration of the algorithm.
+The array is indexed by: imputation number, parameter number, iteration.
+
 At present, in the case of linear or logistic substantive models the outcome  must
 be fully observed, but this will be relaxed in a future version so that missing outcomes
 are also imputed.
-
-The function returns a list of imputated datasets. Models (e.g. the substantive model)
-can be fitted to each and results combined using Rubin's rules using the mitools
-package, as illustrated in the examples.
 
 The development of this package was supported by a UK Medical Research Council
 Fellowship (MR/K02180X/1). Part of its development took place while the author was
@@ -92,9 +101,14 @@ library(mitools)
 
 #linear substantive model with quadratic covariate effect
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
-impobj <- imputationList(imps)
+impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, lm(y~z+x+xsq))
 summary(MIcombine(models))
+
+#examining convergence, using 100 iterations in each imputation
+imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""), numit=100)
+#convergence plot from first imputation for third coefficient of substantive model
+plot(imps$smCoefIter[1,3,])
 
 #include auxiliary variable assuming it is conditionally independent of Y (which it is here)
 predMatrix <- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
@@ -103,29 +117,32 @@ imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","no
 
 #interaction model
 imps <- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1x2",method=c("","norm","logreg","x1*x2"))
-impobj <- imputationList(imps)
+impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, lm(y~x1+x2+x1x2))
 summary(MIcombine(models))
 
 #logistic regression substantive model
 imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
-impobj <- imputationList(imps)
+impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, glm(y~z+x+xsq, family=binomial))
 summary(MIcombine(models))
 
 #Cox regression substantive model
 imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,delta)~z+x+xsq",method=c("","","","norm","x^2",""))
-impobj <- imputationList(imps)
+impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, coxph(Surv(t,delta)~z+x+xsq))
 summary(MIcombine(models))
 
 #competing risks substantive model
 imps <- smcfcs(ex_compet, smtype="compet", smformula=c("Surv(t,d==1)~x1+x2", "Surv(t,d==2)~x1+x2"),method=c("","","logreg","norm"))
-impobj <- imputationList(imps)
+impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
 summary(MIcombine(models))
 models <- with(impobj, coxph(Surv(t,d==2)~x1+x2))
 summary(MIcombine(models))
+}
+\author{
+Jonathan Bartlett \email{jonathan.bartlett@lshtm.ac.uk}
 }
 \references{
 Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
