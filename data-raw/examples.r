@@ -7,7 +7,7 @@ impobj <- imputationList(imps)
 models <- with(impobj, lm(y~z+x+xsq))
 summary(MIcombine(models))
 
-#include auxiliary variable assuming it is conditionally independent of Y (which it is here)
+#include auxiliary variable v assuming it is conditionally independent of y
 predMatrix <- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
 predMatrix[3,] <- c(0,1,0,0,1)
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),predictorMatrix=predMatrix)

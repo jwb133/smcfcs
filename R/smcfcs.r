@@ -70,9 +70,9 @@ modPostDraw <- function(modobj) {
 #' as a covariate when imputing the i'th variable. If not specified, when
 #' imputing a given variable, the imputation model covariates are the other
 #' covariates of the substantive model which are partially observed
-#' (but which are not passively imputed) and any fully observed variables (if present).
-#' Note that the outcome variable is implicitly conditioned on by the rejection
-#' sampling scheme used by smcfcs, and should not be specified as a predictor
+#' (but which are not passively imputed) and any fully observed covariates (if present)
+#' in the substantive model. Note that the outcome variable is implicitly conditioned
+#' on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
 #' in the predictor matrix.
 #' @param m The number of imputed datasets to generate. The default is 5.
 #' @param numit The number of iterations to run when generating each imputation.
@@ -167,7 +167,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol],collapse=',')))
   print(paste("Passive variables:", paste(colnames(originaldata)[passiveVars],collapse=',')))
   print(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars],collapse=',')))
-  print(paste("Fully obs. variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
+  print(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
 
   imputations <- list()
   for (imp in 1:m) {
@@ -202,7 +202,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           predictorCols <- predictorCols[! predictorCols %in% outcomeCol]
         }
         if ((imp==1) & (cyclenum==1)) {
-          print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",colnames(imputations[[imp]])[predictorCols],collapse=','))
+          print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[predictorCols],collapse=','),collapse=','))
         }
 
         xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))

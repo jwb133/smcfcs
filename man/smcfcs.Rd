@@ -83,7 +83,7 @@ package, as illustrated in the examples.
 
 The development of this package was supported by a UK Medical Research Council
 Fellowship (MR/K02180X/1). Part of its development took place while the author was
-hosted by the University of Michigan's Department of Biostatistics & Institute for
+kindly hosted by the University of Michigan's Department of Biostatistics & Institute for
 Social Research.
 }
 \examples{
