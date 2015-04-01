@@ -284,7 +284,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         if ((imp==1) & (cyclenum==1) & (var==1)) {
           if (smtype=="compet") {
             totalCoefVec <- outcomeModBeta[[1]]
-            for (cause in 1:numCauses) {
+            for (cause in 2:numCauses) {
               totalCoefVec <- c(totalCoefVec, outcomeModBeta[[cause]])
             }
             smCoefIter <- array(0, dim=c(m, length(totalCoefVec), numit))
