@@ -247,10 +247,16 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           varcov <- vcov(ymod)
           outcomeModResVar <- (sigmasq*ymod$df) / rchisq(1,ymod$df)
           outcomeModBeta = beta + chol((outcomeModResVar/sigmasq)*varcov) %*% rnorm(length(beta))
+          if (noisy==TRUE) {
+            print(summary(ymod))
+          }
         }
         else if (smtype=="logistic") {
           ymod <- glm(as.formula(smformula),family="binomial",imputations[[imp]])
           outcomeModBeta = modPostDraw(ymod)
+          if (noisy==TRUE) {
+            print(summary(ymod))
+          }
         }
         else if (smtype=="coxph") {
           ymod <- coxph(as.formula(smformula), imputations[[imp]])
@@ -258,6 +264,9 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           ymod$coefficients <- outcomeModBeta
           basehaz <- basehaz(ymod, centered=FALSE)[,1]
           H0 <- basehaz[H0indices]
+          if (noisy==TRUE) {
+            print(summary(ymod))
+          }
         }
         else if (smtype=="compet") {
           for (cause in 1:numCauses) {
@@ -266,10 +275,10 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             ymod$coefficients <- outcomeModBeta[[cause]]
             basehaz <- basehaz(ymod, centered=FALSE)[,1]
             H0[[cause]] <- basehaz[H0indices[[cause]]]
+            if (noisy==TRUE) {
+              print(summary(ymod))
+            }
           }
-        }
-        if (noisy==TRUE) {
-          print(summary(ymod))
         }
 
         if ((imp==1) & (cyclenum==1) & (var==1)) {
