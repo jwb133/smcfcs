@@ -36,11 +36,10 @@ Unfortunately, the imputation model for each partially observed variable general
 ## Statistical properties
 Although the SMC-FCS algorithm ensures compatibility between each imputation model and the user specified substantive model, there is no guarantee that the different imputation models for `x1,x2,x3,..,xp` are mutually compatible, since the covariate models may not be mutually compatible.
 
-# The `smcfcs' package
-The `smcfcs` package implements the SMC-FCS procedure. Currently linear, logistic and Cox proportional hazards substantive models. Competing risks outcome data can also be accommodated, with a Cox proportional hazards model used to model each cause specific hazard function.
+# The `smcfcs` package
+The `smcfcs` function in the `smcfcs` package implements the SMC-FCS procedure. Currently linear, logistic and Cox proportional hazards substantive models. Competing risks outcome data can also be accommodated, with a Cox proportional hazards model used to model each cause specific hazard function. Partially observed variables can be imputed using normal linear regression, logistic regression (for binary variables), proportional odds regression (sometimes known as ordinal logistic regression, suitable for ordered categorical variables), multinomial logistic regression (for unordered categorical variables), and Poisson regression (for count variables). In the following we describe some of the important aspects of using `smcfcs` by way of an example data frame.
 
-
-## Example
+## Example - linear regression substantive model with quadratic covariate effects
 To illustrate the package, we use the simple example data frame `ex_linquad`, which is included with the package. This data frame was simulated for `n=1000` independent rows. For each row, variables `y,x,z,v` were intended to be collected, but there are missing values in `x`. The values have been made artifically missing, with the probability of missingness dependent on (the fully observed) `y` variable. 
 
 ## Imputing using auxiliary variables with smcfcs
@@ -81,7 +80,7 @@ The plot shows that the process appears to converge rapidly, such that the defau
 
 # Future plans
 
-Currently the smcfcs package does not handle missing outcomes (except that for time to event of competing risks data, censoring is of course allowed for). In a future version the facility to impute missing outcomes will soon be added, which will impute missing outcomes when the substantive model is a linear or logistic regression model.
+Currently the `smcfcs` package does not handle missing outcomes (except that for time to event of competing risks data, censoring is of course allowed for). In a future version the facility to impute missing outcomes will soon be added, which will impute missing outcomes when the substantive model is a linear or logistic regression model.
 
 <h2 id="references">References</h3>
 
