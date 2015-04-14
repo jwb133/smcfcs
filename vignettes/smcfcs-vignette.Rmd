@@ -34,6 +34,9 @@ One of the strengths of multiple imputation in general is the possibility to use
 
 When using smcfcs to impute missing covariates, auxiliary variables V can be added conditioned on by adding them to the substantive/outcome model as additional covariates. Once the imputed datasets have been generated, the actual substantive model of interest, which does not include the auxiliaries, can be fitted. For outcome models other than linear regression, this approach is not entirely justified due to the lack of collapsibility of non-linear models. For example, if a Cox model is assumed for a failure time given variables X and V, the hazard function given only X (i.e. omitting V from the model) is no longer a Cox model. Further research is warranted to explore how this might affect the resulting inferences. If desired, one can include 
 
+## Assessing convergence ##
+Like standard chained equations or FCS imputation, the SMC-FCS algorithm must be run for a sufficient number of iterations for the process to converge to its stationary distribution. The default number of iterations used is 10, but this may not be sufficient in any given dataset and model specifcication. To assess convergence, the object returned by smcfcs includes an object called smCoefIter. This matrix contains the parameter estimates of the substantive model, and is indexed by imputation number, parameter number, and iteration number. To assess convergence, one can call smcfcs with m=1 and numit suitably chosen (e.g. 100). The values in the resulting smCoefIter matrix can then be plotted to assess convergence.
+
 ## Future plans
 
 Currently the smcfcs package does not handle missing outcomes (except that for time to event of competing risks data, censoring is of course allowed for). In a future version the facility to impute missing outcomes will be added when the substantive model is a linear or logistic regression model.
