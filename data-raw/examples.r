@@ -1,22 +1,21 @@
 #load mitools for fitting models to imputed datasets
 library(mitools)
 
+#set random number seed to make results reproducible
+set.seed(123)
+
 #linear substantive model with quadratic covariate effect
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
 impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, lm(y~z+x+xsq))
 summary(MIcombine(models))
 
-<<<<<<< HEAD
-#include auxiliary variable v assuming it is conditionally independent of y
-=======
-#examining convergence, using 100 iterations in each imputation
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""), numit=100)
+#examining convergence, using 100 iterations, setting m=1
+imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),m=1,numit=100)
 #convergence plot from first imputation for third coefficient of substantive model
 plot(imps$smCoefIter[1,3,])
 
 #include auxiliary variable assuming it is conditionally independent of Y (which it is here)
->>>>>>> 72e4052e20fe71df02eca99102881bf8921eaea5
 predMatrix <- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
 predMatrix[3,] <- c(0,1,0,0,1)
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),predictorMatrix=predMatrix)

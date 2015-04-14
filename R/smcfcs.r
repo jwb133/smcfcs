@@ -26,11 +26,13 @@
 #' be fully observed, but this will be relaxed in a future version so that missing outcomes
 #' are also imputed.
 #'
-#'
 #' The development of this package was supported by a UK Medical Research Council
 #' Fellowship (MR/K02180X/1). Part of its development took place while the author was
 #' kindly hosted by the University of Michigan's Department of Biostatistics & Institute for
 #' Social Research.
+#'
+#' The structure of many of the arguments to \code{smcfcs} are based on those of
+#' the excellent \code{mice} package.
 #'
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible
