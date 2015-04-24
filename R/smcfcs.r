@@ -435,63 +435,56 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 
           #now, for those remaining, who must have low acceptance probabilities, sample by subject
           for (i in imputationNeeded) {
-            impFound <- 0
-            j <- 0
-            while ((impFound<1) & (j<rjlimit)) {
-              tempData <- imputations[[imp]][i,]
-              tempData <- tempData[rep(1,rjlimit),]
-              if (method[targetCol]=="norm") {
-                tempData[,targetCol] <- rnorm(rjlimit,xfitted[i],newsigmasq^0.5)
-              }
-              else if (method[targetCol]=="logreg") {
-                tempData[,targetCol] <- rbinom(rjlimit,size=1,xfitted[i])
-              }
-              else if (method[targetCol]=="poisson") {
-                tempData[,targetCol] <- rpois(rjlimit,xfitted[i])
-              }
 
-              #passively impute
-              tempData <- updatePassiveVars(tempData, method, passiveVars)
-
-              #accept reject
-              uDraw <- runif(rjlimit)
-              if (smtype=="lm") {
-                outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
-                deviation <- tempData[,outcomeCol] - outmodxb
-                reject = 1*(log(uDraw) > -(deviation^2) / (2*array(outcomeModResVar,dim=c(rjlimit,1))))
-              }
-              else if (smtype=="logistic") {
-                outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
-                prob = expit(outmodxb)
-                prob = prob*tempData[,outcomeCol] + (1-prob)*(1-tempData[,outcomeCol])
-                reject = 1*(uDraw>prob)
-              }
-              else if (smtype=="coxph") {
-                outmodxb <-  model.matrix(as.formula(smformula),tempData)
-                outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
-                s_t = exp(-H0[i]* exp(outmodxb))
-                prob = exp(1 + outmodxb - (H0[i]* exp(outmodxb)) ) * H0[i]
-                prob = d[i]*prob + (1-d[i])*s_t
-                reject = 1*(uDraw > prob )
-              }
-              else if (smtype=="compet") {
-                prob <- rep(1,rjlimit)
-                for (cause in 1:numCauses) {
-                  outmodxb <-  model.matrix(linpred[[cause]],tempData)
-                  outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
-                  prob = prob * exp(-H0[[cause]][i] * exp(outmodxb))* (H0[[cause]][i]*exp(1+outmodxb))^(d[i]==cause)
-                }
-                reject = 1*(uDraw > prob )
-              }
-
-              if (sum(reject)<rjlimit) {
-                impFound <- 1
-                imputations[[imp]][i,targetCol] <- tempData[reject==0,targetCol][1]
-              }
-
-              j <- j+1
+            tempData <- imputations[[imp]][i,]
+            tempData <- tempData[rep(1,rjlimit),]
+            if (method[targetCol]=="norm") {
+              tempData[,targetCol] <- rnorm(rjlimit,xfitted[i],newsigmasq^0.5)
             }
-            if (j==rjlimit) {
+            else if (method[targetCol]=="logreg") {
+              tempData[,targetCol] <- rbinom(rjlimit,size=1,xfitted[i])
+            }
+            else if (method[targetCol]=="poisson") {
+              tempData[,targetCol] <- rpois(rjlimit,xfitted[i])
+            }
+
+            #passively impute
+            tempData <- updatePassiveVars(tempData, method, passiveVars)
+
+            #accept reject
+            uDraw <- runif(rjlimit)
+            if (smtype=="lm") {
+              outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
+              deviation <- tempData[,outcomeCol] - outmodxb
+              reject = 1*(log(uDraw) > -(deviation^2) / (2*array(outcomeModResVar,dim=c(rjlimit,1))))
+            }
+            else if (smtype=="logistic") {
+              outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
+              prob = expit(outmodxb)
+              prob = prob*tempData[,outcomeCol] + (1-prob)*(1-tempData[,outcomeCol])
+              reject = 1*(uDraw>prob)
+            }
+            else if (smtype=="coxph") {
+              outmodxb <-  model.matrix(as.formula(smformula),tempData)
+              outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
+              s_t = exp(-H0[i]* exp(outmodxb))
+              prob = exp(1 + outmodxb - (H0[i]* exp(outmodxb)) ) * H0[i]
+              prob = d[i]*prob + (1-d[i])*s_t
+              reject = 1*(uDraw > prob )
+            }
+            else if (smtype=="compet") {
+              prob <- rep(1,rjlimit)
+              for (cause in 1:numCauses) {
+                outmodxb <-  model.matrix(linpred[[cause]],tempData)
+                outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
+                prob = prob * exp(-H0[[cause]][i] * exp(outmodxb))* (H0[[cause]][i]*exp(1+outmodxb))^(d[i]==cause)
+              }
+              reject = 1*(uDraw > prob )
+            }
+
+            if (sum(reject)<rjlimit) {
+              imputations[[imp]][i,targetCol] <- tempData[reject==0,targetCol][1]
+            } else {
               print("Rejection sampling has failed for one record. You may want to increase the rejecton sampling limit.")
             }
           }
