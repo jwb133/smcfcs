@@ -79,7 +79,7 @@
 #' \code{smCoefIter} a three dimension matrix containing the substantive model parameter
 #' values. The matrix is indexed by [imputation,parameter number,iteration]
 #'
-#' @author Jonathan Bartlett \email{jonathan.bartlett@@lshtm.ac.uk}
+#' @author Jonathan Bartlett \email{jonathan.bartlett@@lshtm.ac.uk} \url{http://www.missingdata.org.uk}
 #'
 #' @example data-raw/examples.r
 #'

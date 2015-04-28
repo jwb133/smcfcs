@@ -34,9 +34,9 @@ covariates will be used as predictors in the imputation models
 as a covariate when imputing the i'th variable. If not specified, when
 imputing a given variable, the imputation model covariates are the other
 covariates of the substantive model which are partially observed
-(but which are not passively imputed) and any fully observed variables (if present).
-Note that the outcome variable is implicitly conditioned on by the rejection
-sampling scheme used by smcfcs, and should not be specified as a predictor
+(but which are not passively imputed) and any fully observed covariates (if present)
+in the substantive model. Note that the outcome variable is implicitly conditioned
+on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
 in the predictor matrix.}
 
 \item{m}{The number of imputed datasets to generate. The default is 5.}
@@ -94,10 +94,16 @@ The development of this package was supported by a UK Medical Research Council
 Fellowship (MR/K02180X/1). Part of its development took place while the author was
 kindly hosted by the University of Michigan's Department of Biostatistics & Institute for
 Social Research.
+
+The structure of many of the arguments to \code{smcfcs} are based on those of
+the excellent \code{mice} package.
 }
 \examples{
 #load mitools for fitting models to imputed datasets
 library(mitools)
+
+#set random number seed to make results reproducible
+set.seed(123)
 
 #linear substantive model with quadratic covariate effect
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
@@ -105,8 +111,8 @@ impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, lm(y~z+x+xsq))
 summary(MIcombine(models))
 
-#examining convergence, using 100 iterations in each imputation
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""), numit=100)
+#examining convergence, using 100 iterations, setting m=1
+imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),m=1,numit=100)
 #convergence plot from first imputation for third coefficient of substantive model
 plot(imps$smCoefIter[1,3,])
 
@@ -142,7 +148,7 @@ models <- with(impobj, coxph(Surv(t,d==2)~x1+x2))
 summary(MIcombine(models))
 }
 \author{
-Jonathan Bartlett \email{jonathan.bartlett@lshtm.ac.uk}
+Jonathan Bartlett \email{jonathan.bartlett@lshtm.ac.uk} \url{http://www.missingdata.org.uk}
 }
 \references{
 Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
