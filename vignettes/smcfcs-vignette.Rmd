@@ -1,5 +1,5 @@
 ---
-title: "smcfcs- vignette in progress"
+title: "smcfcs"
 author: "Jonathan Bartlett"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -11,48 +11,94 @@ vignette: >
 
 # Introduction
 
-Missing data are a common issue in many fields of empirical research. An extremely popular approach to handling missing data is the method of multiple imputation (MI). Multiple imputation involves replacing missing values by a number of imputations, creating multiple imputed datasets. Each completed dataset is then analysed as usual, and estimates and standard errors are combined across imputations using rules developed by Rubin.
+Missing data are a common issue in many fields of empirical research. An popular approach to handling missing data is the method of multiple imputation (MI). Multiple imputation involves replacing missing values by a number of imputations, creating multiple imputed datasets. Each completed dataset is then analysed as usual, and estimates and standard errors are combined across imputations using rules developed by Rubin.
 
 The most popular approach to imputation uses parametric models for the missing variables given the observed. Multiple imputation gives valid inferences provided that the missing data satisfy the so called missing at random (MAR) assumption and that the imputation models used are correctly specified.
 
 ## Joint model and FCS multiple imputation
 
-When multiple variables are affected by missingness, a joint multivariate model can be specified for the partially observed variables. A popular alternative is the fully conditional specification (FCS) approach. Rather than imputing directly from a joint model, FCS MI involves, for each partially observed variable, specifying and imputing from a conditional model in which the other variables (partially observed and fully observed) serve as predictors.
+When multiple variables are affected by missingness, the traditional approach to imputation is to specify a joint (or multivariate model) for the partially observed variables. One of the earliest examples of this was MI  using the multivariate normal model. Rather than specifying a joint model directly, a popular alternative is the fully conditional specification (FCS), or chained equations approach. In FCS MI separate conditional models are specified for each partially observed variable. In each of these conditional models, by default all of the variables serve as predictors. For an overview of the FCS MI and an implementation of it in R, see <a href="http://www.jstatsoft.org/v45/i03/paper">van Buuren and Groothuis-Oudshoorn</a>.
 
 ## Imputation model compatibility
 
-When missing values are imputed from a misspecified model, in general invalid inferences will result. One way in which misspecification can occur is when the imputation and substantive model of interest are incompatible. That is, there exists no joint model which contains the imputation model and the substantive model as the corresponding conditionals. In this case, as described by <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a>, assuming that the substantive model is correctly specified, unless the imputation and substantive models can be made compatible by imposing a restriction on the imputation model, incompatiblity implies the imputation model is misspecified.
+When missing values are imputed from a misspecified model, in general invalid inferences will result. One way in which misspecification can occur is when the imputation and substantive (analysis) model of interest are incompatible. Loosely speaking, this means there exists no joint model which contains the imputation model and the substantive model as the corresponding conditionals. In this case, as described by <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a>, assuming that the substantive model is correctly specified, unless the imputation and substantive models can be made compatible by imposing a restriction on the imputation model, incompatiblity implies the imputation model is misspecified.
 
-Such incompatibility between the imputation model used to impute a partially observed covariate and the substantive/outcome model can arise for example when the latter includes interactions or non-linear effects of variables. In these cases, it may be difficult or impossible to specify a compatible imputation model for a covariate using standard imputation models as available in existing packages.
+Such incompatibility between the imputation model used to impute a partially observed covariate and the substantive/outcome model can arise for example when the latter includes interactions or non-linear effects of variables. A further example is when the substantive model is a Cox proportional hazards model for a censored time to event outcome. In these cases, it may be difficult or impossible to specify an  imputation model for a covariate which is compatible with the model for the outcome (the substantive model) using standard imputation models as available in existing packages.
 
 # Substantive Model Compatible Fully Conditional Specification multiple imputation
 
-## The SMC-FCS procedure
+The substantive model compatible modification of FCS MI (SMC-FCS), proposed by <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a>, ensures that each partially observed variable is imputed from an imputation model which is compatible with a user specified model for the outcome (which is typically the substantive model of interest, although see below regarding auxiliary variables). As described in further detail in the linked paper, for each partially observed variable, e.g. `x1`, in SMC-FCS a model is specified for the conditional distribution of `x1` given the other partially observed variables `x2,x3,..,xp` and fully observed covariates `z`. This, together with the specified substantive model (a model for the outcome `y`) defines an imputation model for `x1` which is guaranteed to be compatible with this specified substantive model.
 
-The substantive model compatible modification of the fully conditional specification (sometimes referred to as chained equations) imputation approach, proposed by <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a>, ensures that each partially observed variable is imputed from an imputation which is compatible with the user specific model for the outcome (which is typically the substantive model of interest, although see below regarding auxiliary variables). As described in further detail in the linked paper, for each partially observed variable, e.g. `x1`, in SMC-FCS a model is specified for the conditional distribution of `x1` given the other partially observed variables `x2,x3,..,xp` and fully observed covariates `z`. This, together with the specified substantive model (model for the outcome) defines an imputation model for `x1` which is guaranteed to be compatible with this specified substantive model.
-
-Unfortunately, the imputation model for each partially observed variable generally does not belong to a standard parametric family, complicating the imputation of missing values. To overcome this, `smcfcs` uses the method of rejection sampling, which is more computationally intensive than direct sampling methods.
+## Sampling from the imputation distribution
+Unfortunately, the resulting imputation model for each partially observed variable generally does not belong to a standard parametric family, complicating the imputation of missing values. To overcome this, `smcfcs` uses the method of rejection sampling, which is more computationally intensive than direct sampling methods.
 
 ## Statistical properties
-Although the SMC-FCS algorithm ensures compatibility between each imputation model and the user specified substantive model, there is no guarantee that the different imputation models for `x1,x2,x3,..,xp` are mutually compatible, since the covariate models may not be mutually compatible.
+SMC-FCS ensures compatibility between each partially observed covariate's imputation model with the substantive model. However, when there is more than one partially observed variable, it does not guarantee that the corresponding different imputation models are mutually compatible. Consequently, as described further by <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a>, only in special cases does SMC-FCS generate imputations from a well defined Bayesian joint model. Nonetheless, by ensuring compatibility between each partially observed variable's imputation model and the substantive model, it arguably overcomes (compared to standard FCS MI) the type of model incompatibility which is most likely to adversely affect inferences.
+
+## When SMC-FCS may be preferable to FCS/MICE
+
+In certain situations it may be advantageous to use SMC-FCS rather than traditional FCS MI. Important examples, as mentioned previously, include situations where the substantive (outcome) model includes interactions or non-linear effects of some of the covariates, or where the outcome model is itself non-linear, such as a Cox proportional hazards model. See <a href="http://doi.org/10.1177/0962280214521348">Bartlett *et al* (2014)</a> for simulation results comparing the two approaches in these situations.
 
 # The `smcfcs` package
 The `smcfcs` function in the `smcfcs` package implements the SMC-FCS procedure. Currently linear, logistic and Cox proportional hazards substantive models. Competing risks outcome data can also be accommodated, with a Cox proportional hazards model used to model each cause specific hazard function. Partially observed variables can be imputed using normal linear regression, logistic regression (for binary variables), proportional odds regression (sometimes known as ordinal logistic regression, suitable for ordered categorical variables), multinomial logistic regression (for unordered categorical variables), and Poisson regression (for count variables). In the following we describe some of the important aspects of using `smcfcs` by way of an example data frame.
 
 ## Example - linear regression substantive model with quadratic covariate effects
-To illustrate the package, we use the simple example data frame `ex_linquad`, which is included with the package. This data frame was simulated for `n=1000` independent rows. For each row, variables `y,x,z,v` were intended to be collected, but there are missing values in `x`. The values have been made artifically missing, with the probability of missingness dependent on (the fully observed) `y` variable. 
+To illustrate the package, we use the simple example data frame `ex_linquad`, which is included with the package. This data frame was simulated for `n=1000` independent rows. For each row, variables `y,x,z,v` were intended to be collected, but there are missing values in `x`. The values have been made artifically missing, with the probability of missingness dependent on (the fully observed) `y` variable. Below the first 10 rows of the data frame are shown:
 
-## Imputing using auxiliary variables with smcfcs
+```{r}
+library(smcfcs)
+ex_linquad[1:10,]
+```
+
+As shown, the `xsq` variable is equal to the square of the `x` variable. Since the latter has missing values, so does the former. We now impute the missing values in `x` and `xsq`, compatibly with a substantive model for the outcome `y` which is specified as a linear regression, with `z`, `x` and `xsq` as covariates:
+
+```{r}
+set.seed(123)
+#impute missing values in x, compatibly with quadratic substantive model
+imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
+```
+
+As demonstrated here, the minimal arguments to pass to `smcfcs` are the data frame to be used, the substantive model type, the substantive model formula, and a method vector. The substantive model type specifies whether the model for the outcome is linear, logistic or Cox regression, or a competing risks analysis (see documentation). The `smformula` specifies the linear predictor of the substantive/outcome model. Here we specified that the outcome `y` is assumed to follow a linear regression model, with `z`, `x` and `xsq` as predictors.
+
+Lastly, we passed a vector of strings as the `method` argument. This specifies, for each column in the data frame, the method to use for imputation. As in the example, empty strings should be passed for those columns which are fully observed and thus are not to be imputed. For `x` we specify `norm`, in order to impute using a normal linear regression model. See the help for `smcfcs` for the syntax for other imputation model types. For `xsq` we specify `"x^2"` as the imputation method. This instructs `smcfcs` to impute `xsq` by simply squaring the imputed values of `x`. Such a specification could also be used with the `mice` package, which implements standard FCS MI. Note however that here, through specifying the substantive model as including an effect of `xsq`, `smcfcs` is imputing the missing values in `x` which allows for a quadratic effect on `y`.
+
+Having generated the imputed datasets, we can now fit our substantive model of interest. Here we make use of the `mitools` package to fit our substantive model to each imputed dataset, collect the results, and combine them using Rubin's rules:
+```{r}
+# fit substantive model
+library(mitools)
+impobj <- imputationList(imps$impDatasets)
+models <- with(impobj, lm(y~z+x+xsq))
+summary(MIcombine(models))
+```
+
+Here the data were simulated such that the coefficients of `z`, `x` and `xsq` are all 1. The estimates we have obtained are (reassuringly) close to these true parameter values. To illustrate the dangers of imputing a covariate using an imputation model which is not compatible with the substantive model, we now re-impute `x`, but this time imputing compatibly with a model for `y` which does not allow for the quadratic effect:
+
+```{r}
+set.seed(123)
+#impute missing values in x, compatibly with model for y which omits the quadratic effect
+imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x",method=c("","","norm","x^2",""))
+```
+
+We now, as before, fit a model for `y` which includes both `x` and `xsq` (plus `z`) as covariates:
+
+```{r}
+# fit substantive model
+impobj <- imputationList(imps$impDatasets)
+models <- with(impobj, lm(y~z+x+xsq))
+summary(MIcombine(models))
+```
+
+Now we have an estimate of the coefficient of `xsq` of 0.60, which is considerably smaller than the true value 1 used to simulate the data. This bias is due to the imputation model we have just used for `x` being misspecified. In particular, it was misspecified due to the fact it wrongly assumed a linear dependence of `y` on `x`, rather than allowing a quadratic dependence.
+
+## Imputing using auxiliary variables with `smcfcs`
 One of the strengths of multiple imputation in general is the possibility to use variables in imputation models which are subsequently not involved in the substantive model. This may be useful in order to condition or adjust for variables which are predictive of missingness, but which are not used in the substantive model of interest. Moreover, adjusting for auxiliary variables which are strongly correlated with one or more variables which are being imputed improves efficiency.
 
 When using `smcfcs` to impute missing covariates, auxiliary variables `v` can be included by adding them as an additional covariate in the substantive model, as passed using the `smformula` argument. Here we are imputing `x` compatibly with a certain specification of model for the outcome. Our substantive model of interest is then a simpler model which omits `v`. For example, in the quadratic example dataset, we can add the auxiliary variable `v` using:
 ```{r}
-library(smcfcs)
 set.seed(123)
 #impute, including v as a covariate in the substantive/outcome model
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq+v",method=c("","","norm","x^2",""))
 # fit substantive model, which omits v
-library(mitools)
 impobj <- imputationList(imps$impDatasets)
 models <- with(impobj, lm(y~z+x+xsq))
 summary(MIcombine(models))
@@ -80,10 +126,13 @@ The plot shows that the process appears to converge rapidly, such that the defau
 
 # Future plans
 
-Currently the `smcfcs` package does not handle missing outcomes (except that for time to event of competing risks data, censoring is of course allowed for). In a future version the facility to impute missing outcomes will soon be added, which will impute missing outcomes when the substantive model is a linear or logistic regression model.
+Currently the `smcfcs` package does not handle missing outcomes. In a future version the facility to impute missing outcomes will soon be added, which will impute missing outcomes when the substantive model is a linear or logistic regression model.
 
 <h2 id="references">References</h3>
 
 Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
 by fully conditional specification: accommodating the substantive model. 
-<a href="http://doi.org/10.1177/0962280214521348">Statistical Methods in Medical Research (2014)</a>
+<a href="http://doi.org/10.1177/0962280214521348">Statistical Methods in Medical Research</a>, 2014
+
+van Buuren S, Groothuis-Oudshoorn K. mice:  Multivariate Imputation by Chained
+Equations in R. <a href="http://www.jstatsoft.org/v45/i03/paper">Journal of Statistical Software</a>, 2011; 45(3)
