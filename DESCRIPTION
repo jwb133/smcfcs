@@ -14,8 +14,8 @@ Depends: R (>= 3.1.2)
 License: GPL-3
 LazyData: true
 Imports: VGAM,
-    mitools
-    MASS
+    MASS,
+    survival
 Suggests: knitr,
     mitools
 VignetteBuilder: knitr

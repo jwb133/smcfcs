@@ -1,3 +1,83 @@
+#' Simulated example data with continuous outcome and quadratic covariate effects
+#'
+#' A dataset containing simulated data where the outcome depends quadratically
+#' on a partially observed covariate.
+#'
+#' @format A data frame with 1000 rows and 5 variables:
+#' \describe{
+#'   \item{y}{Continuous outcome}
+#'   \item{z}{Fully observed covariate, with linear effect on outcome}
+#'   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome}
+#'   \item{xsq}{The square of x, which thus has missing values also}
+#'   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
+#' }
+#'
+"ex_linquad"
+
+#' Simulated example data with continuous outcome and interaction between two partially observed covariates
+#'
+#' A dataset containing simulated data where the outcome depends on both main
+#' effects and interaction of two partially observed covariates.
+#'
+#' @format A data frame with 1000 rows and 4 variables:
+#' \describe{
+#'   \item{y}{Continuous outcome}
+#'   \item{x1}{Partially observed normally distributed covariate}
+#'   \item{x2}{Partially obserevd binary covariate}
+#'   \item{x1x2}{The interaction of x1 with x2}
+#' }
+#'
+"ex_lininter"
+
+#' Simulated example data with binary outcome and quadratic covariate effects
+#'
+#' A dataset containing simulated data where the binary outcome depends quadratically
+#' on a partially observed covariate.
+#'
+#' @format A data frame with 1000 rows and 5 variables:
+#' \describe{
+#'   \item{y}{Binary outcome}
+#'   \item{z}{Fully observed covariate, with linear effect on outcome (on log odds scale)}
+#'   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome (on log odds scale)}
+#'   \item{xsq}{The square of x, which thus has missing values also}
+#'   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
+#' }
+#'
+"ex_logisticquad"
+
+#' Simulated example data with time to event outcome and quadratic covariate effects
+#'
+#' A dataset containing simulated data where a time to event outcome depends quadratically
+#' on a partially observed covariate.
+#'
+#' @format A data frame with 1000 rows and 6 variables:
+#' \describe{
+#'   \item{t}{Time to event or censoring}
+#'   \item{d}{Binary indicator of whether event occurred or individual was censored}
+#'   \item{z}{Fully observed covariate, with linear effect on outcome (on log hazard scale)}
+#'   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome (on log hazard scale)}
+#'   \item{xsq}{The square of x, which thus has missing values also}
+#'   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
+#' }
+#'
+"ex_coxquad"
+
+#' Simulated example data with competing risks outcome and partially observed covariates
+#'
+#' A dataset containing simulated competing risks data. There are two competing risks, and
+#' some times are also censored.
+#'
+#' @format A data frame with 1000 rows and 4 variables:
+#' \describe{
+#'   \item{t}{Time to event or censoring}
+#'   \item{d}{Indicator of whether event 1 occurred (d=1), event 2 occured (d=2) or individual was censored (d=0)}
+#'   \item{x1}{Partially observed binary covariate, with linear effects on log competing risk hazards}
+#'   \item{x2}{Partially observed normally distributed (conditional on x1) covariate, with linear effects
+#'   on log competing risk hazards}
+#' }
+#'
+"ex_compet"
+
 #' Substantive model compatible fully conditional specification imputation of covariates.
 #'
 #' Multiple imputes missing covariate values using substantive model compatible
@@ -89,26 +169,26 @@
 
 #' @export
 smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
-  library("MASS")
+
   stopifnot(is.data.frame(originaldata))
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
 
   n <- dim(originaldata)[1]
   #find column numbers of partially observed, fully observed variables, and outcome
   if (smtype=="coxph") {
-    library("survival")
+
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
 
-    nullMod <- coxph(Surv(originaldata[,timeCol],originaldata[,dCol])~1)
+    nullMod <- survival::coxph(Surv(originaldata[,timeCol],originaldata[,dCol])~1)
     basehaz <- basehaz(nullMod)
     H0indices <- match(originaldata[,timeCol], basehaz[,2])
     rm(nullMod)
   }
   else if (smtype=="compet") {
-    library("survival")
+
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[3]][[2]])]
     outcomeCol <- c(timeCol, dCol)
@@ -119,7 +199,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     outcomeModBeta <- vector("list", numCauses)
     linpred <- vector("list", numCauses)
     for (cause in 1:numCauses) {
-      nullMod <- coxph(as.formula(paste(strsplit(smformula[[cause]],"~")[[1]][1],"~1")), originaldata)
+      nullMod <- survival::coxph(as.formula(paste(strsplit(smformula[[cause]],"~")[[1]][1],"~1")), originaldata)
       basehaz <- basehaz(nullMod)
       H0[[cause]] <- basehaz[,1]
       H0indices[[cause]] <- match(originaldata[,timeCol], basehaz[,2])
@@ -133,10 +213,6 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 
   #create matrix of response indicators
   r <- 1*(is.na(originaldata)==0)
-
-  if (length(c(which(method=="podds"),which(method=="mlogit")))>0) {
-    library("VGAM")
-  }
 
   if (smtype=="compet") {
     smcovnames <- attr(terms(as.formula(smformula[[1]])), "term.labels")
@@ -209,7 +285,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           sigmasq <- summary(xmod)$sigma^2
           newsigmasq <- (sigmasq*xmod$df) / rchisq(1,xmod$df)
           covariance <- (newsigmasq/sigmasq)*vcov(xmod)
-          newbeta = beta + mvrnorm(1, mu=rep(0,ncol(covariance)), Sigma=covariance)
+          newbeta = beta + MASS::mvrnorm(1, mu=rep(0,ncol(covariance)), Sigma=covariance)
           #calculate fitted values
           xfitted <- model.matrix(xmod) %*% newbeta
         }
@@ -224,15 +300,15 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           xfitted <- exp(model.matrix(xmod) %*% newbeta)
         }
         else if (method[targetCol]=="podds") {
-          xmod <- vglm(xmodformula, propodds, data=imputations[[imp]])
-          newbeta <- coefficients(xmod) + mvrnorm(1, mu=rep(0,ncol(vcov(xmod))), Sigma=vcov(xmod))
+          xmod <- VGAM::vglm(xmodformula, VGAM::propodds, data=imputations[[imp]])
+          newbeta <- coefficients(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(vcov(xmod))), Sigma=vcov(xmod))
           linpreds <- matrix(model.matrix(xmod) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
           cumprobs <- cbind(1/(1+exp(linpreds)), rep(1,nrow(linpreds)))
           xfitted <- cbind(cumprobs[,1] ,cumprobs[,2:ncol(cumprobs)] - cumprobs[,1:(ncol(cumprobs)-1)])
         }
         else if (method[targetCol]=="mlogit") {
-          xmod <- vglm(xmodformula, multinomial(refLevel=1), data=imputations[[imp]])
-          newbeta <- coef(xmod) + mvrnorm(1, mu=rep(0,ncol(vcov(xmod))), Sigma=vcov(xmod))
+          xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel=1), data=imputations[[imp]])
+          newbeta <- coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(vcov(xmod))), Sigma=vcov(xmod))
           linpreds <- matrix(model.matrix(xmod) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
           denom <- 1+rowSums(exp(linpreds))
           xfitted <-cbind(1/denom, exp(linpreds) / denom)
@@ -261,7 +337,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           }
         }
         else if (smtype=="coxph") {
-          ymod <- coxph(as.formula(smformula), imputations[[imp]])
+          ymod <- survival::coxph(as.formula(smformula), imputations[[imp]])
           outcomeModBeta <- modPostDraw(ymod)
           ymod$coefficients <- outcomeModBeta
           basehaz <- basehaz(ymod, centered=FALSE)[,1]
@@ -272,7 +348,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
         else if (smtype=="compet") {
           for (cause in 1:numCauses) {
-            ymod <- coxph(as.formula(smformula[[cause]]), imputations[[imp]])
+            ymod <- survival::coxph(as.formula(smformula[[cause]]), imputations[[imp]])
             outcomeModBeta[[cause]] <- modPostDraw(ymod)
             ymod$coefficients <- outcomeModBeta[[cause]]
             basehaz <- basehaz(ymod, centered=FALSE)[,1]
@@ -520,6 +596,6 @@ catdraw <- function(prob) {
 modPostDraw <- function(modobj) {
   beta <- modobj$coef
   varcov <- vcov(modobj)
-  beta + mvrnorm(1, mu=rep(0,ncol(varcov)), Sigma=varcov)
+  beta + MASS::mvrnorm(1, mu=rep(0,ncol(varcov)), Sigma=varcov)
 }
 

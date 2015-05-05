@@ -17,7 +17,6 @@ ex_linquad <- data.frame(y,z,x,xsq=x^2,v)
 devtools::use_data(ex_linquad, overwrite=TRUE)
 
 #linear substantive model with interaction
-set.seed(1234)
 n <- 1000
 x1 <- rnorm(n)
 x2 <- 1*(runif(n)<0.5)
@@ -32,7 +31,6 @@ ex_lininter <- data.frame(y,x1,x2,x1x2=x1*x2)
 devtools::use_data(ex_lininter, overwrite=TRUE)
 
 #logistic substantive model with quadratic covariate effect
-set.seed(1234)
 n <- 1000
 x <- rnorm(n)
 z <- rnorm(n)
@@ -52,7 +50,6 @@ ex_logisticquad <- data.frame(y,z,x,xsq=x^2,v)
 devtools::use_data(ex_logisticquad, overwrite=TRUE)
 
 #Cox substantive model with quadratic covariate effect
-set.seed(1234)
 n <- 1000
 x <- rnorm(n)
 z <- rnorm(n)
