@@ -229,6 +229,13 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   #partial vars are those variables for which an imputation method has been specified among the available regression types
   partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit"))
 
+  if (length(outcomeCol)==1) {
+    if (method[outcomeCol]!="") stop("The elements of method corresponding to the outcome variable should be empty.")
+  }
+  else {
+    if (method[outcomeCol]!=c("","")) stop("The elements of method corresponding to the outcome variables should be empty.")
+  }
+
   #fully observed vars are those that are fully observed and are covariates in the substantive model
   fullObsVars <- which((colSums(r)==n) & (colnames(originaldata) %in% smcovnames))
 
@@ -252,6 +259,37 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     #initial imputation of each partially observed variable based on observed values
     for (var in 1:length(partialVars)) {
       imputations[[imp]][r[,partialVars[var]]==0,partialVars[var]] <- sample(imputations[[imp]][r[,partialVars[var]]==1,partialVars[var]], size=sum(r[,partialVars[var]]==0), replace=TRUE)
+    }
+
+    #impute missing outcomes, if present (using improper imputation)
+    if ((smtype=="lm") | (smtype=="logistic")) {
+      if (sum(r[,outcomeCol])<n) {
+        if (imp==1) {
+          print("Imputing missing outcomes using specified substantive model.")
+        }
+        #update passive variable(s)
+        imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
+
+        imputationNeeded <- (1:n)[r[,outcomeCol]==0]
+        #estimate parameters of substantive model
+        if (smtype=="lm") {
+          ymod <- lm(as.formula(smformula),imputations[[imp]])
+          beta <- ymod$coef
+          sigmasq <- summary(ymod)$sigma^2
+          #fill out missing values so that model.matrix works for all rows
+          imputations[[imp]][imputationNeeded,outcomeCol] <- 0
+          outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% beta
+          imputations[[imp]][imputationNeeded,outcomeCol] <- rnorm(length(imputationNeeded),outmodxb[imputationNeeded], sigmasq^0.5)
+        }
+        else if (smtype=="logistic") {
+          ymod <- glm(as.formula(smformula),family="binomial",imputations[[imp]])
+          beta <- ymod$coef
+          imputations[[imp]][imputationNeeded,outcomeCol] <- 0
+          outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% beta
+          prob <- expit(outmodxb[imputationNeeded])
+          imputations[[imp]][imputationNeeded,outcomeCol] <- rbinom(length(imputationNeeded),1,prob)
+        }
+      }
     }
 
     for (cyclenum in 1:numit) {

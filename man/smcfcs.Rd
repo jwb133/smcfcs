@@ -14,7 +14,7 @@ smcfcs(originaldata, smtype, smformula, method, predictorMatrix = NULL,
 values are \code{"lm"}, \code{"logistic"}, \code{"coxph"} and \code{"compet"}.}
 
 \item{smformula}{The formula of the substantive model. For \code{"coxph"} substantive
-models the left hand side should be of the form \code{"Surv(t,delta)"}. For \code{"compet"}
+models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 substantive models, a list should be passed consisting of the Cox models
 for each cause of failure (see example).}
 
