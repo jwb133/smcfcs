@@ -159,6 +159,7 @@
 #' values. The matrix is indexed by [imputation,parameter number,iteration]
 #'
 #' @author Jonathan Bartlett \email{jonathan.bartlett@@lshtm.ac.uk} \url{http://www.missingdata.org.uk}
+#' \url{http://thestatsgeek.com}
 #'
 #' @example data-raw/examples.r
 #'

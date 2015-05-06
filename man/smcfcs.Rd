@@ -160,6 +160,7 @@ summary(MIcombine(models))
 }
 \author{
 Jonathan Bartlett \email{jonathan.bartlett@lshtm.ac.uk} \url{http://www.missingdata.org.uk}
+\url{http://thestatsgeek.com}
 }
 \references{
 Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
