@@ -118,7 +118,7 @@
 #' @param smtype A string specifying the type of substantive model. Possible
 #' values are \code{"lm"}, \code{"logistic"}, \code{"coxph"} and \code{"compet"}.
 #' @param smformula The formula of the substantive model. For \code{"coxph"} substantive
-#' models the left hand side should be of the form \code{"Surv(t,delta)"}. For \code{"compet"}
+#' models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 #' substantive models, a list should be passed consisting of the Cox models
 #' for each cause of failure (see example).
 #' @param method A required vector of strings specifying for each variable either
