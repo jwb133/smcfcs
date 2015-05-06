@@ -102,9 +102,8 @@
 #' of the substantive model parameters obtained at the end of each iteration of the algorithm.
 #' The array is indexed by: imputation number, parameter number, iteration.
 #'
-#' At present, in the case of linear or logistic substantive models the outcome  must
-#' be fully observed, but this will be relaxed in a future version so that missing outcomes
-#' are also imputed.
+#' If the substantive model is linear or logistic regression, `smcfcs` will impute missing
+#' outcomes, if present, using the specified substantive model.
 #'
 #' The development of this package was supported by a UK Medical Research Council
 #' Fellowship (MR/K02180X/1). Part of its development took place while the author was
@@ -230,10 +229,10 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit"))
 
   if (length(outcomeCol)==1) {
-    if (method[outcomeCol]!="") stop("The elements of method corresponding to the outcome variable should be empty.")
+    if (method[outcomeCol]!="") stop("The element of the method argument corresponding to the outcome variable should be empty.")
   }
   else {
-    if (method[outcomeCol]!=c("","")) stop("The elements of method corresponding to the outcome variables should be empty.")
+    if (method[outcomeCol]!=c("","")) stop("The elements of the method argument corresponding to the outcome variables should be empty.")
   }
 
   #fully observed vars are those that are fully observed and are covariates in the substantive model

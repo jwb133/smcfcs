@@ -126,10 +126,6 @@ plot(imps$smCoefIter[1,4,])
 
 The plot shows that the process appears to converge rapidly, such that the default choice of `numit=10` is probably fine here. Of course we should also examine the corresponding plots for the other parameters of the substantive model, since convergence may require more than 10 iterations for some of these.
 
-# Future plans
-
-Currently the `smcfcs` package does not handle missing outcomes. In a future version the facility to impute missing outcomes will soon be added, which will impute missing outcomes when the substantive model is a linear or logistic regression model.
-
 <h2 id="references">References</h3>
 
 Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
