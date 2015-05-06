@@ -141,10 +141,11 @@ models <- with(impobj, glm(y~z+x+xsq, family=binomial))
 summary(MIcombine(models))
 
 #Cox regression substantive model
-imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,delta)~z+x+xsq",
+library(survival)
+imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
                method=c("","","","norm","x^2",""))
 impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, coxph(Surv(t,delta)~z+x+xsq))
+models <- with(impobj, coxph(Surv(t,d)~z+x+xsq))
 summary(MIcombine(models))
 
 #competing risks substantive model

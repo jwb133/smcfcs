@@ -54,7 +54,7 @@ As shown, the `xsq` variable is equal to the square of the `x` variable. Since t
 
 ```{r}
 set.seed(123)
-impute missing values in x, compatibly with quadratic substantive model
+#impute missing values in x, compatibly with quadratic substantive model
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
 ```
 
@@ -78,7 +78,7 @@ Here the data were simulated such that the coefficients of `z`, `x` and `xsq` ar
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x",method=c("","","norm","x^2",""))
 ```
 
-Notice that we have received some warnings that the rejection sampling that `smcfcs` uses has failed to draw from the required distribution on a couple of occasions. Upon receiving this warning, it is generally good idea to re-run `smcfcs`, specifying a value for `rjlimit` which is larger than the default, until we no longer receive a warning. However, in the interests of expediency, we shall ignore the warnings received above and proceed to fit a model for `y` which includes both `x` and `xsq` (plus `z`) as covariates:
+We now proceed to fit a model for `y` which includes both `x` and `xsq` (plus `z`) as covariates:
 
 ```{r}
 # fit substantive model
@@ -109,6 +109,10 @@ predMatrix <- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
 predMatrix[3,] <- c(0,1,0,0,1)
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),predictorMatrix=predMatrix)
 ```
+
+## Rejection sampling warnings
+
+Sometimes when running `smcfcs` you may receive warnings that the rejection sampling that `smcfcs` uses has failed to draw from the required distribution on a couple of occasions. Upon receiving this warning, it is generally good idea to re-run `smcfcs`, specifying a value for `rjlimit` which is larger than the default, until the warning is no longer issued. Having said that, when only a small number of warnings are issued, it may be fine to ignore the warnings, especially when the dataset is large.
 
 ## Assessing convergence
 Like standard chained equations or FCS imputation, the SMC-FCS algorithm must be run for a sufficient number of iterations for the process to converge to its stationary distribution. The default number of iterations used is 10, but this may not be sufficient in any given dataset and model specifcication. To assess convergence, the object returned by `smcfcs` includes an object called `smCoefIter`. This matrix contains the parameter estimates of the substantive model, and is indexed by imputation number, parameter number, and iteration number. To assess convergence, one can call smcfcs with `m=1` and `numit` suitably chosen (e.g. `numit=100`). The values in the resulting smCoefIter matrix can then be plotted to assess convergence. To illustrate, we re-run the imputation model used previously with the example data, but asking for only `m=1` imputation to be generated, and with 100 iterations.
