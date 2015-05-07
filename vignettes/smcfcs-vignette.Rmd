@@ -108,6 +108,9 @@ It is also possible to include the auxiliary variable `v` without adding it to t
 predMatrix <- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
 predMatrix[3,] <- c(0,1,0,0,1)
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),predictorMatrix=predMatrix)
+impobj <- imputationList(imps$impDatasets)
+models <- with(impobj, lm(y~z+x+xsq))
+summary(MIcombine(models))
 ```
 
 ## Rejection sampling warnings
