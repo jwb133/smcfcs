@@ -1,5 +1,5 @@
 Package: smcfcs
-Title: Multiple imputation of covariates by Substantive Model Compatible Fully Conditional Specification
+Title: Multiple Imputation of Covariates by Substantive Model Compatible Fully Conditional Specification
 Version: 1.0.0
 Authors@R: person("Jonathan", "Bartlett", email = "jonathan.bartlett@lshtm.ac.uk",
     role = c("aut", "cre"))
