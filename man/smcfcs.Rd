@@ -98,8 +98,6 @@ The structure of many of the arguments to \code{smcfcs} are based on those of
 the excellent \code{mice} package.
 }
 \examples{
-if (requireNamespace("mitools", quietly = TRUE)) {
-
 #load mitools for fitting models to imputed datasets
 library(mitools)
 
@@ -155,8 +153,6 @@ models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
 summary(MIcombine(models))
 models <- with(impobj, coxph(Surv(t,d==2)~x1+x2))
 summary(MIcombine(models))
-
-}
 }
 \author{
 Jonathan Bartlett \email{jonathan.bartlett@lshtm.ac.uk} \url{http://www.missingdata.org.uk}

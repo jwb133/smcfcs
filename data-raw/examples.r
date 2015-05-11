@@ -1,5 +1,3 @@
-if (requireNamespace("mitools", quietly = TRUE)) {
-
 #load mitools for fitting models to imputed datasets
 library(mitools)
 
@@ -55,5 +53,3 @@ models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
 summary(MIcombine(models))
 models <- with(impobj, coxph(Surv(t,d==2)~x1+x2))
 summary(MIcombine(models))
-
-}
