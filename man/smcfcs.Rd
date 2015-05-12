@@ -114,6 +114,8 @@ if (requireNamespace("mitools", quietly = TRUE)) {
   summary(MIcombine(models))
 }
 
+#the following examples are not run when the package is compiled on CRAN
+#(to keep computation time down), but they can be run by package users
 \dontrun{
   #examining convergence, using 100 iterations, setting m=1
   imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",
