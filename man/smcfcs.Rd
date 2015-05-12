@@ -98,18 +98,21 @@ The structure of many of the arguments to \code{smcfcs} are based on those of
 the excellent \code{mice} package.
 }
 \examples{
-#load mitools for fitting models to imputed datasets
-library(mitools)
-
 #set random number seed to make results reproducible
 set.seed(123)
 
 #linear substantive model with quadratic covariate effect
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",
                method=c("","","norm","x^2",""))
-impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, lm(y~z+x+xsq))
-summary(MIcombine(models))
+
+#if mitools is installed, fit substantive model to imputed datasets
+#and combine results using Rubin's rules
+if (requireNamespace("mitools", quietly = TRUE)) {
+  library(mitools)
+  impobj <- imputationList(imps$impDatasets)
+  models <- with(impobj, lm(y~z+x+xsq))
+  summary(MIcombine(models))
+}
 
 #examining convergence, using 100 iterations, setting m=1
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",
@@ -123,36 +126,29 @@ predMatrix[3,] <- c(0,1,0,0,1)
 imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",
                method=c("","","norm","x^2",""),predictorMatrix=predMatrix)
 
-#interaction model
+#impute missing x1 and x2, where they interact in substantive model
 imps <- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1x2",
                method=c("","norm","logreg","x1*x2"))
-impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, lm(y~x1+x2+x1x2))
-summary(MIcombine(models))
 
-#logistic regression substantive model
+#logistic regression substantive model, with quadratic covariate effects
 imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",
                method=c("","","norm","x^2",""))
-impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, glm(y~z+x+xsq, family=binomial))
-summary(MIcombine(models))
 
-#Cox regression substantive model
+#Cox regression substantive model, with only main covariate effects
 library(survival)
 imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
                method=c("","","","norm","x^2",""))
-impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, coxph(Surv(t,d)~z+x+xsq))
-summary(MIcombine(models))
 
-#competing risks substantive model
+#competing risks substantive model, with only main covariate effects
 imps <- smcfcs(ex_compet, smtype="compet", smformula=c("Surv(t,d==1)~x1+x2", "Surv(t,d==2)~x1+x2"),
                method=c("","","logreg","norm"))
-impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
-summary(MIcombine(models))
-models <- with(impobj, coxph(Surv(t,d==2)~x1+x2))
-summary(MIcombine(models))
+
+#if mitools is installed, fit model for first competing risk
+if (requireNamespace("mitools", quietly = TRUE)) {
+  impobj <- imputationList(imps$impDatasets)
+  models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
+  summary(MIcombine(models))
+}
 }
 \author{
 Jonathan Bartlett \email{jonathan.bartlett@lshtm.ac.uk} \url{http://www.missingdata.org.uk}
