@@ -13,3 +13,5 @@ Maintainer: 'Jonathan Bartlett <jonathan.bartlett@lshtm.ac.uk>'
 New submission
 
   I assume this is just a note to say that this is a new package submission, and that no action is required.
+  
+  I have modified the examples in this revised submission so that the run time is now within 5s.
