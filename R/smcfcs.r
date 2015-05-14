@@ -233,7 +233,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     if (method[outcomeCol]!="") stop("The element of the method argument corresponding to the outcome variable should be empty.")
   }
   else {
-    if (method[outcomeCol]!=c("","")) stop("The elements of the method argument corresponding to the outcome variables should be empty.")
+    if (sum(method[outcomeCol]!=c("",""))>0) stop("The elements of the method argument corresponding to the outcome variables should be empty.")
   }
 
   #fully observed vars are those that are fully observed and are covariates in the substantive model
