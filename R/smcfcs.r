@@ -169,7 +169,7 @@
 #' in Medical Research 2014. \url{http://doi.org/10.1177/0962280214521348}
 
 #' @export
-smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
+smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,errorProneMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
 
   stopifnot(is.data.frame(originaldata))
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
@@ -228,7 +228,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   smcovcols <- (1:ncol(originaldata))[colnames(originaldata) %in% smcovnames]
 
   #partial vars are those variables for which an imputation method has been specified among the available regression types
-  partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit"))
+  partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit") | (method=="latnorm"))
 
   if (length(outcomeCol)==1) {
     if (method[outcomeCol]!="") stop("The element of the method argument corresponding to the outcome variable should be empty.")
@@ -241,7 +241,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   fullObsVars <- which((colSums(r)==n) & (colnames(originaldata) %in% smcovnames))
 
   #passive variables
-  passiveVars <- which((method!="") & (method!="norm") & (method!="logreg") & (method!="poisson") & (method!="podds") & (method!="mlogit"))
+  passiveVars <- which((method!="") & (method!="norm") & (method!="logreg") & (method!="poisson") & (method!="podds") & (method!="mlogit") & (method!="latnorm"))
 
   print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol],collapse=',')))
   print(paste("Passive variables:", paste(colnames(originaldata)[passiveVars],collapse=',')))
@@ -259,7 +259,15 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 
     #initial imputation of each partially observed variable based on observed values
     for (var in 1:length(partialVars)) {
-      imputations[[imp]][r[,partialVars[var]]==0,partialVars[var]] <- sample(imputations[[imp]][r[,partialVars[var]]==1,partialVars[var]], size=sum(r[,partialVars[var]]==0), replace=TRUE)
+      targetCol <- partialVars[var]
+      if (method[targetCol]=="latnorm") {
+        #initialize latent predictors with mean of corresponding error prone measurements
+        errorProneCols <- which(errorProneMatrix[targetCol,]==1)
+        imputations[[imp]][,targetCol] <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
+      }
+      else {
+        imputations[[imp]][r[,targetCol]==0,targetCol] <- sample(imputations[[imp]][r[,targetCol]==1,targetCol], size=sum(r[,targetCol]==0), replace=TRUE)
+      }
     }
 
     #initial imputations of missing outcomes, if present (using improper imputation)
@@ -320,7 +328,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         else {
           xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~1",sep=""))
         }
-        if (method[targetCol]=="norm") {
+        if ((method[targetCol]=="norm") | (method[targetCol]=="latnorm")) {
           #estimate parameters of covariate model
           xmod <- lm(xmodformula, data=imputations[[imp]])
           #take draw from posterior of covariate model parameters
@@ -358,6 +366,24 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
         if (noisy==TRUE) {
           print(summary(xmod))
+        }
+
+        #if latent normal, estimate error variance and calculate required conditional expectation and variance
+        if (method[targetCol]=="latnorm") {
+          errorProneCols <- which(errorProneMatrix[targetCol,]==1)
+          wmean <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
+          n_i <- apply(imputations[[imp]][,errorProneCols], 1, sumna)
+          #estimate error variance
+          xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
+          uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
+          sum_ni <- sum(n_i)
+          sigmausq <- sum(uVec^2, na.rm=TRUE) / sum_ni
+          #take draw from posterior of error variance
+          sigmausq <- sigmausq*sum_ni/rchisq(1,sum_ni)
+          #calculate conditional mean and variance
+          lambda <- newsigmasq/(newsigmasq+sigmausq/n_i)
+          xfitted <- xfitted + lambda * (wmean - xfitted)
+          newsigmasq <- newsigmasq*(1-lambda)
         }
 
         #estimate parameters of substantive model
@@ -654,6 +680,10 @@ updatePassiveVars <- function(data, method, passivecols) {
 
 expit <- function(x) {
   exp(x)/(1+exp(x))
+}
+
+sumna <- function(x) {
+  sum(is.na(x)==FALSE)
 }
 
 catdraw <- function(prob) {
