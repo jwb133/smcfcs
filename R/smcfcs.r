@@ -102,8 +102,9 @@
 #' of the substantive model parameters obtained at the end of each iteration of the algorithm.
 #' The array is indexed by: imputation number, parameter number, iteration.
 #'
-#' If the substantive model is linear or logistic regression, `smcfcs` will impute missing
-#' outcomes, if present, using the specified substantive model.
+#' If the substantive model is linear or logistic regression, `smcfcs` will automatically impute missing
+#' outcomes, if present, using the specified substantive model. However, even in this case, the
+#' user should specify "" in the element of method corresponding to the outcome variable.
 #'
 #' The development of this package was supported by a UK Medical Research Council
 #' Fellowship (MR/K02180X/1). Part of its development took place while the author was
@@ -261,7 +262,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
       imputations[[imp]][r[,partialVars[var]]==0,partialVars[var]] <- sample(imputations[[imp]][r[,partialVars[var]]==1,partialVars[var]], size=sum(r[,partialVars[var]]==0), replace=TRUE)
     }
 
-    #impute missing outcomes, if present (using improper imputation)
+    #initial imputations of missing outcomes, if present (using improper imputation)
     if ((smtype=="lm") | (smtype=="logistic")) {
       if (sum(r[,outcomeCol])<n) {
         if (imp==1) {
@@ -607,7 +608,31 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
       }
 
-
+      #imputations of missing outcomes, if present (using proper imputation), for regression and logistic
+      #substantive models
+      if ((smtype=="lm") | (smtype=="logistic")) {
+        if (sum(r[,outcomeCol])<n) {
+          imputationNeeded <- (1:n)[r[,outcomeCol]==0]
+          #estimate parameters of substantive model using those with outcomes observed
+          if (smtype=="lm") {
+            ymod <- lm(as.formula(smformula),imputations[[imp]][r[,outcomeCol]==1,])
+            beta <- ymod$coef
+            sigmasq <- summary(ymod)$sigma^2
+            varcov <- vcov(ymod)
+            outcomeModResVar <- (sigmasq*ymod$df) / rchisq(1,ymod$df)
+            outcomeModBeta = beta + chol((outcomeModResVar/sigmasq)*varcov) %*% rnorm(length(beta))
+            outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
+            imputations[[imp]][imputationNeeded,outcomeCol] <- rnorm(length(imputationNeeded),outmodxb[imputationNeeded], sigmasq^0.5)
+          }
+          else if (smtype=="logistic") {
+            ymod <- glm(as.formula(smformula),family="binomial",imputations[[imp]][r[,outcomeCol]==1,])
+            outcomeModBeta = modPostDraw(ymod)
+            outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
+            prob <- expit(outmodxb[imputationNeeded])
+            imputations[[imp]][imputationNeeded,outcomeCol] <- rbinom(length(imputationNeeded),1,prob)
+          }
+        }
+      }
     }
 
   }
