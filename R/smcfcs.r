@@ -314,8 +314,12 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         if ((imp==1) & (cyclenum==1)) {
           print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[predictorCols],collapse=','),collapse=','))
         }
-
-        xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
+        if (length(predictorCols)>0) {
+          xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
+        }
+        else {
+          xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~1",sep=""))
+        }
         if (method[targetCol]=="norm") {
           #estimate parameters of covariate model
           xmod <- lm(xmodformula, data=imputations[[imp]])
