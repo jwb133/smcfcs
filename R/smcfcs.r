@@ -356,7 +356,12 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           predictorCols <- predictorCols[! predictorCols %in% outcomeCol]
         }
         if ((imp==1) & (cyclenum==1)) {
-          print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[predictorCols],collapse=','),collapse=','))
+          if (method[targetCol]=="latnorm") {
+            print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[c(predictorCols,which(errorProneMatrix[targetCol,]==1))],collapse=',')," plus outcome",collapse=','))
+          }
+          else {
+            print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[predictorCols],collapse=',')," plus outcome",collapse=','))
+          }
         }
         if (length(predictorCols)>0) {
           xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
