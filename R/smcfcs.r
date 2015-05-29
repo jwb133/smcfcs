@@ -106,6 +106,16 @@
 #' outcomes, if present, using the specified substantive model. However, even in this case, the
 #' user should specify "" in the element of method corresponding to the outcome variable.
 #'
+#' \code{smcfcs} can also impute covariates which missing on all individuals, but which are
+#' measured with error. To do this, the user must specify the method corresponding to the
+#' entirely missing covariate as \code{latnorm}. The \code{errorProneMatrix} argument
+#' must then be used to specify which variables are the corresponding error-prone measurements
+#' of the entirely missing covariate. Note that this requires at least two error-prone
+#' measurements to be available for at least a subset of the dataset (i.e. internal replication
+#' data). Users are advised that many more iterations than the default (10) may be required
+#' for convergence to the stationary distribution, and to examine this by plotting estimates
+#' returned in \code{smCoefIter}.
+#'
 #' The development of this package was supported by a UK Medical Research Council
 #' Fellowship (MR/K02180X/1). Part of its development took place while the author was
 #' kindly hosted by the University of Michigan's Department of Biostatistics & Institute for
@@ -128,7 +138,9 @@
 #' \code{"podds"} (proportional odds regression for ordered categorical variables),
 #' \code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 #' or a custom expression which defines a passively imputed variable, e.g.
-#' \code{"x^2"} or \code{"x1*x2"}.
+#' \code{"x^2"} or \code{"x1*x2"}. \code{"latnorm"} can be specified when the covariate
+#' is missing for all individuals, but for which there are error-prone measurements
+#' available. See also the \code{errorProneMatrix} argument.
 #' @param predictorMatrix An optional predictor matrix. If specified, the matrix defines which
 #' covariates will be used as predictors in the imputation models
 #' (the outcome must not be included). The i'th row of the matrix should consist of
@@ -151,6 +163,11 @@
 #' increase the \code{rjlimit} until the warning does not appear.
 #' @param noisy logical value (default FALSE) indicating whether output should be noisy, which can
 #' be useful for debugging or checking that models being used are as desired.
+#' @param errorProneMatrix An optional matrix to be specified when one or more variables
+#' are imputed using the \code{"latnorm"} method. The matrix should contain zeroes
+#' everywhere, except for rows corresponding to variables whose imputation method is
+#' specified as \code{"latnorm"}. For this row(s), ones should be entered to indicate
+#' which variables correspond to error-prone measurements.
 #'
 #' @return A list containing:
 #'
@@ -255,15 +272,15 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,err
 
   for (imp in 1:m) {
 
-    print(c("Imputation ",imp))
+    print(paste("Imputation ",imp))
 
     #initial imputation of each partially observed variable based on observed values
     for (var in 1:length(partialVars)) {
       targetCol <- partialVars[var]
       if (method[targetCol]=="latnorm") {
-        #initialize latent predictors with mean of corresponding error prone measurements
+        #initialize latent predictors with single error prone measurement
         errorProneCols <- which(errorProneMatrix[targetCol,]==1)
-        imputations[[imp]][,targetCol] <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
+        imputations[[imp]][,targetCol] <- apply(imputations[[imp]][,errorProneCols], 1, firstnonna)
       }
       else {
         imputations[[imp]][r[,targetCol]==0,targetCol] <- sample(imputations[[imp]][r[,targetCol]==1,targetCol], size=sum(r[,targetCol]==0), replace=TRUE)
@@ -373,11 +390,18 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,err
           errorProneCols <- which(errorProneMatrix[targetCol,]==1)
           wmean <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
           n_i <- apply(imputations[[imp]][,errorProneCols], 1, sumna)
-          #estimate error variance
-          xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
-          uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
           sum_ni <- sum(n_i)
-          sigmausq <- sum(uVec^2, na.rm=TRUE) / sum_ni
+          #estimate error variance
+          if (cyclenum==1) {
+            xmat <- matrix(wmean, nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
+            uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
+            sigmausq <- sum(uVec^2, na.rm=TRUE) / (sum_ni - n)
+          }
+          else {
+            xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
+            uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
+            sigmausq <- sum(uVec^2, na.rm=TRUE) / sum_ni
+          }
           #take draw from posterior of error variance
           sigmausq <- sigmausq*sum_ni/rchisq(1,sum_ni)
           #calculate conditional mean and variance
@@ -530,7 +554,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,err
 
           while ((length(imputationNeeded)>0) & (j<firstTryLimit)) {
             #sample from covariate model
-            if (method[targetCol]=="norm") {
+            if ((method[targetCol]=="norm") | (method[targetCol]=="latnorm")) {
               imputations[[imp]][imputationNeeded,targetCol] <- rnorm(length(imputationNeeded),xfitted[imputationNeeded],newsigmasq^0.5)
             }
             else if (method[targetCol]=="logreg") {
@@ -591,6 +615,9 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,err
             }
             else if (method[targetCol]=="poisson") {
               tempData[,targetCol] <- rpois(rjlimit,xfitted[i])
+            }
+            else if (method[targetCol]=="latnorm") {
+              tempData[,targetCol] <- rnorm(rjlimit,xfitted[i],newsigmasq[i]^0.5)
             }
 
             #passively impute
@@ -684,6 +711,11 @@ expit <- function(x) {
 
 sumna <- function(x) {
   sum(is.na(x)==FALSE)
+}
+
+#returns first non missing entry of x
+firstnonna <- function(x) {
+  x[is.na(x)==FALSE][1]
 }
 
 catdraw <- function(prob) {
