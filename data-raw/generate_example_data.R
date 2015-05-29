@@ -93,7 +93,7 @@ ex_compet <- data.frame(t,d,x1,x2)
 devtools::use_data(ex_compet, overwrite=TRUE)
 
 #covariate measurement error
-n <- 1000
+n <- 10000
 x <- rnorm(n)
 xb <- x
 pr <- exp(xb)/(1+exp(xb))

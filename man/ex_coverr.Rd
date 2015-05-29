@@ -4,12 +4,12 @@
 \name{ex_coverr}
 \alias{ex_coverr}
 \title{Simulated example data with binary outcome and covariate measured with error}
-\format{A data frame with 1000 rows and 4 variables:
+\format{A data frame with 10000 rows and 4 variables:
 \describe{
   \item{y}{Binary outcome}
   \item{x}{An entirely missing covariate, representing the true covariate which is measured with
   error}
-  \item{w1}{The first error-prone measurement of x, available on all 1000}
+  \item{w1}{The first error-prone measurement of x, available on all 10000}
   \item{w2}{The second error-prone measurement of x, available on a random 10\%}
 }}
 \usage{
