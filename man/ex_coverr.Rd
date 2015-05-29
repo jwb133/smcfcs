@@ -10,7 +10,7 @@
   \item{x}{An entirely missing covariate, representing the true covariate which is measured with
   error}
   \item{w1}{The first error-prone measurement of x, available on all 1000}
-  \item{w2}{The second error-prone measurement of x, available on 100}
+  \item{w2}{The second error-prone measurement of x, available on a random 10\%}
 }}
 \usage{
 ex_coverr

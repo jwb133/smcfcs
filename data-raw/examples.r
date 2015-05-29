@@ -49,6 +49,7 @@ if (requireNamespace("mitools", quietly = TRUE)) {
 
   #if mitools is installed, fit model for first competing risk
   if (requireNamespace("mitools", quietly = TRUE)) {
+    library(mitools)
     impobj <- imputationList(imps$impDatasets)
     models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
     summary(MIcombine(models))
@@ -65,6 +66,7 @@ if (requireNamespace("mitools", quietly = TRUE)) {
                  errorProneMatrix=errMat,numit=100)
 
   if (requireNamespace("mitools", quietly = TRUE)) {
+    library(mitools)
     impobj <- imputationList(imps$impDatasets)
     models <- with(impobj, glm(y~x,family=binomial))
     summary(MIcombine(models))
