@@ -65,6 +65,9 @@ if (requireNamespace("mitools", quietly = TRUE)) {
                  method=c("","latnorm","",""),
                  errorProneMatrix=errMat,numit=100)
 
+  #examine convergence for second parameter in logistic model
+  plot(imps$smCoefIter[1,2,])
+
   if (requireNamespace("mitools", quietly = TRUE)) {
     library(mitools)
     impobj <- imputationList(imps$impDatasets)
