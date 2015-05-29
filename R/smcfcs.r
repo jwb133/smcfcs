@@ -45,6 +45,23 @@
 #'
 "ex_logisticquad"
 
+#' Simulated example data with binary outcome and covariate measured with error
+#'
+#' A dataset containing simulated data where the binary outcome depends linearly
+#' on a covariate that is not directly measured. Instead, it is measured with error
+#' by two error prone measurements, w1 and w2.
+#'
+#' @format A data frame with 1000 rows and 4 variables:
+#' \describe{
+#'   \item{y}{Binary outcome}
+#'   \item{x}{An entirely missing covariate, representing the true covariate which is measured with
+#'   error}
+#'   \item{w1}{The first error-prone measurement of x, available on all 1000}
+#'   \item{w2}{The second error-prone measurement of x, available on 100}
+#' }
+#'
+"ex_coverr"
+
 #' Simulated example data with time to event outcome and quadratic covariate effects
 #'
 #' A dataset containing simulated data where a time to event outcome depends quadratically
@@ -110,7 +127,8 @@
 #' measured with error. To do this, the user must specify the method corresponding to the
 #' entirely missing covariate as \code{latnorm}. The \code{errorProneMatrix} argument
 #' must then be used to specify which variables are the corresponding error-prone measurements
-#' of the entirely missing covariate. Note that this requires at least two error-prone
+#' of the entirely missing covariate. A classical normal error model is assumed, with common
+#' error variance for all replicates. Note that this requires at least two error-prone
 #' measurements to be available for at least a subset of the dataset (i.e. internal replication
 #' data). Users are advised that many more iterations than the default (10) may be required
 #' for convergence to the stationary distribution, and to examine this by plotting estimates
@@ -186,7 +204,8 @@
 #' in Medical Research 2014. \url{http://doi.org/10.1177/0962280214521348}
 
 #' @export
-smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,errorProneMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
+smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,
+                   errorProneMatrix=NULL) {
 
   stopifnot(is.data.frame(originaldata))
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")

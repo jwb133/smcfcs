@@ -5,7 +5,8 @@
 \title{Substantive model compatible fully conditional specification imputation of covariates.}
 \usage{
 smcfcs(originaldata, smtype, smformula, method, predictorMatrix = NULL,
-  m = 5, numit = 10, rjlimit = 1000, noisy = FALSE)
+  m = 5, numit = 10, rjlimit = 1000, noisy = FALSE,
+  errorProneMatrix = NULL)
 }
 \arguments{
 \item{originaldata}{The original data frame with missing values.}
@@ -25,7 +26,9 @@ be used to impute. Possible values are \code{"norm"} (normal linear regression),
 \code{"podds"} (proportional odds regression for ordered categorical variables),
 \code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 or a custom expression which defines a passively imputed variable, e.g.
-\code{"x^2"} or \code{"x1*x2"}.}
+\code{"x^2"} or \code{"x1*x2"}. \code{"latnorm"} can be specified when the covariate
+is missing for all individuals, but for which there are error-prone measurements
+available. See also the \code{errorProneMatrix} argument.}
 
 \item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
 covariates will be used as predictors in the imputation models
@@ -53,6 +56,12 @@ increase the \code{rjlimit} until the warning does not appear.}
 
 \item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
 be useful for debugging or checking that models being used are as desired.}
+
+\item{errorProneMatrix}{An optional matrix to be specified when one or more variables
+are imputed using the \code{"latnorm"} method. The matrix should contain zeroes
+everywhere, except for rows corresponding to variables whose imputation method is
+specified as \code{"latnorm"}. For this row(s), ones should be entered to indicate
+which variables correspond to error-prone measurements.}
 }
 \value{
 A list containing:
@@ -86,8 +95,20 @@ The second element \code{smCoefIter} is a three dimensional array containing the
 of the substantive model parameters obtained at the end of each iteration of the algorithm.
 The array is indexed by: imputation number, parameter number, iteration.
 
-If the substantive model is linear or logistic regression, `smcfcs` will impute missing
-outcomes, if present, using the specified substantive model.
+If the substantive model is linear or logistic regression, `smcfcs` will automatically impute missing
+outcomes, if present, using the specified substantive model. However, even in this case, the
+user should specify "" in the element of method corresponding to the outcome variable.
+
+\code{smcfcs} can also impute covariates which missing on all individuals, but which are
+measured with error. To do this, the user must specify the method corresponding to the
+entirely missing covariate as \code{latnorm}. The \code{errorProneMatrix} argument
+must then be used to specify which variables are the corresponding error-prone measurements
+of the entirely missing covariate. A classical normal error model is assumed, with common
+error variance for all replicates. Note that this requires at least two error-prone
+measurements to be available for at least a subset of the dataset (i.e. internal replication
+data). Users are advised that many more iterations than the default (10) may be required
+for convergence to the stationary distribution, and to examine this by plotting estimates
+returned in \code{smCoefIter}.
 
 The development of this package was supported by a UK Medical Research Council
 Fellowship (MR/K02180X/1). Part of its development took place while the author was
@@ -153,6 +174,23 @@ if (requireNamespace("mitools", quietly = TRUE)) {
     models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
     summary(MIcombine(models))
   }
+
+  #covariate measurement error, logistic regression substantive model
+  errMat <- matrix(0, nrow=4, ncol=4)
+  errMat[2,c(3,4)] <- 1
+
+  #impute, but specify a larger number of iterations than with
+  #regular missing data
+  imps <- smcfcs(ex_coverr, smtype="logistic", smformula="y~x",
+                 method=c("","latnorm","",""),
+                 errorProneMatrix=errMat,numit=100)
+
+  if (requireNamespace("mitools", quietly = TRUE)) {
+    impobj <- imputationList(imps$impDatasets)
+    models <- with(impobj, glm(y~x,family=binomial))
+    summary(MIcombine(models))
+  }
+
 }
 }
 \author{

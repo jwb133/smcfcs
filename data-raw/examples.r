@@ -53,4 +53,21 @@ if (requireNamespace("mitools", quietly = TRUE)) {
     models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
     summary(MIcombine(models))
   }
+
+  #covariate measurement error, logistic regression substantive model
+  errMat <- matrix(0, nrow=4, ncol=4)
+  errMat[2,c(3,4)] <- 1
+
+  #impute, but specify a larger number of iterations than with
+  #regular missing data
+  imps <- smcfcs(ex_coverr, smtype="logistic", smformula="y~x",
+                 method=c("","latnorm","",""),
+                 errorProneMatrix=errMat,numit=100)
+
+  if (requireNamespace("mitools", quietly = TRUE)) {
+    impobj <- imputationList(imps$impDatasets)
+    models <- with(impobj, glm(y~x,family=binomial))
+    summary(MIcombine(models))
+  }
+
 }
