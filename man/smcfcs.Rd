@@ -60,8 +60,9 @@ be useful for debugging or checking that models being used are as desired.}
 \item{errorProneMatrix}{An optional matrix to be specified when one or more variables
 are imputed using the \code{"latnorm"} method. The matrix should contain zeroes
 everywhere, except for rows corresponding to variables whose imputation method is
-specified as \code{"latnorm"}. For this row(s), ones should be entered to indicate
-which variables correspond to error-prone measurements.}
+specified as \code{"latnorm"}. For this row(s), ones should be entered in the columns
+corresponding to the variables which are error-prone measurements of the true
+covariate.}
 }
 \value{
 A list containing:
