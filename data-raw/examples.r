@@ -30,8 +30,8 @@ if (requireNamespace("mitools", quietly = TRUE)) {
                  method=c("","","norm","x^2",""),predictorMatrix=predMatrix)
 
   #impute missing x1 and x2, where they interact in substantive model
-  imps <- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1x2",
-                 method=c("","norm","logreg","x1*x2"))
+  imps <- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1*x2",
+                 method=c("","norm","logreg"))
 
   #logistic regression substantive model, with quadratic covariate effects
   imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",

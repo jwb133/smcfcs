@@ -26,7 +26,8 @@ y <- 1+x1+x2+x1*x2+rnorm(n)
 x1[runif(n)>0.5] <- NA
 x2[runif(n)>0.5] <- NA
 
-ex_lininter <- data.frame(y,x1,x2,x1x2=x1*x2)
+ex_lininter <- data.frame(y,x1,x2)
+ex_lininter$x2 <- factor(ex_lininter$x2)
 
 devtools::use_data(ex_lininter, overwrite=TRUE)
 

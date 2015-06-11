@@ -9,7 +9,6 @@
   \item{y}{Continuous outcome}
   \item{x1}{Partially observed normally distributed covariate}
   \item{x2}{Partially obserevd binary covariate}
-  \item{x1x2}{The interaction of x1 with x2}
 }}
 \usage{
 ex_lininter
