@@ -38,7 +38,6 @@ if (requireNamespace("mitools", quietly = TRUE)) {
                  method=c("","","norm","x^2",""))
 
   #Cox regression substantive model, with only main covariate effects
-  library(survival)
   imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
                  method=c("","","","norm","x^2",""))
 

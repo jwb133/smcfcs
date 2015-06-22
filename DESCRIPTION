@@ -11,11 +11,12 @@ Description: Implements multiple imputation of missing covariates by
     covariate values from models which are compatible with the user
     specified substantive model.
 Depends: R (>= 3.1.2),
+    MASS,
+    survival,
     VGAM
 License: GPL-3
 LazyData: true
-Imports: MASS,
-    survival
+Imports:
 Suggests: knitr,
     mitools
 VignetteBuilder: knitr
