@@ -521,7 +521,12 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 
           for (xMisVal in 1:numberOutcomes) {
             if (method[targetCol]=="logreg") {
-              valToImpute <- xMisVal-1
+              if (is.factor(imputations[[imp]][,targetCol])==TRUE) {
+                valToImpute <- levels(imputations[[imp]][,targetCol])[xMisVal]
+              }
+              else {
+                valToImpute <- xMisVal-1
+              }
             }
             else {
               valToImpute <- levels(imputations[[imp]][,targetCol])[xMisVal]
@@ -561,7 +566,13 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 
           if (method[targetCol]=="logreg") {
             directImpProbs = directImpProbs[,2]
-            imputations[[imp]][imputationNeeded,targetCol] <- rbinom(length(imputationNeeded),1,directImpProbs)
+            if (is.factor(imputations[[imp]][,targetCol])==TRUE) {
+              imputations[[imp]][imputationNeeded,targetCol] <- levels(imputations[[imp]][,targetCol])[1]
+              imputations[[imp]][imputationNeeded,targetCol][rbinom(length(imputationNeeded),1,directImpProbs)==1] <- levels(imputations[[imp]][,targetCol])[2]
+            }
+            else {
+              imputations[[imp]][imputationNeeded,targetCol] <- rbinom(length(imputationNeeded),1,directImpProbs)
+            }
           }
           else {
             imputations[[imp]][imputationNeeded,targetCol] <- levels(imputations[[imp]][,targetCol])[apply(directImpProbs, 1, catdraw)]
@@ -580,9 +591,6 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             #sample from covariate model
             if ((method[targetCol]=="norm") | (method[targetCol]=="latnorm")) {
               imputations[[imp]][imputationNeeded,targetCol] <- rnorm(length(imputationNeeded),xfitted[imputationNeeded],newsigmasq^0.5)
-            }
-            else if (method[targetCol]=="logreg") {
-              imputations[[imp]][imputationNeeded,targetCol] <- rbinom(length(imputationNeeded),size=1,prob=xfitted[imputationNeeded])
             }
             else if (method[targetCol]=="poisson") {
               imputations[[imp]][imputationNeeded,targetCol] <- rpois(length(imputationNeeded),xfitted[imputationNeeded])
