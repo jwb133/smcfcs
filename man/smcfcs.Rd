@@ -159,7 +159,7 @@ if (requireNamespace("mitools", quietly = TRUE)) {
   imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",
                  method=c("","","norm","x^2",""))
 
-  #Cox regression substantive model, with only main covariate effects
+  #Cox regression substantive model, with quadratic covariate effects
   library(survival)
   imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
                  method=c("","","","norm","x^2",""))
