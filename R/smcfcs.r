@@ -201,7 +201,7 @@
 #'
 #' @references Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
 #' by fully conditional specification: accommodating the substantive model. Statistical Methods
-#' in Medical Research 2014. \url{http://doi.org/10.1177/0962280214521348}
+#' in Medical Research 2014; 24(4): 462-487. \url{http://doi.org/10.1177/0962280214521348}
 
 #' @export
 smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,
