@@ -122,16 +122,6 @@
 #' outcomes, if present, using the specified substantive model. However, even in this case, the
 #' user should specify "" in the element of method corresponding to the outcome variable.
 #'
-#' \code{smcfcs} can also impute covariates which missing on all individuals, but which are
-#' measured with error. To do this, the user must specify the method corresponding to the
-#' entirely missing covariate as \code{latnorm}. The \code{errorProneMatrix} argument
-#' must then be used to specify which variables are the corresponding error-prone measurements
-#' of the entirely missing covariate. A classical normal error model is assumed, with common
-#' error variance for all replicates. Note that this requires at least two error-prone
-#' measurements to be available for at least a subset of the dataset (i.e. internal replication
-#' data). Users are advised that many more iterations than the default (10) may be required
-#' for convergence to the stationary distribution, and to examine this by plotting estimates
-#' returned in \code{smCoefIter}.
 #'
 #' The development of this package was supported by a UK Medical Research Council
 #' Fellowship (MR/K02180X/1). Part of its development took place while the author was
@@ -155,9 +145,7 @@
 #' \code{"podds"} (proportional odds regression for ordered categorical variables),
 #' \code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 #' or a custom expression which defines a passively imputed variable, e.g.
-#' \code{"x^2"} or \code{"x1*x2"}. \code{"latnorm"} can be specified when the covariate
-#' is missing for all individuals, but for which there are error-prone measurements
-#' available. See also the \code{errorProneMatrix} argument.
+#' \code{"x^2"} or \code{"x1*x2"}.
 #' @param predictorMatrix An optional predictor matrix. If specified, the matrix defines which
 #' covariates will be used as predictors in the imputation models
 #' (the outcome must not be included). The i'th row of the matrix should consist of
@@ -180,12 +168,6 @@
 #' increase the \code{rjlimit} until the warning does not appear.
 #' @param noisy logical value (default FALSE) indicating whether output should be noisy, which can
 #' be useful for debugging or checking that models being used are as desired.
-#' @param errorProneMatrix An optional matrix to be specified when one or more variables
-#' are imputed using the \code{"latnorm"} method. The matrix should contain zeroes
-#' everywhere, except for rows corresponding to variables whose imputation method is
-#' specified as \code{"latnorm"}. For this row(s), ones should be entered in the columns
-#' corresponding to the variables which are error-prone measurements of the true
-#' covariate.
 #'
 #' @return A list containing:
 #'
@@ -204,8 +186,7 @@
 #' in Medical Research 2014; 24(4): 462-487. \url{http://doi.org/10.1177/0962280214521348}
 
 #' @export
-smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,
-                   errorProneMatrix=NULL) {
+smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
 
   stopifnot(is.data.frame(originaldata))
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
@@ -264,7 +245,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   smcovcols <- (1:ncol(originaldata))[colnames(originaldata) %in% smcovnames]
 
   #partial vars are those variables for which an imputation method has been specified among the available regression types
-  partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit") | (method=="latnorm"))
+  partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit"))
 
   if (length(outcomeCol)==1) {
     if (method[outcomeCol]!="") stop("The element of the method argument corresponding to the outcome variable should be empty.")
