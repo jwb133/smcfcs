@@ -201,7 +201,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     d <- originaldata[,dCol]
 
     nullMod <- survival::coxph(Surv(originaldata[,timeCol],originaldata[,dCol])~1)
-    basehaz <- basehaz(nullMod)
+    basehaz <- survival::basehaz(nullMod)
     H0indices <- match(originaldata[,timeCol], basehaz[,2])
     rm(nullMod)
   }
@@ -218,7 +218,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     linpred <- vector("list", numCauses)
     for (cause in 1:numCauses) {
       nullMod <- survival::coxph(as.formula(paste(strsplit(smformula[[cause]],"~")[[1]][1],"~1")), originaldata)
-      basehaz <- basehaz(nullMod)
+      basehaz <- survival::basehaz(nullMod)
       H0[[cause]] <- basehaz[,1]
       H0indices[[cause]] <- match(originaldata[,timeCol], basehaz[,2])
       linpred[[cause]] <- as.formula(smformula[[cause]])
@@ -374,15 +374,15 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
         else if (method[targetCol]=="podds") {
           xmod <- VGAM::vglm(xmodformula, VGAM::propodds, data=imputations[[imp]])
-          newbeta <- coefficients(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(vcov(xmod))), Sigma=vcov(xmod))
-          linpreds <- matrix(model.matrix(xmod) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
+          newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(VGAM::vcov(xmod))), Sigma=VGAM::vcov(xmod))
+          linpreds <- matrix((VGAM::model.matrix(xmod)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
           cumprobs <- cbind(1/(1+exp(linpreds)), rep(1,nrow(linpreds)))
           xfitted <- cbind(cumprobs[,1] ,cumprobs[,2:ncol(cumprobs)] - cumprobs[,1:(ncol(cumprobs)-1)])
         }
         else if (method[targetCol]=="mlogit") {
           xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel=1), data=imputations[[imp]])
-          newbeta <- coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(vcov(xmod))), Sigma=vcov(xmod))
-          linpreds <- matrix(model.matrix(xmod) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
+          newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(VGAM::vcov(xmod))), Sigma=VGAM::vcov(xmod))
+          linpreds <- matrix((VGAM::model.matrix(xmod)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
           denom <- 1+rowSums(exp(linpreds))
           xfitted <-cbind(1/denom, exp(linpreds) / denom)
         }
@@ -438,7 +438,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           ymod <- survival::coxph(as.formula(smformula), imputations[[imp]])
           outcomeModBeta <- modPostDraw(ymod)
           ymod$coefficients <- outcomeModBeta
-          basehaz <- basehaz(ymod, centered=FALSE)[,1]
+          basehaz <- survival::basehaz(ymod, centered=FALSE)[,1]
           H0 <- basehaz[H0indices]
           if (noisy==TRUE) {
             print(summary(ymod))
@@ -449,7 +449,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             ymod <- survival::coxph(as.formula(smformula[[cause]]), imputations[[imp]])
             outcomeModBeta[[cause]] <- modPostDraw(ymod)
             ymod$coefficients <- outcomeModBeta[[cause]]
-            basehaz <- basehaz(ymod, centered=FALSE)[,1]
+            basehaz <- survival::basehaz(ymod, centered=FALSE)[,1]
             H0[[cause]] <- basehaz[H0indices[[cause]]]
             if (noisy==TRUE) {
               print(summary(ymod))
