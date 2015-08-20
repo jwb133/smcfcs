@@ -139,13 +139,15 @@ if (requireNamespace("mitools", quietly = TRUE)) {
                  method=c("","","norm","x^2",""))
 
   #Cox regression substantive model, with only main covariate effects
-  imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
-                 method=c("","","","norm","x^2",""))
+  if (requireNamespace("survival", quietly = TRUE)) {
+    imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
+                   method=c("","","","norm","x^2",""))
 
-  #competing risks substantive model, with only main covariate effects
-  imps <- smcfcs(ex_compet, smtype="compet",
-                 smformula=c("Surv(t,d==1)~x1+x2", "Surv(t,d==2)~x1+x2"),
-                 method=c("","","logreg","norm"))
+    #competing risks substantive model, with only main covariate effects
+    imps <- smcfcs(ex_compet, smtype="compet",
+                   smformula=c("Surv(t,d==1)~x1+x2", "Surv(t,d==2)~x1+x2"),
+                   method=c("","","logreg","norm"))
+  }
 
   #if mitools is installed, fit model for first competing risk
   if (requireNamespace("mitools", quietly = TRUE)) {

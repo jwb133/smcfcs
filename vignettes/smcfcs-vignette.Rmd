@@ -133,7 +133,7 @@ The plot shows that the process appears to converge rapidly, such that the defau
 
 Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
 by fully conditional specification: accommodating the substantive model. 
-<a href="http://doi.org/10.1177/0962280214521348">Statistical Methods in Medical Research</a>, 2014
+<a href="http://doi.org/10.1177/0962280214521348">Statistical Methods in Medical Research</a>, 2014; 24(4):462-487
 
 van Buuren S, Groothuis-Oudshoorn K. mice:  Multivariate Imputation by Chained
 Equations in R. <a href="http://www.jstatsoft.org/v45/i03/paper">Journal of Statistical Software</a>, 2011; 45(3)
