@@ -277,14 +277,14 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     #initial imputation of each partially observed variable based on observed values
     for (var in 1:length(partialVars)) {
       targetCol <- partialVars[var]
-      if (method[targetCol]=="latnorm") {
+      #if (method[targetCol]=="latnorm") {
         #initialize latent predictors with single error prone measurement
-        errorProneCols <- which(errorProneMatrix[targetCol,]==1)
-        imputations[[imp]][,targetCol] <- apply(imputations[[imp]][,errorProneCols], 1, firstnonna)
-      }
-      else {
+        #errorProneCols <- which(errorProneMatrix[targetCol,]==1)
+        #imputations[[imp]][,targetCol] <- apply(imputations[[imp]][,errorProneCols], 1, firstnonna)
+      #}
+      #else {
         imputations[[imp]][r[,targetCol]==0,targetCol] <- sample(imputations[[imp]][r[,targetCol]==1,targetCol], size=sum(r[,targetCol]==0), replace=TRUE)
-      }
+      #}
     }
 
     #initial imputations of missing outcomes, if present (using improper imputation)
@@ -337,12 +337,12 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           predictorCols <- predictorCols[! predictorCols %in% outcomeCol]
         }
         if ((imp==1) & (cyclenum==1)) {
-          if (method[targetCol]=="latnorm") {
-            print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[c(predictorCols,which(errorProneMatrix[targetCol,]==1))],collapse=',')," plus outcome",collapse=','))
-          }
-          else {
+          #if (method[targetCol]=="latnorm") {
+            #print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[c(predictorCols,which(errorProneMatrix[targetCol,]==1))],collapse=',')," plus outcome",collapse=','))
+          #}
+          #else {
             print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[predictorCols],collapse=',')," plus outcome",collapse=','))
-          }
+          #}
         }
         if (length(predictorCols)>0) {
           xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
@@ -391,29 +391,29 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         }
 
         #if latent normal, estimate error variance and calculate required conditional expectation and variance
-        if (method[targetCol]=="latnorm") {
-          errorProneCols <- which(errorProneMatrix[targetCol,]==1)
-          wmean <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
-          n_i <- apply(imputations[[imp]][,errorProneCols], 1, sumna)
-          sum_ni <- sum(n_i)
-          #estimate error variance
-          if (cyclenum==1) {
-            xmat <- matrix(wmean, nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
-            uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
-            sigmausq <- sum(uVec^2, na.rm=TRUE) / (sum_ni - n)
-          }
-          else {
-            xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
-            uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
-            sigmausq <- sum(uVec^2, na.rm=TRUE) / sum_ni
-          }
-          #take draw from posterior of error variance
-          sigmausq <- sigmausq*sum_ni/rchisq(1,sum_ni)
-          #calculate conditional mean and variance
-          lambda <- newsigmasq/(newsigmasq+sigmausq/n_i)
-          xfitted <- xfitted + lambda * (wmean - xfitted)
-          newsigmasq <- newsigmasq*(1-lambda)
-        }
+#         if (method[targetCol]=="latnorm") {
+#           errorProneCols <- which(errorProneMatrix[targetCol,]==1)
+#           wmean <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
+#           n_i <- apply(imputations[[imp]][,errorProneCols], 1, sumna)
+#           sum_ni <- sum(n_i)
+#           #estimate error variance
+#           if (cyclenum==1) {
+#             xmat <- matrix(wmean, nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
+#             uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
+#             sigmausq <- sum(uVec^2, na.rm=TRUE) / (sum_ni - n)
+#           }
+#           else {
+#             xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
+#             uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
+#             sigmausq <- sum(uVec^2, na.rm=TRUE) / sum_ni
+#           }
+#           #take draw from posterior of error variance
+#           sigmausq <- sigmausq*sum_ni/rchisq(1,sum_ni)
+#           #calculate conditional mean and variance
+#           lambda <- newsigmasq/(newsigmasq+sigmausq/n_i)
+#           xfitted <- xfitted + lambda * (wmean - xfitted)
+#           newsigmasq <- newsigmasq*(1-lambda)
+#         }
 
         #estimate parameters of substantive model
         if (smtype=="lm") {
