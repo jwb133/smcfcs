@@ -282,7 +282,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         imputationNeeded <- (1:n)[r[,outcomeCol]==0]
         #estimate parameters of substantive model
         if (smtype=="lm") {
-          ymod <- lm(as.formula(smformula),imputations[[imp]])
+          ymod <- stats::lm(as.formula(smformula),imputations[[imp]])
           beta <- ymod$coef
           sigmasq <- summary(ymod)$sigma^2
           #fill out missing values so that model.matrix works for all rows

@@ -13,7 +13,7 @@ Description: Implements multiple imputation of missing covariates by
 Depends: R (>= 3.1.2)
 License: GPL-3
 LazyData: true
-Imports: MASS, survival, VGAM
+Imports: MASS, survival, VGAM, stats
 Suggests: knitr,
     mitools
 VignetteBuilder: knitr
