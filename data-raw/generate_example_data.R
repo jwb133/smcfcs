@@ -93,17 +93,17 @@ ex_compet <- data.frame(t,d,x1,x2)
 
 devtools::use_data(ex_compet, overwrite=TRUE)
 
-#covariate measurement error
-n <- 10000
-x <- rnorm(n)
-xb <- x
-pr <- exp(xb)/(1+exp(xb))
-y <- 1*(runif(n)<pr)
-
-w1 <- x+rnorm(n)
-w2 <- x+rnorm(n)
-w2[runif(1000)<0.9] <- NA
-
-ex_coverr <- data.frame(y,x=NA,w1,w2)
-
-devtools::use_data(ex_coverr, overwrite=TRUE)
+# #covariate measurement error
+# n <- 10000
+# x <- rnorm(n)
+# xb <- x
+# pr <- exp(xb)/(1+exp(xb))
+# y <- 1*(runif(n)<pr)
+#
+# w1 <- x+rnorm(n)
+# w2 <- x+rnorm(n)
+# w2[runif(1000)<0.9] <- NA
+#
+# ex_coverr <- data.frame(y,x=NA,w1,w2)
+#
+# devtools::use_data(ex_coverr, overwrite=TRUE)
