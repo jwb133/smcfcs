@@ -44,23 +44,6 @@
 #'
 "ex_logisticquad"
 
-#' Simulated example data with binary outcome and covariate measured with error
-#'
-#' A dataset containing simulated data where the binary outcome depends linearly
-#' on a covariate that is not directly measured. Instead, it is measured with error
-#' by two error prone measurements, w1 and w2.
-#'
-#' @format A data frame with 10000 rows and 4 variables:
-#' \describe{
-#'   \item{y}{Binary outcome}
-#'   \item{x}{An entirely missing covariate, representing the true covariate which is measured with
-#'   error}
-#'   \item{w1}{The first error-prone measurement of x, available on all 10000}
-#'   \item{w2}{The second error-prone measurement of x, available on a random 10\%}
-#' }
-#'
-"ex_coverr"
-
 #' Simulated example data with time to event outcome and quadratic covariate effects
 #'
 #' A dataset containing simulated data where a time to event outcome depends quadratically
