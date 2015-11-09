@@ -358,6 +358,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           xfitted <- exp(model.matrix(xmod) %*% newbeta)
         }
         else if (method[targetCol]=="podds") {
+          if (is.ordered(imputations[[imp]][,targetCol])==FALSE) stop("Variables to be imputed using method podds must be stored as ordered factors.")
           xmod <- VGAM::vglm(xmodformula, VGAM::propodds, data=imputations[[imp]])
           newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(VGAM::vcov(xmod))), Sigma=VGAM::vcov(xmod))
           linpreds <- matrix((VGAM::model.matrix(xmod)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
@@ -365,6 +366,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           xfitted <- cbind(cumprobs[,1] ,cumprobs[,2:ncol(cumprobs)] - cumprobs[,1:(ncol(cumprobs)-1)])
         }
         else if (method[targetCol]=="mlogit") {
+          if (is.factor(imputations[[imp]][,targetCol])==FALSE) stop("Variables to be imputed using method modds must be stored as factors.")
           xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel=1), data=imputations[[imp]])
           newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(VGAM::vcov(xmod))), Sigma=VGAM::vcov(xmod))
           linpreds <- matrix((VGAM::model.matrix(xmod)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
