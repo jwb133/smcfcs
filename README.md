@@ -3,4 +3,5 @@ smcfcs is an R package implementing Substantive Model Compatibly Fully Condition
 To install the latest GitHub development version, run:
 
 install.packages("devtools")
+
 devtools::install_github("jwb133/smcfcs")
