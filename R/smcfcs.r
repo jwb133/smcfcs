@@ -509,8 +509,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             if (smtype=="lm") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               deviation <- imputations[[imp]][imputationNeeded,outcomeCol] - outmodxb[imputationNeeded]
-              outcomeDens <- dnorm(deviation, mean=0, sd=1)
-              outcomeDensCovDens[,xMisVal] <- outcomeDens * fittedMean[imputationNeeded,xMisVal]
+              outcomeDens <- dnorm(deviation, mean=0, sd=outcomeModResVar^0.5)
             }
             else if (smtype=="logistic") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
