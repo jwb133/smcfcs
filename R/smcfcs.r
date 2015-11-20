@@ -255,6 +255,8 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     imputations[[imp]] <- originaldata
   }
 
+  rjFailCount <- 0
+
   for (imp in 1:m) {
 
     print(paste("Imputation ",imp))
@@ -657,7 +659,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             if (sum(reject)<rjlimit) {
               imputations[[imp]][i,targetCol] <- tempData[reject==0,targetCol][1]
             } else {
-              print("Rejection sampling has failed for one record. You may want to increase the rejecton sampling limit.")
+              rjFailCount <- rjFailCount + 1
             }
           }
           #update passive variables
@@ -692,6 +694,10 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
       }
     }
 
+  }
+
+  if (rjFailCount>0) {
+    warning(paste("Rejection sampleing failed ",rjFailCount," times (across all variables, iterations, and imputations). You may want to increase the rejection sampling limit.",sep=""))
   }
 
   list(impDatasets=imputations, smCoefIter=smCoefIter)
