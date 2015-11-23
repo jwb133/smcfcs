@@ -177,6 +177,15 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
 
   n <- dim(originaldata)[1]
+
+  #create matrix of response indicators
+  r <- 1*(is.na(originaldata)==0)
+
+  #check that methods are given for each partially observed column, and not given for fully observed columns
+  if (all.equal(which(method!=""), which(colSums(r)!=n), check.names=FALSE)!=TRUE)
+    stop("The method argument must have empty \"\" elements corresponding to fully observed columns and non-empty
+    elements for those columns which have missing values.")
+
   #find column numbers of partially observed, fully observed variables, and outcome
   if (smtype=="coxph") {
 
@@ -213,9 +222,6 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
   }
-
-  #create matrix of response indicators
-  r <- 1*(is.na(originaldata)==0)
 
   if (smtype=="compet") {
     smcovnames <- attr(terms(as.formula(smformula[[1]])), "term.labels")
