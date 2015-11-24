@@ -702,7 +702,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   }
 
   if (rjFailCount>0) {
-    warning(paste("Rejection sampleing failed ",rjFailCount," times (across all variables, iterations, and imputations). You may want to increase the rejection sampling limit.",sep=""))
+    warning(paste("Rejection sampling failed ",rjFailCount," times (across all variables, iterations, and imputations). You may want to increase the rejection sampling limit.",sep=""))
   }
 
   list(impDatasets=imputations, smCoefIter=smCoefIter)
