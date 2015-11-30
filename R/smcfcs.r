@@ -243,10 +243,10 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     if (sum(method[outcomeCol]!=c("",""))>0) stop("The elements of the method argument corresponding to the outcome variables should be empty.")
   }
 
+  nonOutcomeCols <- 1:ncol(originaldata)
+  nonOutcomeCols <- nonOutcomeCols[nonOutcomeCols!=outcomeCol]
   #check that methods are given for each partially observed column, and not given for fully observed columns
-  augmethod <- method
-  augmethod[outcomeCol] <- "substMod"
-  if (all.equal(which(augmethod!=""), which(colSums(r)!=n), check.names=FALSE)!=TRUE)
+  if (all.equal(which(method[nonOutcomeCols]!=""), which(colSums(r[,nonOutcomeCols])!=n), check.names=FALSE)==FALSE)
     stop("The method argument must have empty \"\" elements corresponding to fully observed columns and non-empty
          elements for those columns which have missing values.")
 
