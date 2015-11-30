@@ -102,9 +102,10 @@
 #' of the substantive model parameters obtained at the end of each iteration of the algorithm.
 #' The array is indexed by: imputation number, parameter number, iteration.
 #'
-#' If the substantive model is linear or logistic regression, `smcfcs` will automatically impute missing
-#' outcomes, if present, using the specified substantive model. However, even in this case, the
-#' user should specify "" in the element of method corresponding to the outcome variable.
+#' If the substantive model is linear, logistic or Poisson regression,
+#' \code{smcfcs} will automatically impute missing outcomes, if present, using
+#' the specified substantive model. However, even in this case, the user should
+#' specify "" in the element of method corresponding to the outcome variable.
 #'
 #'
 #' The development of this package was supported by a UK Medical Research Council
@@ -183,11 +184,6 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   #create matrix of response indicators
   r <- 1*(is.na(originaldata)==0)
 
-  #check that methods are given for each partially observed column, and not given for fully observed columns
-  if (all.equal(which(method!=""), which(colSums(r)!=n), check.names=FALSE)!=TRUE)
-    stop("The method argument must have empty \"\" elements corresponding to fully observed columns and non-empty
-    elements for those columns which have missing values.")
-
   #find column numbers of partially observed, fully observed variables, and outcome
   if (smtype=="coxph") {
 
@@ -247,6 +243,13 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     if (sum(method[outcomeCol]!=c("",""))>0) stop("The elements of the method argument corresponding to the outcome variables should be empty.")
   }
 
+  #check that methods are given for each partially observed column, and not given for fully observed columns
+  augmethod <- method
+  augmethod[outcomeCol] <- "substMod"
+  if (all.equal(which(augmethod!=""), which(colSums(r)!=n), check.names=FALSE)!=TRUE)
+    stop("The method argument must have empty \"\" elements corresponding to fully observed columns and non-empty
+         elements for those columns which have missing values.")
+
   #fully observed vars are those that are fully observed and are covariates in the substantive model
   fullObsVars <- which((colSums(r)==n) & (colnames(originaldata) %in% smcovnames))
 
@@ -283,7 +286,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
     }
 
     #initial imputations of missing outcomes, if present (using improper imputation)
-    if ((smtype=="lm") | (smtype=="logistic")) {
+    if ((smtype=="lm") | (smtype=="logistic") | (smtype=="poisson")) {
       if (sum(r[,outcomeCol])<n) {
         if (imp==1) {
           print("Imputing missing outcomes using specified substantive model.")
@@ -309,6 +312,13 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% beta
           prob <- expit(outmodxb[imputationNeeded])
           imputations[[imp]][imputationNeeded,outcomeCol] <- rbinom(length(imputationNeeded),1,prob)
+        }
+        else if (smtype=="poisson") {
+          ymod <- glm(as.formula(smformula),family="poisson",imputations[[imp]])
+          beta <- ymod$coef
+          imputations[[imp]][imputationNeeded,outcomeCol] <- 0
+          outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% beta
+          imputations[[imp]][imputationNeeded,outcomeCol] <- rpois(length(imputationNeeded),exp(outmodxb[imputationNeeded]))
         }
       }
     }
