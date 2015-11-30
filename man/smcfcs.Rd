@@ -11,7 +11,8 @@ smcfcs(originaldata, smtype, smformula, method, predictorMatrix = NULL,
 \item{originaldata}{The original data frame with missing values.}
 
 \item{smtype}{A string specifying the type of substantive model. Possible
-values are \code{"lm"}, \code{"logistic"}, \code{"coxph"} and \code{"compet"}.}
+values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"coxph"}
+ and \code{"compet"}.}
 
 \item{smformula}{The formula of the substantive model. For \code{"coxph"} substantive
 models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
@@ -71,12 +72,13 @@ smcfcs imputes missing values of covariates using the Substantive Model Compatib
 Fully Conditional Specification multiple imputation approach proposed by
 Bartlett \emph{et al} 2014 (see references).
 
-Currently imputation is supported for linear regression ("lm"), logistic
-regression ("logistic"), Cox regression for time to event
-data ("coxph"), and Cox models for competing risks data. For the latter, a Cox
-model is assumed for each cause of failure, and the event indicator should be integer
-coded with 0 corresponding to censoring, 1 corresponding to failure from the first
-cause etc.
+Currently imputation is supported for linear regression (\code{"lm"}),
+logistic regression (\code{"logistic"}), Poisson regression
+(\code{"poisson"}), Cox regression for time to event data (\code{"coxph"}),
+and Cox models for competing risks data (\code{"compet"}). For the latter, a
+Cox model is assumed for each cause of failure, and the event indicator
+should be integer coded with 0 corresponding to censoring, 1 corresponding to
+failure from the first cause etc.
 
 The function returns a list. The first element \code{impDataset} of the list is a list of the imputed
 datasets. Models (e.g. the substantive model) can be fitted to each and results
