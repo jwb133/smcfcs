@@ -88,9 +88,10 @@ The second element \code{smCoefIter} is a three dimensional array containing the
 of the substantive model parameters obtained at the end of each iteration of the algorithm.
 The array is indexed by: imputation number, parameter number, iteration.
 
-If the substantive model is linear or logistic regression, `smcfcs` will automatically impute missing
-outcomes, if present, using the specified substantive model. However, even in this case, the
-user should specify "" in the element of method corresponding to the outcome variable.
+If the substantive model is linear, logistic or Poisson regression,
+\code{smcfcs} will automatically impute missing outcomes, if present, using
+the specified substantive model. However, even in this case, the user should
+specify "" in the element of method corresponding to the outcome variable.
 
 The development of this package was supported by a UK Medical Research Council
 Fellowship (MR/K02180X/1). Part of its development took place while the author was
@@ -162,7 +163,7 @@ if (requireNamespace("mitools", quietly = TRUE)) {
 }
 }
 \author{
-Jonathan Bartlett \email{jonathan.bartlett@lshtm.ac.uk} \url{http://www.missingdata.org.uk}
+Jonathan Bartlett \email{jwb133@googlemail.com} \url{http://www.missingdata.org.uk}
 \url{http://thestatsgeek.com}
 }
 \references{
