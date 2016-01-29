@@ -93,6 +93,20 @@ ex_compet <- data.frame(t,d,x1,x2)
 
 devtools::use_data(ex_compet, overwrite=TRUE)
 
+#Poisson regression
+n <- 1000
+x <- rnorm(n)
+z <- 1*(runif(n)<0.5)
+y <- rpois(n, lambda=exp(x-z))
+
+#make some x1 and x2 values missing
+x[runif(n)>(exp(y)/(1+exp(y)))] <- NA
+
+ex_poisson <- data.frame(y,x,z)
+
+devtools::use_data(ex_poisson, overwrite=TRUE)
+
+
 # #covariate measurement error
 # n <- 10000
 # x <- rnorm(n)

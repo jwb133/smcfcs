@@ -141,6 +141,16 @@ if (requireNamespace("mitools", quietly = TRUE)) {
   imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",
                  method=c("","","norm","x^2",""))
 
+  #Poisson regression substantive model
+  imps <- smcfcs(ex_poisson, smtype="poisson", smformula="y~x+z",
+                 method=c("","norm",""))
+  if (requireNamespace("mitools", quietly = TRUE)) {
+    library(mitools)
+    impobj <- imputationList(imps$impDatasets)
+    models <- with(impobj, glm(y~x+z,family=poisson))
+    summary(MIcombine(models))
+  }
+
   #Cox regression substantive model, with only main covariate effects
   if (requireNamespace("survival", quietly = TRUE)) {
     imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",

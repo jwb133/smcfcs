@@ -44,6 +44,21 @@
 #'
 "ex_logisticquad"
 
+#' Simulated example data with count outcome, modelled using Poisson regression
+#'
+#' A dataset containing simulated data where the count outcome depends on two
+#' covariates, x and z, with missing values in x. The substantive model is
+#' Poisson regression.
+#'
+#' @format A data frame with 1000 rows and 3 variables:
+#' \describe{
+#'   \item{y}{Count outcome}
+#'   \item{z}{Fully observed covariate, with linear effect on outcome}
+#'   \item{x}{Partially observed normally distributed covariate, with linear effect on outcome}
+#' }
+#'
+"ex_poisson"
+
 #' Simulated example data with time to event outcome and quadratic covariate effects
 #'
 #' A dataset containing simulated data where a time to event outcome depends quadratically
