@@ -21,7 +21,7 @@ Imports:
     VGAM,
     stats
 Suggests:
-    knitr,
+    rmarkdown,
     mitools
 VignetteBuilder: rmarkdown
 RoxygenNote: 5.0.1
