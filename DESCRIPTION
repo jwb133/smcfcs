@@ -23,5 +23,5 @@ Imports:
 Suggests:
     knitr,
     mitools
-VignetteBuilder: knitr
+VignetteBuilder: rmarkdown
 RoxygenNote: 5.0.1
