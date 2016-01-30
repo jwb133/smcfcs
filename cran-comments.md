@@ -4,4 +4,4 @@
 * win-builder (devel and release)
 
 ## R CMD check results
-There was one warning: Package has a VignetteBuilder field but no prebuilt vignette index.  
+There were no warnings or errors.
