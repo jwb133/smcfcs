@@ -4,4 +4,4 @@
 * win-builder (devel and release)
 
 ## R CMD check results
-There were no warnings or errors.
+There was one warning, regarding the change of maintainer.
