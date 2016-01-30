@@ -22,6 +22,7 @@ Imports:
     stats
 Suggests:
     knitr,
+    rmarkdown,
     mitools
 VignetteBuilder: knitr
 RoxygenNote: 5.0.1
