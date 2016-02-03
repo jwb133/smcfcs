@@ -444,7 +444,8 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           sigmasq <- summary(ymod)$sigma^2
           varcov <- vcov(ymod)
           outcomeModResVar <- (sigmasq*ymod$df) / rchisq(1,ymod$df)
-          outcomeModBeta = beta + chol((outcomeModResVar/sigmasq)*varcov) %*% rnorm(length(beta))
+          covariance <- (outcomeModResVar/sigmasq)*vcov(ymod)
+          outcomeModBeta = beta + MASS::mvrnorm(1, mu=rep(0,ncol(covariance)), Sigma=covariance)
           if (noisy==TRUE) {
             print(summary(ymod))
           }
@@ -732,7 +733,8 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             sigmasq <- summary(ymod)$sigma^2
             varcov <- vcov(ymod)
             outcomeModResVar <- (sigmasq*ymod$df) / rchisq(1,ymod$df)
-            outcomeModBeta = beta + chol((outcomeModResVar/sigmasq)*varcov) %*% rnorm(length(beta))
+            covariance <- (outcomeModResVar/sigmasq)*vcov(ymod)
+            outcomeModBeta = beta + MASS::mvrnorm(1, mu=rep(0,ncol(covariance)), Sigma=covariance)
             outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
             imputations[[imp]][imputationNeeded,outcomeCol] <- rnorm(length(imputationNeeded),outmodxb[imputationNeeded], sigmasq^0.5)
           }
