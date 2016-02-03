@@ -1,7 +1,7 @@
 Package: smcfcs
 Title: Multiple Imputation of Covariates by Substantive Model Compatible Fully
     Conditional Specification
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: person("Jonathan", "Bartlett", email = "jwb133@googlemail.com",
     role = c("aut", "cre"))
 URL: http://www.missingdata.org.uk, http://thestatsgeek.com

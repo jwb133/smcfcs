@@ -1,3 +1,5 @@
+Version 1.2.1 - fixing bug in code for linear regression substantive models
+
 Version 1.2.0 - functionality added to handle Poisson substantive models
 
 Version 1.1.1 - a number of small changes, plus critical bug fix for linear substantive models with categorical missing covariates. The bug which has been fixed meant that if the substantive model was linear regression, imputation of categorical covariates was done incorrectly.
