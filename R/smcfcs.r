@@ -251,19 +251,35 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   #partial vars are those variables for which an imputation method has been specified among the available regression types
   partialVars <- which((method=="norm") | (method=="logreg") | (method=="poisson") | (method=="podds") | (method=="mlogit"))
 
-  if (length(outcomeCol)==1) {
-    if (method[outcomeCol]!="") stop("The element of the method argument corresponding to the outcome variable should be empty.")
-  }
-  else {
-    if (sum(method[outcomeCol]!=c("",""))>0) stop("The elements of the method argument corresponding to the outcome variables should be empty.")
-  }
+  if (length(partialVars)==0) stop("You have not specified any valid imputation methods in the method argument.")
 
-  nonOutcomeCols <- 1:ncol(originaldata)
-  nonOutcomeCols <- nonOutcomeCols[nonOutcomeCols!=outcomeCol]
   #check that methods are given for each partially observed column, and not given for fully observed columns
-  if (all.equal(which(method[nonOutcomeCols]!=""), which(colSums(r[,nonOutcomeCols])!=n), check.names=FALSE)==FALSE)
-    stop("The method argument must have empty \"\" elements corresponding to fully observed columns and non-empty
-         elements for those columns which have missing values.")
+  for (colnum in 1:ncol(originaldata)) {
+    if (method[colnum]!="") {
+      #an imputation method has been specified
+      if (colnum %in% outcomeCol) {
+        stop(paste("An imputation method has been specified for ",colnames(originaldata)[colnum],
+        ". Elements of the method argument corresponding to the outcome variable(s) should be empty.",sep=""))
+      }
+      else {
+        if (sum(r[,colnum])==n) {
+          stop(paste("An imputation method has been specified for ",colnames(originaldata)[colnum],
+          ", but it appears to be fully observed.",sep=""))
+        }
+      }
+    }
+    else {
+      #no imputation method has been specified
+      if (sum(r[,colnum])<n) {
+        #some values are missing
+        if ((colnum %in% outcomeCol)==FALSE) {
+          stop(paste("Variable ",colnames(originaldata), " does not have an imputation method specified,
+                     yet appears to have missing values.",sep=""))
+        }
+      }
+    }
+
+  }
 
   #fully observed vars are those that are fully observed and are covariates in the substantive model
   fullObsVars <- which((colSums(r)==n) & (colnames(originaldata) %in% smcovnames))
