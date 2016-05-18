@@ -5,5 +5,3 @@ To install the latest GitHub development version, run:
 install.packages("devtools")
 
 devtools::install_github("jwb133/smcfcs")
-
-NOTE: the latest development version available here may not necessarily be usable/stable. For the latest stable version, please download from CRAN
