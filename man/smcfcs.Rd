@@ -64,7 +64,7 @@ A list containing:
 values. The matrix is indexed by [imputation,parameter number,iteration]
 }
 \description{
-Multiply imputes missing covariate values using substantive model compatible
+Multiple imputes missing covariate values using substantive model compatible
 fully conditional specification.
 }
 \details{

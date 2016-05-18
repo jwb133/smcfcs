@@ -94,7 +94,7 @@
 
 #' Substantive model compatible fully conditional specification imputation of covariates.
 #'
-#' Multiply imputes missing covariate values using substantive model compatible
+#' Multiple imputes missing covariate values using substantive model compatible
 #' fully conditional specification.
 #'
 #' smcfcs imputes missing values of covariates using the Substantive Model Compatible
@@ -190,34 +190,6 @@
 
 #' @export
 smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
-  #call core  smcfcs function, passing through arguments
-  smcfcs.core(originaldata,smtype,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
-}
-
-#' Substantive model compatible fully conditional specification imputation of covariates for case cohort studies
-#'
-#' Multiply imputes missing covariate values using substantive model compatible
-#' fully conditional specification for case cohort studies.
-#'
-#' This version of \code{smcfcs} is designed for use with case cohort studies but where the analyst does not wish to,
-#' or cannot (due to not having the necessary data) impute the full cohort. The function's arguments are the same
-#' as for the main smcfcs function, except for \code{smformula}, \code{in.subco}, and \code{sampfrac} - see above
-#' for details on how these should be specified.
-#'
-#' @param originaldata The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)
-#' @param smformula An expression of the form "Surv(entertime,t,d)", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
-#' @param in.subco A 0/1 variable which indicates whether an individual is in the subcohort (1) ior not (0)
-#' @param sampfrac The proportion of individuals from the underlying full cohort who are in the subcohort
-#'
-#' @inheritParams smcfcs
-#' @export
-smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
-  smcfcs.core(originaldata,smtype="casecohort",smformula,method,predictorMatrix,m,numit,rjlimit,noisy,sampfrac=sampfrac,in.subco=in.subco)
-}
-
-#this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
-smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,
-                       sampfrac=NULL,in.subco=NULL) {
 
   stopifnot(is.data.frame(originaldata))
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
@@ -226,17 +198,6 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
 
   #create matrix of response indicators
   r <- 1*(is.na(originaldata)==0)
-
-  if ((smtype %in% c("lm", "logistic", "poisson", "coxph", "compet", "casecohort"))==FALSE)
-      stop(paste("Substantive model type ",smtype," not recognised.",sep=""))
-
-  if (smtype=="casecohort") {
-    subcoCol<-(1:dim(originaldata)[2])[colnames(originaldata) %in% in.subco]
-    #assign a weight of 1 to individuals in the subcohort and a very tiny weight to those outside the subcohort.
-    #Really we want to omit those outside the subcohort from the later analysis where the weights are used - this
-    #assignment of a tiny weight is just a trick.
-    subco.weight<-ifelse(originaldata[,subcoCol]==1,1,0.00000000001)
-  }
 
   #find column numbers of partially observed, fully observed variables, and outcome
   if (smtype=="coxph") {
@@ -270,20 +231,6 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
       linpred[[cause]] <- as.formula(smformula[[cause]])
     }
     rm(nullMod)
-  }
-  else if (smtype=="casecohort") {
-    entertimeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
-    timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
-    dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[4]])]
-    outcomeCol <- c(entertimeCol,timeCol, dCol)
-    d <- originaldata[,dCol]
-
-    nullMod <- survival::coxph(Surv(originaldata[,entertimeCol],originaldata[,timeCol],originaldata[,dCol],type="counting")~1)
-    basehaz <- basehaz(nullMod)
-    H0indices <- match(originaldata[,timeCol], basehaz[,2])
-    rm(nullMod)
-
-    smformula2<-paste(smformula,"+cluster(id)",sep="")
   }
   else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
@@ -555,19 +502,6 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             }
           }
         }
-        else if (smtype=="casecohort") {
-          ymod <- survival::coxph(as.formula(smformula2), imputations[[imp]])
-          outcomeModBeta <- modPostDraw(ymod)
-          imputations.temp <- imputations[[imp]]
-          #ymod2 <- survival::coxph(as.formula(smformula2), imputations.temp,weights=subco.weight) #RUTH
-          ymod2 <- survival::coxph(as.formula(smformula2), imputations.temp) #RUTH
-          ymod2$coefficients <- outcomeModBeta #RUTH
-          basehaz <- basehaz(ymod2, centered=FALSE)[,1]
-          H0 <- basehaz[H0indices]*sampfrac #RUTH
-          if (noisy==TRUE) {
-            print(summary(ymod))
-          }
-        }
 
         if ((imp==1) & (cyclenum==1) & (var==1)) {
           if (smtype=="compet") {
@@ -643,7 +577,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               outcomeDens <- dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
             }
-            else if ((smtype=="coxph") | (smtype=="casecohort")) {
+            else if (smtype=="coxph") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
               outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
               outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))* (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
@@ -713,7 +647,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob = dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
               reject = 1*(uDraw>prob)
             }
-            else if ((smtype=="coxph") | (smtype=="casecohort")) {
+            else if (smtype=="coxph") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
               outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
               s_t = exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
@@ -774,7 +708,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob = dpois(tempData[,outcomeCol], exp(outmodxb))
               reject = 1*(uDraw>prob)
             }
-            else if ((smtype=="coxph") | (smtype=="casecohort")) {
+            else if (smtype=="coxph") {
               outmodxb <-  model.matrix(as.formula(smformula),tempData)
               outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
               s_t = exp(-H0[i]* exp(outmodxb))
