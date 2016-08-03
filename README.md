@@ -1,4 +1,5 @@
 [![](http://cranlogs.r-pkg.org/badges/grand-total/smcfcs)](http://cran.rstudio.com/web/packages/smcfcs/index.html)
+[![](http://cranlogs.r-pkg.org/badges/smcfcs)](http://cran.rstudio.com/web/packages/smcfcs/index.html)
 
 smcfcs is an R package implementing Substantive Model Compatibly Fully Conditional Specification Multiple Imputation. Examples and further details are given in the package documentation and vignette.
 
