@@ -23,6 +23,7 @@ Imports:
 Suggests:
     knitr,
     rmarkdown,
-    mitools
+    mitools,
+    testthat
 VignetteBuilder: knitr
 RoxygenNote: 5.0.1
