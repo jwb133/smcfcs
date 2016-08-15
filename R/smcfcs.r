@@ -94,7 +94,7 @@
 
 #' Substantive model compatible fully conditional specification imputation of covariates.
 #'
-#' Multiple imputes missing covariate values using substantive model compatible
+#' Multiply imputes missing covariate values using substantive model compatible
 #' fully conditional specification.
 #'
 #' smcfcs imputes missing values of covariates using the Substantive Model Compatible
@@ -190,7 +190,36 @@
 
 #' @export
 smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
+  smcfcs.core(originaldata,smtype,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
+}
 
+
+#' Multiple imputation for confounders in propensity score analysis.
+#'
+#' Multiply imputes missing covariate values using substantive model compatible
+#' fully conditional specification.
+#'
+#' @param omtype A string specifying the type of outcome model. Possible
+#' values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"coxph"}
+#'  and \code{"compet"}.
+#' @param omformula The formula of the outcome model. For \code{"coxph"} outcome
+#' models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
+#' outcome models, a list should be passed consisting of the Cox models
+#' for each cause of failure.
+#' @param psformula The formula for the propensity score model.
+#'
+#' \code{mips} imputes missing values in confounders prior to propensity score analysis.
+
+#' @export
+mips <- function(originaldata,omtype,omformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,psformula) {
+  if (missing(psformula)) {
+    stop("You must specify a propensity score model formula")
+  }
+  smcfcs.core(originaldata,omtype,omformula,method,predictorMatrix,m,numit,rjlimit,noisy,psformula)
+}
+
+smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,
+                        psformula=NULL) {
   stopifnot(is.data.frame(originaldata))
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
 
@@ -234,6 +263,12 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   }
   else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
+  }
+
+  if (is.null(psformula)==F) {
+    exposureCol <- which(colnames(originaldata)==as.formula(psformula)[[2]])
+    print("Imputation for propensity score analysis")
+    print(paste("Exposure variable: ",as.formula(psformula)[[2]], sep=""))
   }
 
   if (smtype=="compet") {
@@ -290,7 +325,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
   print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol],collapse=',')))
   print(paste("Passive variables:", paste(colnames(originaldata)[passiveVars],collapse=',')))
   print(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars],collapse=',')))
-  print(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
+  print(paste("Fully obs. substantive/outcome model variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
 
   imputations <- list()
   for (imp in 1:m) {
@@ -366,6 +401,10 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
         targetCol <- partialVars[var]
         if (is.null(predictorMatrix)) {
           predictorCols <- c(partialVars[! partialVars %in% targetCol], fullObsVars)
+          if (is.null(psformula)==F) {
+            #remove exposure variable from predictors
+            predictorCols <- predictorCols[! exposureCol %in% predictorCols]
+          }
         }
         else {
           predictorCols <- which(predictorMatrix[targetCol,]==1)
@@ -373,12 +412,11 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           predictorCols <- predictorCols[! predictorCols %in% outcomeCol]
         }
         if ((imp==1) & (cyclenum==1)) {
-          #if (method[targetCol]=="latnorm") {
-            #print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[c(predictorCols,which(errorProneMatrix[targetCol,]==1))],collapse=',')," plus outcome",collapse=','))
-          #}
-          #else {
+          if (is.null(psformula)==F) {
+            print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[predictorCols],collapse=','), colnames(imputations[[imp]])[exposureCol]," plus outcome",collapse=','))
+          } else {
             print(paste("Imputing: ",colnames(imputations[[imp]])[targetCol]," using ",paste(colnames(imputations[[imp]])[predictorCols],collapse=',')," plus outcome",collapse=','))
-          #}
+          }
         }
         if (length(predictorCols)>0) {
           xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse="+"),sep=""))
@@ -530,6 +568,15 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
           }
         }
 
+        #if we are doing mips, fit propensity score model
+        if (is.null(psformula)==F) {
+          psmod <- glm(as.formula(psformula),family="binomial",imputations[[imp]])
+          psModBeta = modPostDraw(psmod)
+          if (noisy==TRUE) {
+            print(summary(psmod))
+          }
+        }
+
         #impute x, either directly where possibly, or using rejection sampling otherwise
         imputationNeeded <- (1:n)[r[,targetCol]==0]
 
@@ -590,6 +637,12 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
                 outcomeDens <- outcomeDens * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded]))* (exp(outmodxb[imputationNeeded])^(d[imputationNeeded]==cause))
               }
             }
+            if (is.null(psformula)==F) {
+              psmodxb <-  model.matrix(as.formula(psformula),imputations[[imp]]) %*% psModBeta
+              prob <- expit(psmodxb[imputationNeeded])
+              psDens <- prob*imputations[[imp]][imputationNeeded,exposureCol] + (1-prob)*(1-imputations[[imp]][imputationNeeded,exposureCol])
+              outcomeDens <- outcomeDens * psDens
+            }
             outcomeDensCovDens[,xMisVal] <- outcomeDens * fittedMean[imputationNeeded,xMisVal]
           }
           directImpProbs = outcomeDensCovDens / rowSums(outcomeDensCovDens)
@@ -629,40 +682,53 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             #update passive variables
             imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
 
+            #if mips, calculate probability function for ps model
+            if (is.null(psformula)==F) {
+              psmodxb <-  model.matrix(as.formula(psformula),imputations[[imp]]) %*% psModBeta
+              prob <- expit(psmodxb)
+              psDens <- prob*imputations[[imp]][,exposureCol] + (1-prob)*(1-imputations[[imp]][,exposureCol])
+            } else {
+              psDens <- rep(1,n)
+            }
+
             #accept/reject
             uDraw <- runif(length(imputationNeeded))
             if (smtype=="lm") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               deviation <- imputations[[imp]][imputationNeeded,outcomeCol] - outmodxb[imputationNeeded]
-              reject = 1*(log(uDraw) > -(deviation^2) / (2*array(outcomeModResVar,dim=c(length(imputationNeeded),1))))
+              reject <- 1*(log(uDraw) > log(psDens[imputationNeeded])-(deviation^2) / (2*array(outcomeModResVar,dim=c(length(imputationNeeded),1))))
             }
             else if (smtype=="logistic") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
-              prob = expit(outmodxb[imputationNeeded])
-              prob = prob*imputations[[imp]][imputationNeeded,outcomeCol] + (1-prob)*(1-imputations[[imp]][imputationNeeded,outcomeCol])
-              reject = 1*(uDraw>prob)
+              prob <- expit(outmodxb[imputationNeeded])
+              prob <- prob*imputations[[imp]][imputationNeeded,outcomeCol] + (1-prob)*(1-imputations[[imp]][imputationNeeded,outcomeCol])
+              prob <- prob*psDens[imputationNeeded]
+              reject <- 1*(uDraw>prob)
             }
             else if (smtype=="poisson") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
-              prob = dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
-              reject = 1*(uDraw>prob)
+              prob <- dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
+              prob <- prob*psDens[imputationNeeded]
+              reject <- 1*(uDraw>prob)
             }
             else if (smtype=="coxph") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
               outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
-              s_t = exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
-              prob = exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded]* exp(outmodxb[imputationNeeded])) ) * H0[imputationNeeded]
-              prob = d[imputationNeeded]*prob + (1-d[imputationNeeded])*s_t
-              reject = 1*(uDraw > prob )
+              s_t <- exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
+              prob <- exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded]* exp(outmodxb[imputationNeeded])) ) * H0[imputationNeeded]
+              prob <- d[imputationNeeded]*prob + (1-d[imputationNeeded])*s_t
+              prob <- prob*psDens[imputationNeeded]
+              reject <- 1*(uDraw > prob )
             }
             else if (smtype=="compet") {
               prob <- rep(1,length(imputationNeeded))
               for (cause in 1:numCauses) {
                 outmodxb <-  model.matrix(linpred[[cause]],imputations[[imp]])
                 outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
-                prob = prob * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded]))* (H0[[cause]][imputationNeeded]*exp(1+outmodxb[imputationNeeded]))^(d[imputationNeeded]==cause)
+                prob <- prob * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded]))* (H0[[cause]][imputationNeeded]*exp(1+outmodxb[imputationNeeded]))^(d[imputationNeeded]==cause)
               }
-              reject = 1*(uDraw > prob )
+              prob <- prob*psDens[imputationNeeded]
+              reject <- 1*(uDraw > prob )
             }
             imputationNeeded <- imputationNeeded[reject==1]
 
@@ -690,40 +756,53 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
             #passively impute
             tempData <- updatePassiveVars(tempData, method, passiveVars)
 
+            #if mips, calculate probability function for ps model
+            if (is.null(psformula)==F) {
+              psmodxb <-  model.matrix(as.formula(psformula),tempData) %*% psModBeta
+              prob <- expit(psmodxb)
+              psDens <- prob*tempData[,exposureCol] + (1-prob)*(1-tempData[,exposureCol])
+            } else {
+              psDens <- rep(1,rjlimit)
+            }
+
             #accept reject
             uDraw <- runif(rjlimit)
             if (smtype=="lm") {
               outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
               deviation <- tempData[,outcomeCol] - outmodxb
-              reject = 1*(log(uDraw) > -(deviation^2) / (2*array(outcomeModResVar,dim=c(rjlimit,1))))
+              reject <- 1*(log(uDraw) > log(psDens)-(deviation^2) / (2*array(outcomeModResVar,dim=c(rjlimit,1))))
             }
             else if (smtype=="logistic") {
               outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
-              prob = expit(outmodxb)
-              prob = prob*tempData[,outcomeCol] + (1-prob)*(1-tempData[,outcomeCol])
-              reject = 1*(uDraw>prob)
+              prob <- expit(outmodxb)
+              prob <- prob*tempData[,outcomeCol] + (1-prob)*(1-tempData[,outcomeCol])
+              prob <- psDens*prob
+              reject <- 1*(uDraw>prob)
             }
             else if (smtype=="poisson") {
               outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
-              prob = dpois(tempData[,outcomeCol], exp(outmodxb))
-              reject = 1*(uDraw>prob)
+              prob <- dpois(tempData[,outcomeCol], exp(outmodxb))
+              prob <- psDens*prob
+              reject <- 1*(uDraw>prob)
             }
             else if (smtype=="coxph") {
               outmodxb <-  model.matrix(as.formula(smformula),tempData)
               outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
-              s_t = exp(-H0[i]* exp(outmodxb))
-              prob = exp(1 + outmodxb - (H0[i]* exp(outmodxb)) ) * H0[i]
-              prob = d[i]*prob + (1-d[i])*s_t
-              reject = 1*(uDraw > prob )
+              s_t <- exp(-H0[i]* exp(outmodxb))
+              prob <- exp(1 + outmodxb - (H0[i]* exp(outmodxb)) ) * H0[i]
+              prob <- d[i]*prob + (1-d[i])*s_t
+              prob <- psDens*prob
+              reject <- 1*(uDraw > prob )
             }
             else if (smtype=="compet") {
               prob <- rep(1,rjlimit)
               for (cause in 1:numCauses) {
                 outmodxb <-  model.matrix(linpred[[cause]],tempData)
                 outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
-                prob = prob * exp(-H0[[cause]][i] * exp(outmodxb))* (H0[[cause]][i]*exp(1+outmodxb))^(d[i]==cause)
+                prob <- prob * exp(-H0[[cause]][i] * exp(outmodxb))* (H0[[cause]][i]*exp(1+outmodxb))^(d[i]==cause)
               }
-              reject = 1*(uDraw > prob )
+              prob <- psDens*prob
+              reject <- 1*(uDraw > prob )
             }
 
             if (sum(reject)<rjlimit) {
