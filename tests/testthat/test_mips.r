@@ -17,6 +17,7 @@ test_that("mips fails if no psformula is supplied", {
 })
 
 test_that("mips gives approximately unbiased estimates when it should", {
+  testthat::skip_on_cran()
   expect_equal({
     n <- 10000
     x <- rnorm(n)
