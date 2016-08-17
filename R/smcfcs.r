@@ -210,6 +210,8 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #'
 #' \code{mips} imputes missing values in confounders prior to propensity score analysis.
 #'
+#' @return A list containing the imputed datasets.
+#'
 #' @example data-raw/mips-examples.r
 
 #' @export
@@ -852,7 +854,11 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     warning(paste("Rejection sampling failed ",rjFailCount," times (across all variables, iterations, and imputations). You may want to increase the rejection sampling limit.",sep=""))
   }
 
-  list(impDatasets=imputations, smCoefIter=smCoefIter)
+  if (is.null(psformula)==F) {
+    list(impDatasets=imputations, smCoefIter=smCoefIter)
+  } else {
+    imputations
+  }
 
 }
 
