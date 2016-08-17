@@ -34,9 +34,9 @@ covariates will be used as predictors in the imputation models
 0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
 as a covariate when imputing the i'th variable. If not specified, when
 imputing a given variable, the imputation model covariates are the other
-covariates of the substantive model which are partially observed
+covariates of the substantive/outcome model which are partially observed
 (but which are not passively imputed) and any fully observed covariates (if present)
-in the substantive model. Note that the outcome variable is implicitly conditioned
+in the substantive/outcome model. Note that the outcome variable is implicitly conditioned
 on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
 in the predictor matrix.}
 

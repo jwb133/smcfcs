@@ -153,9 +153,9 @@
 #' 0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
 #' as a covariate when imputing the i'th variable. If not specified, when
 #' imputing a given variable, the imputation model covariates are the other
-#' covariates of the substantive model which are partially observed
+#' covariates of the substantive/outcome model which are partially observed
 #' (but which are not passively imputed) and any fully observed covariates (if present)
-#' in the substantive model. Note that the outcome variable is implicitly conditioned
+#' in the substantive/outcome model. Note that the outcome variable is implicitly conditioned
 #' on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
 #' in the predictor matrix.
 #' @param m The number of imputed datasets to generate. The default is 5.
@@ -191,35 +191,6 @@
 #' @export
 smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   smcfcs.core(originaldata,smtype,smformula,method,predictorMatrix,m,numit,rjlimit,noisy)
-}
-
-
-#' Multiple imputation for confounders in propensity score analysis.
-#'
-#' Multiply imputes missing covariate values using substantive model compatible
-#' fully conditional specification.
-#'
-#' @param omtype A string specifying the type of outcome model. Possible
-#' values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"coxph"}
-#'  and \code{"compet"}.
-#' @param omformula The formula of the outcome model. For \code{"coxph"} outcome
-#' models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
-#' outcome models, a list should be passed consisting of the Cox models
-#' for each cause of failure.
-#' @param psformula The model formula for the propensity score model.
-#'
-#' \code{mips} imputes missing values in confounders prior to propensity score analysis.
-#'
-#' @return A list containing the imputed datasets.
-#'
-#' @example data-raw/mips-examples.r
-
-#' @export
-mips <- function(originaldata,omtype,omformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,psformula) {
-  if (missing(psformula)) {
-    stop("You must specify a propensity score model formula")
-  }
-  smcfcs.core(originaldata,omtype,omformula,method,predictorMatrix,m,numit,rjlimit,noisy,psformula)
 }
 
 smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,
@@ -581,6 +552,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           psmod <- glm(as.formula(psformula),family="binomial",imputations[[imp]])
           psModBeta = modPostDraw(psmod)
           if (noisy==TRUE) {
+            print("Propensity score model fit")
             print(summary(psmod))
           }
         }
@@ -859,9 +831,9 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
   }
 
   if (is.null(psformula)==F) {
-    list(impDatasets=imputations, smCoefIter=smCoefIter)
-  } else {
     imputations
+  } else {
+    list(impDatasets=imputations, smCoefIter=smCoefIter)
   }
 
 }
