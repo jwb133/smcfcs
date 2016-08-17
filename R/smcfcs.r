@@ -329,7 +329,11 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
   print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol],collapse=',')))
   print(paste("Passive variables:", paste(colnames(originaldata)[passiveVars],collapse=',')))
   print(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars],collapse=',')))
-  print(paste("Fully obs. substantive/outcome model variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
+  if (is.null(psformula)==F) {
+    print(paste("Fully obs. outcome model variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
+  } else {
+    print(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars],collapse=',')))
+  }
 
   imputations <- list()
   for (imp in 1:m) {
