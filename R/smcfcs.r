@@ -206,9 +206,11 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #' models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 #' outcome models, a list should be passed consisting of the Cox models
 #' for each cause of failure.
-#' @param psformula The formula for the propensity score model.
+#' @param psformula The model formula for the propensity score model.
 #'
 #' \code{mips} imputes missing values in confounders prior to propensity score analysis.
+#'
+#' @example data-raw/mips-examples.r
 
 #' @export
 mips <- function(originaldata,omtype,omformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,psformula) {

@@ -5,7 +5,7 @@
 \title{Multiple imputation for confounders in propensity score analysis.}
 \usage{
 mips(originaldata, omtype, omformula, method, predictorMatrix = NULL, m = 5,
-  numit = 10, rjlimit = 1000, noisy = FALSE)
+  numit = 10, rjlimit = 1000, noisy = FALSE, psformula)
 }
 \arguments{
 \item{omtype}{A string specifying the type of outcome model. Possible
@@ -17,12 +17,32 @@ models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"c
 outcome models, a list should be passed consisting of the Cox models
 for each cause of failure.}
 
-\item{psformula}{The formula for the propensity score model.
+\item{psformula}{The model formula for the propensity score model.
 
 \code{mips} imputes missing values in confounders prior to propensity score analysis.}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible
 fully conditional specification.
+}
+\examples{
+#set random number seed to make results reproducible
+set.seed(123)
+
+#simulate a dataset
+n <- 200
+x <- rnorm(n)
+psxb <- x
+pspr <- exp(psxb)/(1+exp(psxb))
+z <- 1*(runif(n)<pspr)
+y <- x + z + rnorm(n)
+data <- data.frame(x,z,y)
+
+#make some x values missing completely at random
+data$x[runif(n)<0.5] <- NA
+
+#generate multiple imputations using mips
+imps <- mips(data, omtype="lm", omformula="y~x+z",
+             method=c("norm","",""),psformula="z~x",m=5)
 }
 
