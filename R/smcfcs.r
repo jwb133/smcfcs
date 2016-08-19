@@ -382,7 +382,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           predictorCols <- c(partialVars[! partialVars %in% targetCol], fullObsVars)
           if (is.null(psformula)==F) {
             #remove exposure variable from predictors
-            predictorCols <- predictorCols[! exposureCol %in% predictorCols]
+            predictorCols <- predictorCols[! (predictorCols %in% exposureCol)]
           }
         }
         else {
