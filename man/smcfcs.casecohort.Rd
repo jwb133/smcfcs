@@ -15,7 +15,7 @@ smcfcs.casecohort(originaldata, smformula, sampfrac, in.subco, method,
 
 \item{sampfrac}{The proportion of individuals from the underlying full cohort who are in the subcohort}
 
-\item{in.subco}{A 0/1 variable which indicates whether an individual is in the subcohort (1) ior not (0)}
+\item{in.subco}{The name of a column in the dataset with 0/1s that indicates whether the subject is in the subcohort}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be

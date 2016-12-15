@@ -206,7 +206,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #'
 #' @param originaldata The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)
 #' @param smformula An expression of the form "Surv(entertime,t,d)", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
-#' @param in.subco A 0/1 variable which indicates whether an individual is in the subcohort (1) ior not (0)
+#' @param in.subco The name of a column in the dataset with 0/1s that indicates whether the subject is in the subcohort
 #' @param sampfrac The proportion of individuals from the underlying full cohort who are in the subcohort
 #'
 #' @inheritParams smcfcs
@@ -217,7 +217,9 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 
 #this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
 smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,
-                       sampfrac=NULL,in.subco=NULL) {
+                       ...) {
+  #get extra arguments passed in ...
+  extraArgs <- list(...)
 
   stopifnot(is.data.frame(originaldata))
   if (ncol(originaldata)!=length(method)) stop("Method argument must have the same length as the number of columns in the data frame.")
@@ -229,14 +231,6 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
 
   if ((smtype %in% c("lm", "logistic", "poisson", "coxph", "compet", "casecohort"))==FALSE)
       stop(paste("Substantive model type ",smtype," not recognised.",sep=""))
-
-  if (smtype=="casecohort") {
-    subcoCol<-(1:dim(originaldata)[2])[colnames(originaldata) %in% in.subco]
-    #assign a weight of 1 to individuals in the subcohort and a very tiny weight to those outside the subcohort.
-    #Really we want to omit those outside the subcohort from the later analysis where the weights are used - this
-    #assignment of a tiny weight is just a trick.
-    subco.weight<-ifelse(originaldata[,subcoCol]==1,1,0.00000000001)
-  }
 
   #find column numbers of partially observed, fully observed variables, and outcome
   if (smtype=="coxph") {
@@ -250,8 +244,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     basehaz <- survival::basehaz(nullMod)
     H0indices <- match(originaldata[,timeCol], basehaz[,2])
     rm(nullMod)
-  }
-  else if (smtype=="compet") {
+  } else if (smtype=="compet") {
 
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[3]][[2]])]
@@ -270,8 +263,15 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
       linpred[[cause]] <- as.formula(smformula[[cause]])
     }
     rm(nullMod)
-  }
-  else if (smtype=="casecohort") {
+  } else if (smtype=="casecohort") {
+    subcoCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% extraArgs$in.subco]
+    #subcoMembers is a vector of row numbers of those in the subcohort
+    subcoMembers <- which(originaldata[,subcoCol]==1)
+    #assign a weight of 1 to individuals in the subcohort and a very tiny weight to those outside the subcohort.
+    #Really we want to omit those outside the subcohort from the later analysis where the weights are used - this
+    #assignment of a tiny weight is just a trick.
+    subco.weight<-ifelse(originaldata[,subcoCol]==1,1,0.00000000001)
+
     entertimeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[4]])]
@@ -284,8 +284,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     rm(nullMod)
 
     smformula2<-paste(smformula,"+cluster(id)",sep="")
-  }
-  else {
+  } else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
   }
 
@@ -441,7 +440,11 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
         }
         if ((method[targetCol]=="norm") | (method[targetCol]=="latnorm")) {
           #estimate parameters of covariate model
-          xmod <- lm(xmodformula, data=imputations[[imp]])
+          if (smtype=="casecohort") {
+            xmod <- lm(xmodformula, data=imputations[[imp]][subcoMembers,])
+          } else {
+            xmod <- lm(xmodformula, data=imputations[[imp]])
+          }
           #take draw from posterior of covariate model parameters
           beta <- xmod$coef
           sigmasq <- summary(xmod)$sigma^2
@@ -449,7 +452,11 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           covariance <- (newsigmasq/sigmasq)*vcov(xmod)
           newbeta = beta + MASS::mvrnorm(1, mu=rep(0,ncol(covariance)), Sigma=covariance)
           #calculate fitted values
-          xfitted <- model.matrix(xmod) %*% newbeta
+          if (smtype=="casecohort") {
+            xfitted <- model.matrix(xmodformula, data=imputations[[imp]]) %*% newbeta
+          } else {
+            xfitted <- model.matrix(xmod) %*% newbeta
+          }
         }
         else if (method[targetCol]=="logreg") {
           xmod <- glm(xmodformula, family="binomial",data=imputations[[imp]])
@@ -558,12 +565,21 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
         else if (smtype=="casecohort") {
           ymod <- survival::coxph(as.formula(smformula2), imputations[[imp]])
           outcomeModBeta <- modPostDraw(ymod)
-          imputations.temp <- imputations[[imp]]
-          #ymod2 <- survival::coxph(as.formula(smformula2), imputations.temp,weights=subco.weight) #RUTH
-          ymod2 <- survival::coxph(as.formula(smformula2), imputations.temp) #RUTH
-          ymod2$coefficients <- outcomeModBeta #RUTH
+          ymod2 <- survival::coxph(as.formula(smformula2), imputations[[imp]],weights=subco.weight)
+          ymod2$coefficients <- outcomeModBeta
           basehaz <- basehaz(ymod2, centered=FALSE)[,1]
-          H0 <- basehaz[H0indices]*sampfrac #RUTH
+          #this is the subcohort indicator for unique ordered event times, which corresponds to basehaz$time
+          subco.ind.ordert <- originaldata[,subcoCol][order(originaldata[,timeCol])][duplicated(originaldata[,timeCol][order(originaldata[,timeCol])])==0]
+          #this is the event indicator for unique ordered event times, which corresponds to basehaz$time
+          d.ind.ordert <- originaldata[,dCol][order(originaldata[,timeCol])][duplicated(originaldata[,timeCol][order(originaldata[,timeCol])])==0]
+          basehaz <- ifelse(subco.ind.ordert==1 & d.ind.ordert==1,basehaz,NA)
+          #now use locf to replace the NAs
+          basehaz <- zoo::na.locf(basehaz,na.rm=F)
+          #replace the leading NAs with 0
+          basehaz <- ifelse(is.na(basehaz)==1,0,basehaz)
+          #basehaz gives the baseline hazards at unique ordered event/censoring times
+          #these now need to be assigned to people in the order corresponding to originaldata
+          H0 <- basehaz[H0indices]*extraArgs$sampfrac
           if (noisy==TRUE) {
             print(summary(ymod))
           }
