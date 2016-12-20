@@ -5,18 +5,21 @@
 \title{Substantive model compatible fully conditional specification imputation of covariates for nested case control
 studies}
 \usage{
-smcfcs.nestedcc(originaldata, smformula, sampfrac, in.subco, method,
+smcfcs.nestedcc(originaldata, smformula, set, substudy, cc, id, method,
   predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000,
   noisy = FALSE)
 }
 \arguments{
-\item{originaldata}{The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)}
+\item{originaldata}{The original data frame with missing values.}
 
-\item{smformula}{An expression of the form "Surv(entertime,t,d)", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]}
+\item{smformula}{The formula of the substantive model. For \code{"coxph"} substantive
+models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
+substantive models, a list should be passed consisting of the Cox models
+for each cause of failure (see example).}
 
-\item{sampfrac}{The proportion of individuals from the underlying full cohort who are in the subcohort}
+\item{set}{variable identifying matched sets in nested case-control study}
 
-\item{in.subco}{The name of a column in the dataset with 0/1s that indicates whether the subject is in the subcohort}
+\item{substudy}{variable which is an indicator of who is in the sub-study}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
@@ -53,6 +56,8 @@ increase the \code{rjlimit} until the warning does not appear.}
 
 \item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
 be useful for debugging or checking that models being used are as desired.}
+
+\item{case}{variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible

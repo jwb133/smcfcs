@@ -686,14 +686,14 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
-              outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
+              outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))* (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
             }
             else if (smtype=="compet") {
               outcomeDens <- rep(1,length(imputationNeeded))
               for (cause in 1:numCauses) {
                 outmodxb <-  model.matrix(linpred[[cause]],imputations[[imp]])
-                outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
+                outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
                 outcomeDens <- outcomeDens * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded]))* (exp(outmodxb[imputationNeeded])^(d[imputationNeeded]==cause))
               }
             }
@@ -756,9 +756,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
-              print(dim(outmodxb[,2:dim(outmodxb)[2]]))
-              print(dim(outcomeModBeta))
-              outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
+              outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               s_t = exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
               prob = exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded]* exp(outmodxb[imputationNeeded])) ) * H0[imputationNeeded]
               prob = d[imputationNeeded]*prob + (1-d[imputationNeeded])*s_t
@@ -768,7 +766,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob <- rep(1,length(imputationNeeded))
               for (cause in 1:numCauses) {
                 outmodxb <-  model.matrix(linpred[[cause]],imputations[[imp]])
-                outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
+                outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
                 prob = prob * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded]))* (H0[[cause]][imputationNeeded]*exp(1+outmodxb[imputationNeeded]))^(d[imputationNeeded]==cause)
               }
               reject = 1*(uDraw > prob )
@@ -819,7 +817,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),tempData)
-              outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
+              outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               s_t = exp(-H0[i]* exp(outmodxb))
               prob = exp(1 + outmodxb - (H0[i]* exp(outmodxb)) ) * H0[i]
               prob = d[i]*prob + (1-d[i])*s_t
@@ -829,7 +827,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob <- rep(1,rjlimit)
               for (cause in 1:numCauses) {
                 outmodxb <-  model.matrix(linpred[[cause]],tempData)
-                outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta[[cause]]
+                outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
                 prob = prob * exp(-H0[[cause]][i] * exp(outmodxb))* (H0[[cause]][i]*exp(1+outmodxb))^(d[i]==cause)
               }
               reject = 1*(uDraw > prob )

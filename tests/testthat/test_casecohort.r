@@ -1,8 +1,9 @@
-library(stringr)
+library(smcfcs)
 context("Case cohort testing")
 
 test_that("Case cohort imputation runs", {
   expect_equal({
+    skip_on_cran()
     n <- 1000
     x <- rnorm(n)
     t <- -log(runif(n))/(0.01*exp(x))
