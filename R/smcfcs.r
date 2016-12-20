@@ -463,13 +463,14 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
         else {
           xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~1",sep=""))
         }
+        if (smtype=="casecohort") {
+          xmoddata <- imputations[[imp]][subcoMembers,]
+        } else {
+          xmoddata <- imputations[[imp]]
+        }
         if ((method[targetCol]=="norm") | (method[targetCol]=="latnorm")) {
           #estimate parameters of covariate model
-          if (smtype=="casecohort") {
-            xmod <- lm(xmodformula, data=imputations[[imp]][subcoMembers,])
-          } else {
-            xmod <- lm(xmodformula, data=imputations[[imp]])
-          }
+          xmod <- lm(xmodformula, data=xmoddata)
           #take draw from posterior of covariate model parameters
           beta <- xmod$coef
           sigmasq <- summary(xmod)$sigma^2
@@ -482,30 +483,36 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           } else {
             xfitted <- model.matrix(xmod) %*% newbeta
           }
-        }
-        else if (method[targetCol]=="logreg") {
-          xmod <- glm(xmodformula, family="binomial",data=imputations[[imp]])
+        } else if (method[targetCol]=="logreg") {
+          xmod <- glm(xmodformula, family="binomial",data=xmoddata)
           newbeta = modPostDraw(xmod)
-          xfitted <- expit(model.matrix(xmod) %*% newbeta)
-        }
-        else if (method[targetCol]=="poisson") {
-          xmod <- glm(xmodformula, family="poisson", data=imputations[[imp]])
+          if (smtype=="casecohort") {
+            xfitted <- expit(model.matrix(xmodformula, data=imputations[[imp]]) %*% newbeta)
+          } else {
+            xfitted <- expit(model.matrix(xmod) %*% newbeta)
+          }
+        } else if (method[targetCol]=="poisson") {
+          xmod <- glm(xmodformula, family="poisson", data=xmoddata)
           newbeta = modPostDraw(xmod)
-          xfitted <- exp(model.matrix(xmod) %*% newbeta)
-        }
-        else if (method[targetCol]=="podds") {
+          if (smtype=="casecohort") {
+            xfitted <- exp(model.matrix(xmodformula, data=imputations[[imp]]) %*% newbeta)
+          } else {
+            xfitted <- exp(model.matrix(xmod) %*% newbeta)
+          }
+        } else if (method[targetCol]=="podds") {
           if (is.ordered(imputations[[imp]][,targetCol])==FALSE) stop("Variables to be imputed using method podds must be stored as ordered factors.")
-          xmod <- VGAM::vglm(xmodformula, VGAM::propodds, data=imputations[[imp]])
+          xmod <- VGAM::vglm(xmodformula, VGAM::propodds, data=xmoddata)
+          xmod.dummy <- VGAM::vglm(xmodformula, VGAM::propodds, data=imputations[[imp]])
           newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(VGAM::vcov(xmod))), Sigma=VGAM::vcov(xmod))
-          linpreds <- matrix((VGAM::model.matrix(xmod)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
+          linpreds <- matrix((VGAM::model.matrix(xmod.dummy)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
           cumprobs <- cbind(1/(1+exp(linpreds)), rep(1,nrow(linpreds)))
           xfitted <- cbind(cumprobs[,1] ,cumprobs[,2:ncol(cumprobs)] - cumprobs[,1:(ncol(cumprobs)-1)])
-        }
-        else if (method[targetCol]=="mlogit") {
+        } else if (method[targetCol]=="mlogit") {
           if (is.factor(imputations[[imp]][,targetCol])==FALSE) stop("Variables to be imputed using method modds must be stored as factors.")
-          xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel=1), data=imputations[[imp]])
+          xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel=1), data=xmoddata)
+          xmod.dummy <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel=1), data=imputations[[imp]])
           newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu=rep(0,ncol(VGAM::vcov(xmod))), Sigma=VGAM::vcov(xmod))
-          linpreds <- matrix((VGAM::model.matrix(xmod)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
+          linpreds <- matrix((VGAM::model.matrix(xmod.dummy)) %*% newbeta, byrow=TRUE, ncol=(nlevels(imputations[[imp]][,targetCol])-1))
           denom <- 1+rowSums(exp(linpreds))
           xfitted <-cbind(1/denom, exp(linpreds) / denom)
         }

@@ -1,4 +1,5 @@
 library(smcfcs)
+library(survival)
 context("Cox proportional hazards model testing")
 
 test_that("Cox imputation is approximately unbiased", {

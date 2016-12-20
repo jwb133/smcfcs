@@ -1,25 +1,66 @@
 library(smcfcs)
+library(survival)
 context("Case cohort testing")
 
-test_that("Case cohort imputation runs", {
+test_that("Case cohort imputation runs and is approximately unbiased, binary covariate missing", {
+  skip_on_cran()
   expect_equal({
-    skip_on_cran()
-    n <- 1000
-    x <- rnorm(n)
-    t <- -log(runif(n))/(0.01*exp(x))
-    d <- 1*(t<10)
-    t[d==0] <- 10
-    x[(runif(n)<0.2)] <- NA
+    set.seed(1234)
+    n <- 100000
+    z <- rnorm(n)
+    x <- 1*(runif(n)<(exp(z)/(1+exp(z))))
+    t <- -log(runif(n))/(0.01*exp(x+z))
+    d <- 1*(t<2)
+    t[d==0] <- 2
+    x[(runif(n)<0.5)] <- NA
 
-    fullcohortdata <- data.frame(t,d,x)
+    fullcohortdata <- data.frame(t,d,x,z)
     fullcohortdata$in.subco <- 0
+    #we sample a 10% subcohort
     fullcohortdata$in.subco[sample(n, size=n*0.1)] <- 1
     fullcohortdata$id <- 1:n
 
     ccdata <- fullcohortdata[(fullcohortdata$in.subco==1) | (fullcohortdata$d==1),]
     ccdata$entertime <- 0
-    ccdata$entertime[ccdata$in.subco==0] <- ccdata$t[ccdata$in.subco==0] - 0.001
-    imps <- smcfcs.casecohort(ccdata, smformula="Surv(entertime, t, d)~x", sampfrac=0.1,
-                              in.subco="in.subco", method=c("", "", "norm", "", "", ""))
-  }, 1)
+    ccdata$entertime[ccdata$in.subco==0] <- ccdata$t[ccdata$in.subco==0] - 0.000001
+    imps <- smcfcs.casecohort(ccdata, smformula="Surv(entertime, t, d)~x+z", sampfrac=0.1,
+                              in.subco="in.subco", method=c("", "", "logreg", "", "", "", ""))
+    library(mitools)
+    impobj <- imputationList(imps$impDatasets)
+    models <- with(impobj, coxph(Surv(entertime,t,d)~x+z+cluster(id)))
+    abs(summary(MIcombine(models))[1,1]-1)<0.1
+  }, TRUE)
 })
+
+test_that("Case cohort imputation runs and is approximately unbiased, continuous covariate missing", {
+  skip_on_cran()
+  expect_equal({
+    set.seed(1234)
+
+      n <- 100000
+      z <- rnorm(n)
+      x <- z+rnorm(n)
+      t <- -log(runif(n))/(0.01*exp(x+z))
+      d <- 1*(t<1)
+      t[d==0] <- 1
+      x[(runif(n)<0.5)] <- NA
+
+      fullcohortdata <- data.frame(t,d,x,z)
+      fullcohortdata$in.subco <- 0
+      #we sample a 10% subcohort
+      fullcohortdata$in.subco[sample(n, size=n*0.1)] <- 1
+      fullcohortdata$id <- 1:n
+
+      ccdata <- fullcohortdata[(fullcohortdata$in.subco==1) | (fullcohortdata$d==1),]
+      ccdata$entertime <- 0
+      ccdata$entertime[ccdata$in.subco==0] <- ccdata$t[ccdata$in.subco==0] - 0.000001
+      imps <- smcfcs.casecohort(ccdata, smformula="Surv(entertime, t, d)~x+z", sampfrac=0.1,
+                                in.subco="in.subco", method=c("", "", "norm", "", "", "", ""))
+      library(mitools)
+      impobj <- imputationList(imps$impDatasets)
+      models <- with(impobj, coxph(Surv(entertime,t,d)~x+z+cluster(id)))
+
+    abs(summary(MIcombine(models))[1,1]-1)<0.1
+  }, TRUE)
+})
+
