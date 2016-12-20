@@ -205,6 +205,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #' for details on how these should be specified.
 #'
 #' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
+#' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
 #'
 #' @param originaldata The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)
 #' @param smformula An expression of the form "Surv(entertime,t,d)", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
@@ -228,6 +229,7 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 #' for details on how these should be specified.
 #'
 #' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
+#' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
 #'
 #' @param set variable identifying matched sets in nested case-control study
 #' @param substudy variable which is an indicator of who is in the sub-study
