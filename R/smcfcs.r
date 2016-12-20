@@ -204,6 +204,8 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #' as for the main smcfcs function, except for \code{smformula}, \code{in.subco}, and \code{sampfrac} - see above
 #' for details on how these should be specified.
 #'
+#' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
+#'
 #' @param originaldata The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)
 #' @param smformula An expression of the form "Surv(entertime,t,d)", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
 #' @param in.subco The name of a column in the dataset with 0/1s that indicates whether the subject is in the subcohort
@@ -213,6 +215,28 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #' @export
 smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   smcfcs.core(originaldata,smtype="casecohort",smformula,method,predictorMatrix,m,numit,rjlimit,noisy,sampfrac=sampfrac,in.subco=in.subco)
+}
+
+#' Substantive model compatible fully conditional specification imputation of covariates for nested case control
+#' studies
+#'
+#' Multiply imputes missing covariate values using substantive model compatible
+#' fully conditional specification for nested case control studies.
+#'
+#' This version of \code{smcfcs} is designed for use with nested case control studies. The function's arguments are the same
+#' as for the main smcfcs function, except for \code{smformula}, \code{in.subco}, and \code{sampfrac} - see above
+#' for details on how these should be specified.
+#'
+#' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
+#'
+#' @param set variable identifying matched sets in nested case-control study
+#' @param substudy variable which is an indicator of who is in the sub-study
+#' @param case variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.
+#'
+#' @inheritParams smcfcs
+#' @export
+smcfcs.nestedcc <- function(originaldata,smformula,set,substudy,cc,id,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
+  smcfcs.core(originaldata,smtype="nestedcc",smformula,method,predictorMatrix,m,numit,rjlimit,noisy,set=set,substudy=substudy,cc=cc,id=id)
 }
 
 #this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
@@ -283,7 +307,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     H0indices <- match(originaldata[,timeCol], basehaz[,2])
     rm(nullMod)
 
-    smformula2<-paste(smformula,"+cluster(id)",sep="")
+    smcfcsid <- 1:n
+    smformula2<-paste(smformula,"+cluster(smcfcsid)",sep="")
   } else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
   }
@@ -731,6 +756,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
+              print(dim(outmodxb[,2:dim(outmodxb)[2]]))
+              print(dim(outcomeModBeta))
               outmodxb <- outmodxb[,2:dim(outmodxb)[2]] %*% outcomeModBeta
               s_t = exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
               prob = exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded]* exp(outmodxb[imputationNeeded])) ) * H0[imputationNeeded]

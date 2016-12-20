@@ -2,4 +2,5 @@
 
 export(smcfcs)
 export(smcfcs.casecohort)
+export(smcfcs.nestedcc)
 import(stats)
