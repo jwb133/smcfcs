@@ -19,8 +19,7 @@ Imports:
     MASS,
     survival,
     VGAM,
-    stats,
-    zoo
+    stats
 Suggests:
     knitr,
     rmarkdown,
