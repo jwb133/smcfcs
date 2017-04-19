@@ -18,4 +18,3 @@ A dataset containing simulated data where the outcome depends on both main
 effects and interaction of two partially observed covariates.
 }
 \keyword{datasets}
-

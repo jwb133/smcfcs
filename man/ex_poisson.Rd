@@ -19,4 +19,3 @@ covariates, x and z, with missing values in x. The substantive model is
 Poisson regression.
 }
 \keyword{datasets}
-

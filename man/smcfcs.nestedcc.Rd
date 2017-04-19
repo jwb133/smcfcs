@@ -5,21 +5,20 @@
 \title{Substantive model compatible fully conditional specification imputation of covariates for nested case control
 studies}
 \usage{
-smcfcs.nestedcc(originaldata, smformula, set, substudy, cc, id, method,
+smcfcs.nestedcc(originaldata, smformula, set, event, nrisk, method,
   predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000,
   noisy = FALSE)
 }
 \arguments{
-\item{originaldata}{The original data frame with missing values.}
+\item{originaldata}{The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)}
 
-\item{smformula}{The formula of the substantive model. For \code{"coxph"} substantive
-models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
-substantive models, a list should be passed consisting of the Cox models
-for each cause of failure (see example).}
+\item{smformula}{An expression of the form "Surv(t,case)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set.}
 
 \item{set}{variable identifying matched sets in nested case-control study}
 
-\item{substudy}{variable which is an indicator of who is in the sub-study}
+\item{event}{variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.}
+
+\item{nrisk}{variable which is the number at risk (in the underyling full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
@@ -56,8 +55,6 @@ increase the \code{rjlimit} until the warning does not appear.}
 
 \item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
 be useful for debugging or checking that models being used are as desired.}
-
-\item{case}{variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible
@@ -73,4 +70,3 @@ Ruth Keogh \email{ruth.keogh@lshtm.ac.uk}
 
 Jonathan Bartlett \email{jwb133@googlemail.com}
 }
-

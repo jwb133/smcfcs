@@ -68,4 +68,3 @@ Ruth Keogh \email{ruth.keogh@lshtm.ac.uk}
 
 Jonathan Bartlett \email{jwb133@googlemail.com}
 }
-

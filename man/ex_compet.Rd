@@ -20,4 +20,3 @@ A dataset containing simulated competing risks data. There are two competing ris
 some times are also censored.
 }
 \keyword{datasets}
-

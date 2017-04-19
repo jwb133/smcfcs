@@ -172,13 +172,12 @@ if (requireNamespace("mitools", quietly = TRUE)) {
 
 }
 }
-\author{
-Jonathan Bartlett \email{jwb133@googlemail.com} \url{http://www.missingdata.org.uk}
-\url{http://thestatsgeek.com}
-}
 \references{
 Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
 by fully conditional specification: accommodating the substantive model. Statistical Methods
 in Medical Research 2015; 24(4): 462-487. \url{http://doi.org/10.1177/0962280214521348}
 }
-
+\author{
+Jonathan Bartlett \email{jwb133@googlemail.com} \url{http://www.missingdata.org.uk}
+\url{http://thestatsgeek.com}
+}

@@ -20,4 +20,3 @@ A dataset containing simulated data where the outcome depends quadratically
 on a partially observed covariate.
 }
 \keyword{datasets}
-

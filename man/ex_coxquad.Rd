@@ -21,4 +21,3 @@ A dataset containing simulated data where a time to event outcome depends quadra
 on a partially observed covariate.
 }
 \keyword{datasets}
-
