@@ -233,14 +233,13 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 #' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
 #'
 #' @param originaldata The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)
-#' @param smformula An expression of the form "Surv(t,case)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set.
+#' @param smformula An expression of the form "Surv(t,case)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term.
 #' @param set variable identifying matched sets in nested case-control study
 #' @param event variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.
 #' @param nrisk variable which is the number at risk (in the underyling full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).
 #'
 #' @inheritParams smcfcs
 #' @export
-
 smcfcs.nestedcc <- function(originaldata,smformula,set,event,nrisk,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   smcfcs.core(originaldata,smtype="nestedcc",smformula,method,predictorMatrix,m,numit,rjlimit,noisy,set=set,event=event,nrisk=nrisk)
 }
