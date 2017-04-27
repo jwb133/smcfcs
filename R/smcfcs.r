@@ -209,7 +209,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
 #'
 #' @param originaldata The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)
-#' @param smformula An expression of the form "Surv(entertime,t,d)", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
+#' @param smformula A formula of the form "Surv(entertime,t,d)~x", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
 #' @param in.subco The name of a column in the dataset with 0/1s that indicates whether the subject is in the subcohort
 #' @param sampfrac The proportion of individuals from the underlying full cohort who are in the subcohort
 #'
@@ -233,7 +233,7 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 #' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
 #'
 #' @param originaldata The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)
-#' @param smformula An expression of the form "Surv(t,case)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term.
+#' @param smformula A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term.
 #' @param set variable identifying matched sets in nested case-control study
 #' @param event variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.
 #' @param nrisk variable which is the number at risk (in the underyling full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).

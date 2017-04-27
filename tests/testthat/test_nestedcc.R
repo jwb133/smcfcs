@@ -11,10 +11,10 @@ test_that("Nested case control imputation runs and is approximately unbiased, co
     #run simulation study
     nSims <- 100
     xEsts <- array(0, dim=nSims)
+    n <- 10000
 
     for (sim in 1:nSims) {
       print(sim)
-      n <- 10000
       z <- rnorm(n)
       x <- z+rnorm(n)
       t <- -log(runif(n))/(0.01*exp(x+z))
@@ -76,10 +76,10 @@ test_that("Nested case control imputation runs and is approximately unbiased, bi
     #perform simulation study
     nSims <- 100
     xEsts <- array(0, dim=nSims)
+    n <- 10000
 
     for (sim in 1:nSims) {
       print(sim)
-      n <- 10000
       z <- rnorm(n)
       x <- rbinom(n,1,exp(z)/(1+exp(z)))
       t <- -log(runif(n))/(0.01*exp(x+z))

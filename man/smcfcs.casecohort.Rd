@@ -11,7 +11,7 @@ smcfcs.casecohort(originaldata, smformula, sampfrac, in.subco, method,
 \arguments{
 \item{originaldata}{The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)}
 
-\item{smformula}{An expression of the form "Surv(entertime,t,d)", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]}
+\item{smformula}{A formula of the form "Surv(entertime,t,d)~x", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]}
 
 \item{sampfrac}{The proportion of individuals from the underlying full cohort who are in the subcohort}
 

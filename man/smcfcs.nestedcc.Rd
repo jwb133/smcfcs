@@ -12,7 +12,7 @@ smcfcs.nestedcc(originaldata, smformula, set, event, nrisk, method,
 \arguments{
 \item{originaldata}{The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)}
 
-\item{smformula}{An expression of the form "Surv(t,case)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set.}
+\item{smformula}{A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term.}
 
 \item{set}{variable identifying matched sets in nested case-control study}
 
