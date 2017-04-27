@@ -4,7 +4,7 @@
 \name{ex_ncc}
 \alias{ex_ncc}
 \title{Simulated nested case-control data}
-\format{A data frame with 1571 rows and 7 variables:
+\format{A data frame with 728 rows and 8 variables:
 \describe{
   \item{t}{Time to event or censoring}
   \item{d}{Indicator of whether event 1 occurred (d=1), or not (d=0)}
