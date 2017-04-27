@@ -106,6 +106,67 @@ ex_poisson <- data.frame(y,x,z)
 
 devtools::use_data(ex_poisson, overwrite=TRUE)
 
+#case cohort
+n <- 10000
+z <- rnorm(n)
+x <- z+rnorm(n)
+t <- -log(runif(n))/(0.01*exp(x+z))
+d <- 1*(t<1)
+t[d==0] <- 1
+x[(runif(n)<0.5)] <- NA
+
+fullcohortdata <- data.frame(t,d,x,z)
+fullcohortdata$in.subco <- 0
+#we sample a 10% subcohort
+fullcohortdata$in.subco[sample(n, size=n*0.1)] <- 1
+fullcohortdata$id <- 1:n
+
+ex_cc <- fullcohortdata[(fullcohortdata$in.subco==1) | (fullcohortdata$d==1),]
+ex_cc$entertime <- 0
+ex_cc$entertime[ex_cc$in.subco==0] <- ex_cc$t[ex_cc$in.subco==0] - 0.000001
+
+devtools::use_data(ex_cc, overwrite=TRUE)
+
+#nested case control
+n <- 10000
+z <- rnorm(n)
+x <- rbinom(n,1,exp(z)/(1+exp(z)))
+t <- -log(runif(n))/(0.01*exp(x+z))
+d <- 1*(t<1)
+t[d==0] <- 1
+x[(runif(n)<0.5)] <- NA
+
+fullcohortdata <- data.frame(t,d,x,z)
+fullcohortdata$id <- 1:n
+
+# Compute number at risk at each event time using the full cohort data
+nrisk.fit <- survfit(Surv(t,d)~1,data=fullcohortdata)
+ord.t.d1 <- order(fullcohortdata$t[fullcohortdata$d==1])
+
+m=1 #1 control per case
+ex_ncc=NULL
+
+no.sample=0
+for (i in which(fullcohortdata$d==1))
+{
+  #select control(s) for nested case-control
+  possible.controls <- which(fullcohortdata$t>=fullcohortdata$t[i])
+  #remove the case from this vector
+  possible.controls <- possible.controls[which(possible.controls!=i)]
+
+  if (length(possible.controls)>=m){
+    controls <- sample(possible.controls,m)
+    numAtRisk <- 1+length(possible.controls)
+    ex_ncc <- rbind(ex_ncc,cbind(fullcohortdata[i,],numrisk=numAtRisk))
+    ex_ncc <- rbind(ex_ncc,cbind(fullcohortdata[controls,], numrisk=numAtRisk))
+    no.sample <- no.sample+1}
+}
+
+ex_ncc$setno <- rep(1:no.sample,each=m+1)
+ex_ncc$case <- rep(c(1,rep(0,m)),no.sample)
+
+devtools::use_data(ex_ncc, overwrite=TRUE)
+
 
 # #covariate measurement error
 # n <- 10000

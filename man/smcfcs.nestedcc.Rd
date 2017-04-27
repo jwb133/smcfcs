@@ -12,7 +12,7 @@ smcfcs.nestedcc(originaldata, smformula, set, event, nrisk, method,
 \arguments{
 \item{originaldata}{The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)}
 
-\item{smformula}{A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term.}
+\item{smformula}{A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term (see example).}
 
 \item{set}{variable identifying matched sets in nested case-control study}
 
@@ -64,6 +64,21 @@ fully conditional specification for nested case control studies.
 This version of \code{smcfcs} is designed for use with nested case control studies. The function's arguments are the same
 as for the main smcfcs function, except for \code{smformula}, \code{in.subco}, and \code{sampfrac} - see above
 for details on how these should be specified.
+}
+\examples{
+#the following example is not run when the package is compiled on CRAN
+#(to keep computation time down), but it can be run by package users
+\dontrun{
+  predictorMatrix <- matrix(0,nrow=dim(ex_ncc)[2],ncol=dim(ex_ncc)[2])
+  predictorMatrix[which(colnames(ex_ncc)=="x"),c(which(colnames(ex_ncc)=="z"))] <- 1
+
+  imps <- smcfcs.nestedcc(originaldata=ex_ncc,set="setno",nrisk="numrisk",event="d",smformula="Surv(t,case)~x+z+strata(setno)",
+                          method=c("", "", "logreg", "", "", "", "", ""),predictorMatrix=predictorMatrix)
+  library(mitools)
+  impobj <- imputationList(imps$impDatasets)
+  models <- with(impobj, clogit(case~x+z+strata(setno)))
+  summary(MIcombine(models))
+}
 }
 \author{
 Ruth Keogh \email{ruth.keogh@lshtm.ac.uk}

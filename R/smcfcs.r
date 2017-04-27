@@ -214,6 +214,9 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #' @param sampfrac The proportion of individuals from the underlying full cohort who are in the subcohort
 #'
 #' @inheritParams smcfcs
+#'
+#' @example data-raw/cc_example.r
+#'
 #' @export
 smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   smcfcs.core(originaldata,smtype="casecohort",smformula,method,predictorMatrix,m,numit,rjlimit,noisy,sampfrac=sampfrac,in.subco=in.subco)
@@ -233,12 +236,13 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 #' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
 #'
 #' @param originaldata The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)
-#' @param smformula A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term.
+#' @param smformula A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term (see example).
 #' @param set variable identifying matched sets in nested case-control study
 #' @param event variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.
 #' @param nrisk variable which is the number at risk (in the underyling full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).
 #'
 #' @inheritParams smcfcs
+#' @example data-raw/ncc_example.r
 #' @export
 smcfcs.nestedcc <- function(originaldata,smformula,set,event,nrisk,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE) {
   smcfcs.core(originaldata,smtype="nestedcc",smformula,method,predictorMatrix,m,numit,rjlimit,noisy,set=set,event=event,nrisk=nrisk)
