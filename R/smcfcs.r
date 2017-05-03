@@ -1,6 +1,6 @@
 #' Substantive model compatible fully conditional specification imputation of covariates.
 #'
-#' Multiple imputes missing covariate values using substantive model compatible
+#' Multiply imputes missing covariate values using substantive model compatible
 #' fully conditional specification.
 #'
 #' smcfcs imputes missing values of covariates using the Substantive Model Compatible
@@ -248,6 +248,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
 
     #number of individuals in each sampled risk set (matched set)
    num.sampriskset<-ave(rep(1,dim(originaldata)[1]), originaldata[,setCol], FUN = function(x) sum(x))
+
   }
   else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
@@ -640,7 +641,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               outcomeDens <- dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
             }
-            else if (smtype=="coxph") {
+            else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))* (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
@@ -715,7 +716,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob = dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
               reject = 1*(uDraw>prob)
             }
-            else if (smtype=="coxph") {
+            else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               s_t = exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
@@ -784,7 +785,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob = dpois(tempData[,outcomeCol], exp(outmodxb))
               reject = 1*(uDraw>prob)
             }
-            else if (smtype=="coxph") {
+            else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),tempData)
               outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               s_t = exp(-H0[i]* exp(outmodxb))
