@@ -18,7 +18,7 @@ smcfcs.nestedcc(originaldata, smformula, set, event, nrisk, method,
 
 \item{event}{variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.}
 
-\item{nrisk}{variable which is the number at risk (in the underyling full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).}
+\item{nrisk}{variable which is the number at risk (in the underlying full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
