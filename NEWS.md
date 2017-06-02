@@ -1,3 +1,5 @@
+Version 1.3.0 - adding functionality for nested case control and case cohort studies
+
 Version 1.2.1 - fixing bug in code for linear regression substantive models
 
 Version 1.2.0 - functionality added to handle Poisson substantive models
