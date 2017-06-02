@@ -134,7 +134,7 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 #' fully conditional specification for nested case control studies.
 #'
 #' This version of \code{smcfcs} is designed for use with nested case control studies. The function's arguments are the same
-#' as for the main smcfcs function, except for \code{smformula}, \code{in.subco}, and \code{sampfrac} - see above
+#' as for the main smcfcs function, except for \code{smformula}, \code{set}, \code{event} and \code{nrisk} - see above
 #' for details on how these should be specified.
 #'
 #' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
