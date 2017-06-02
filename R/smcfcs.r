@@ -144,7 +144,7 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 #' @param smformula A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term (see example).
 #' @param set variable identifying matched sets in nested case-control study
 #' @param event variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.
-#' @param nrisk variable which is the number at risk (in the underyling full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).
+#' @param nrisk variable which is the number at risk (in the underlying full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/ncc_example.r
