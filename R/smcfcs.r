@@ -5,7 +5,7 @@
 #'
 #' smcfcs imputes missing values of covariates using the Substantive Model Compatible
 #' Fully Conditional Specification multiple imputation approach proposed by
-#' Bartlett \emph{et al} 2014 (see references).
+#' Bartlett \emph{et al} 2015 (see references).
 #'
 #' Currently imputation is supported for linear regression (\code{"lm"}),
 #' logistic regression (\code{"logistic"}), Poisson regression
