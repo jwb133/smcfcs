@@ -83,7 +83,7 @@
 #' \code{smCoefIter} a three dimension matrix containing the substantive model parameter
 #' values. The matrix is indexed by [imputation,parameter number,iteration]
 #'
-#' @author Jonathan Bartlett \email{jwb133@@googlemail.com} \url{http://www.missingdata.org.uk}
+#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk} \url{http://www.missingdata.org.uk}
 #' \url{http://thestatsgeek.com}
 #'
 #' @example data-raw/examples.r
@@ -111,7 +111,7 @@ smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5
 #' for details on how these should be specified.
 #'
 #' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
-#' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
+#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
 #'
 #' @param originaldata The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)
 #' @param smformula A formula of the form "Surv(entertime,t,d)~x", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
@@ -138,7 +138,7 @@ smcfcs.casecohort <- function(originaldata,smformula,sampfrac,in.subco,method,pr
 #' for details on how these should be specified.
 #'
 #' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
-#' @author Jonathan Bartlett \email{jwb133@@googlemail.com}
+#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
 #'
 #' @param originaldata The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)
 #' @param smformula A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term (see example).
