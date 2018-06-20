@@ -253,6 +253,17 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
   else {
     outcomeCol <- which(colnames(originaldata)==as.formula(smformula)[[2]])
   }
+
+  if (smtype=="logistic") {
+    if (is.numeric(originaldata[,outcomeCol])==FALSE) {
+      stop("For logistic substantive models the outcome variable must be numeric 0/1.")
+    } else {
+      if (all.equal(unique(originaldata[,outcomeCol]),c(0,1))==FALSE) {
+        stop("For logistic substantive models the outcome variable must be coded 0/1.")
+      }
+    }
+  }
+
   if (smtype=="compet") {
     smcovnames <- attr(terms(as.formula(smformula[[1]])), "term.labels")
     for (cause in 2:numCauses) {
