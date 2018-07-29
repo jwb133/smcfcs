@@ -303,8 +303,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
       if (sum(r[,colnum])<n) {
         #some values are missing
         if ((colnum %in% outcomeCol)==FALSE) {
-          stop(paste("Variable ",colnames(originaldata)[colnum], " does not have an imputation method specified,
-                     yet appears to have missing values.",sep=""))
+          stop(paste("Variable ",colnames(originaldata)[colnum], " does not have an imputation method specified, yet appears to have missing values.",sep=""))
         }
         }
       }

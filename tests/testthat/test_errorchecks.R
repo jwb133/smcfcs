@@ -46,3 +46,51 @@ test_that("Checking outcome model check for logistic models", {
                    method=c("norm", ""))
   })
 })
+
+test_that("Checking error trap for method statement", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x1 <- rnorm(n)
+    x2 <- rnorm(n)
+    y <- y <- x1+x2+rnorm(n)
+    x1[(runif(n)<0.5)] <- NA
+
+    simData <- data.frame(x1,x2,y)
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x1+x2",
+                   method=c("", "", ""))
+  })
+})
+
+test_that("Checking error trap for method statement", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x1 <- rnorm(n)
+    x2 <- rnorm(n)
+    y <- y <- x1+x2+rnorm(n)
+    x1[(runif(n)<0.5)] <- NA
+
+    simData <- data.frame(x1,x2,y)
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x1+x2",
+                   method=c("", "norm", ""))
+  })
+})
+
+test_that("Checking error trap for method statement", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x1 <- rnorm(n)
+    x2 <- rnorm(n)
+    y <- y <- x1+x2+rnorm(n)
+    x1[(runif(n)<0.5)] <- NA
+
+    simData <- data.frame(x1,x2,y)
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x1+x2",
+                   method=c("norm", "", ""))
+  })
+})
