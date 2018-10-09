@@ -70,7 +70,7 @@ fully conditional specification.
 \details{
 smcfcs imputes missing values of covariates using the Substantive Model Compatible
 Fully Conditional Specification multiple imputation approach proposed by
-Bartlett \emph{et al} 2014 (see references).
+Bartlett \emph{et al} 2015 (see references).
 
 Currently imputation is supported for linear regression (\code{"lm"}),
 logistic regression (\code{"logistic"}), Poisson regression
@@ -178,6 +178,6 @@ by fully conditional specification: accommodating the substantive model. Statist
 in Medical Research 2015; 24(4): 462-487. \url{http://doi.org/10.1177/0962280214521348}
 }
 \author{
-Jonathan Bartlett \email{jwb133@googlemail.com} \url{http://www.missingdata.org.uk}
+Jonathan Bartlett \email{j.w.bartlett@bath.ac.uk} \url{http://www.missingdata.org.uk}
 \url{http://thestatsgeek.com}
 }
