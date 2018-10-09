@@ -8,7 +8,7 @@
 \describe{
   \item{y}{Continuous outcome}
   \item{x1}{Partially observed normally distributed covariate}
-  \item{x2}{Partially obserevd binary covariate}
+  \item{x2}{Partially observed binary covariate}
 }}
 \usage{
 ex_lininter
