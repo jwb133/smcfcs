@@ -339,9 +339,17 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     for (var in 1:length(partialVars)) {
       targetCol <- partialVars[var]
       if (method[targetCol]=="latnorm") {
-        #initialize latent predictors with single error prone measurement
+        #first impute any missing replicate error-prone measurements of this variable by a randomly chosen observed value
         errorProneCols <- which(errorProneMatrix[targetCol,]==1)
-        imputations[[imp]][,targetCol] <- apply(imputations[[imp]][,errorProneCols], 1, firstnonna)
+        for (measure in 1:length(errorProneCols)) {
+          if (sum(r[,errorProneCols[measure]])<n) {
+            imputations[[imp]][r[,errorProneCols[measure]]==0,errorProneCols[measure]] <- sample(imputations[[imp]][r[,errorProneCols[measure]]==1,
+                errorProneCols[measure]], size=sum(r[,errorProneCols[measure]]==0), replace=TRUE)
+          }
+        }
+
+        #initialize latent predictors with mean of their error-prone measurements
+        imputations[[imp]][,targetCol] <- apply(imputations[[imp]][,errorProneCols], 1, mean)
       }
       else {
         imputations[[imp]][r[,targetCol]==0,targetCol] <- sample(imputations[[imp]][r[,targetCol]==1,targetCol], size=sum(r[,targetCol]==0), replace=TRUE)
@@ -459,26 +467,28 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
 
             #estimate error variance and draw new value of error variance
             errorProneCols <- which(errorProneMatrix[targetCol,]==1)
-            wmean <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
-            n_i <- apply(imputations[[imp]][,errorProneCols], 1, sumna)
-            sum_ni <- sum(n_i)
-            #estimate error variance
-            if (cyclenum==1) {
-              xmat <- matrix(wmean, nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
-              uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
-              sigmausq <- sum(uVec^2, na.rm=TRUE) / (sum_ni - n)
-            }
-            else {
-              xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
-              uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
-              sigmausq <- sum(uVec^2, na.rm=TRUE) / sum_ni
-            }
+            xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
+            uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
+            sigmausq <- mean(uVec^2)
             #take draw from posterior of error variance
+            sum_ni <- n*length(errorProneCols)
             sigmausq <- 1/rgamma(1,shape=((sum_ni+1)/2), rate=((sum_ni*sigmausq+1)/2))
-            #calculate conditional mean and variance
-            lambda <- newsigmasq/(newsigmasq+sigmausq/n_i)
+
+            #re-impute any originally missing error-prone measurements, based on classical error model assumption
+            for (measure in 1:length(errorProneCols)) {
+              nToImpute <- n-sum(r[,errorProneCols[measure]])
+              if (nToImpute>0) {
+                #then some values need imputing
+                imputations[[imp]][r[,errorProneCols[measure]]==0,errorProneCols[measure]] <- imputations[[imp]][r[,errorProneCols[measure]]==0,targetCol] +
+                  rnorm(nToImpute, 0, sd=sqrt(sigmausq))
+              }
+            }
+
+            #calculate conditional mean and variance of X|everything else except outcome
+            wmean <- rowMeans(imputations[[imp]][,errorProneCols])
+            lambda <- newsigmasq/(newsigmasq+sigmausq/length(errorProneCols))
             xfitted <- xfitted + lambda * (wmean - xfitted)
-            newsigmasq <- newsigmasq*(1-lambda)
+            newsigmasq <- rep(newsigmasq*(1-lambda), n)
 
         } else if (method[targetCol]=="logreg") {
           xmod <- glm(xmodformula, family="binomial",data=xmoddata)
