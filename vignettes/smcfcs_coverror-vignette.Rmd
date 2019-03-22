@@ -1,0 +1,26 @@
+---
+title: "smcfcs for covariate measurement error correction"
+author: "Jonathan Bartlett"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{smcfcs}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+---
+
+This short vignette introduces the capabilites of `smcfcs` to accommodate classical covariate measurement error. we consider the cases where internal validation data and then internal replication data are available.
+
+#Validation data
+We will simulate a dataset with internal validation data where the true covariate (x) is observed for 10\% of the sample, while every subject has an error-prone measurement (w) observed:
+
+```{r}
+n <- 1000
+x <- rnorm(n)
+w <- x+rnorm(n)
+y <- x+rnorm(n)
+x[101:1000] <- NA
+simData <- data.frame(x,w,y)
+```
+
+We have generated code where the error-prone measurement w is equal to the true covariate x plus some independent normally distributed measurement error. Since x is observed for some of the subjects in the case of interval validation data, this is a regular missing data problem. The error-prone measurement w serves as an auxiliary variable for the purposes of imputation of x. In particular, we will impute using `smcfcs' such that w is not in the substantive model. This encodes the so called non-differential error assumption, that says that conditional on x, the error-prone measurement w provides no independent information about the outcome y.
