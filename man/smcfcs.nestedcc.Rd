@@ -7,7 +7,7 @@ studies}
 \usage{
 smcfcs.nestedcc(originaldata, smformula, set, event, nrisk, method,
   predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000,
-  noisy = FALSE)
+  noisy = FALSE, errorProneMatrix = NULL)
 }
 \arguments{
 \item{originaldata}{The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)}
@@ -27,7 +27,9 @@ be used to impute. Possible values are \code{"norm"} (normal linear regression),
 \code{"podds"} (proportional odds regression for ordered categorical variables),
 \code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 or a custom expression which defines a passively imputed variable, e.g.
-\code{"x^2"} or \code{"x1*x2"}.}
+\code{"x^2"} or \code{"x1*x2"}. \code{"latnorm"} indicates the variable is a latent
+normal variable which is measured with error. If this is specified for a variable,
+the \code{"errorProneMatrix"} argument should also be used.}
 
 \item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
 covariates will be used as predictors in the imputation models
@@ -55,6 +57,12 @@ increase the \code{rjlimit} until the warning does not appear.}
 
 \item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
 be useful for debugging or checking that models being used are as desired.}
+
+\item{errorProneMatrix}{An optional matrix which if specified indicates that some variables
+are measured with classical measurement error. If the i'th variable is measured with error
+by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
+remainder of entries 0. The i'th element of the method argument should then be specified
+as \code{"latnorm"}. See the measurement error vignette for more details.}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible
