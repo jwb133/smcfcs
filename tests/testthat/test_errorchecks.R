@@ -47,7 +47,7 @@ test_that("Checking outcome model check for logistic models", {
   })
 })
 
-test_that("Checking error trap for method statement", {
+test_that("Checking error trap for method statement 1", {
   expect_error({
     set.seed(1234)
     n <- 100
@@ -63,7 +63,7 @@ test_that("Checking error trap for method statement", {
   })
 })
 
-test_that("Checking error trap for method statement", {
+test_that("Checking error trap for method statement 2", {
   expect_error({
     set.seed(1234)
     n <- 100
@@ -79,18 +79,117 @@ test_that("Checking error trap for method statement", {
   })
 })
 
-test_that("Checking error trap for method statement", {
+test_that("Checking measurement error error checks 1", {
   expect_error({
     set.seed(1234)
     n <- 100
-    x1 <- rnorm(n)
-    x2 <- rnorm(n)
-    y <- y <- x1+x2+rnorm(n)
-    x1[(runif(n)<0.5)] <- NA
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    w2 <- x+rnorm(n)
+    y <- y <- x+rnorm(n)
+    x <- rep(NA, n)
 
-    simData <- data.frame(x1,x2,y)
+    simData <- data.frame(x,w1,w2,y)
 
-    imps <- smcfcs(simData, smtype="lm", smformula="y~x1+x2",
-                   method=c("norm", "", ""))
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("latnorm", "", "", ""))
+  })
+})
+
+test_that("Checking measurement error error checks 2", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    y <- y <- x+rnorm(n)
+    x <- rep(NA, n)
+
+    simData <- data.frame(x,w1,y)
+    errMat <- array(0, dim=c(3,3))
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("latnorm", "", ""), errorProneMatrix=errMat)
+  })
+})
+
+test_that("Checking measurement error error checks 3", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    y <- y <- x+rnorm(n)
+    x <- rep(NA, n)
+
+    simData <- data.frame(x,w1,y)
+    errMat <- array(0, dim=c(3,3))
+    errMat[1,1] <- 1
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("latnorm", "", ""), errorProneMatrix=errMat)
+  })
+})
+
+test_that("Checking measurement error error checks 4", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    w2 <- x+rnorm(n)
+    y <- y <- x+rnorm(n)
+    x <- rep(NA, n)
+
+    simData <- data.frame(x,w1,w2,y)
+    errMat <- array(0, dim=c(4,4))
+    errMat[1,2] <- 1
+    errMat[1,3] <- 1
+    errMat[4,2] <- 1
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("latnorm", "", "", ""), errorProneMatrix=errMat)
+  })
+})
+
+test_that("Checking measurement error error checks 5", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    w2 <- x+rnorm(n)
+    y <- y <- x+rnorm(n)
+    x <- rep(NA, n)
+
+    simData <- data.frame(x,w1,w2,y)
+    errMat <- array(0, dim=c(4,4))
+    errMat[1,2] <- 1
+    errMat[1,3] <- 1
+    errMat[4,2] <- 2
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("latnorm", "", "", ""), errorProneMatrix=errMat)
+  })
+})
+
+
+test_that("Checking measurement error error checks 6", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    w2 <- x+rnorm(n)
+    y <- y <- x+rnorm(n)
+    x <- rep(NA, n)
+
+    simData <- data.frame(x,w1,w2,y)
+    errMat <- array(0, dim=c(5,5))
+    errMat[1,2] <- 1
+    errMat[1,3] <- 1
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("latnorm", "", "", ""), errorProneMatrix=errMat)
   })
 })

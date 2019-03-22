@@ -318,7 +318,36 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
         }
       }
 
+  }
+
+  #check that if any variables have latnorm specified as method, that at least two error-prone measures
+  #are specified for it in errorProneMatrix
+  if ("latnorm" %in% method) {
+    if (is.null(errorProneMatrix)==TRUE) {
+      stop("If you specify method latnorm you must specify the errorProneMatrix argument.")
+    } else {
+      #check errorProneMatrix is of correct dimensional
+      if (identical(dim(errorProneMatrix), c(length(originaldata),length(originaldata)))==FALSE) {
+        stop("The errorProneMatrix should be a square matrix with number of rows equal to the number of variables in the dataset.")
+      }
+      #check entries of errorProneMatrix only consists of 0s and 1s
+      if (identical(sort(unique(as.vector(errMat))),c(0,1))==FALSE) {
+        stop("The errorProneMatrix should only consist of 0s and 1s.")
+      }
+      #check each latnorm variable has at least 2 error-prones
+      for (varNum in 1:length(method)) {
+        if (method[varNum]=="latnorm") {
+          if (sum(errorProneMatrix[varNum,])<2) {
+            stop("Each latnorm variable must have two or more error prone measurements specified in the errorProneMatrix argument.")
+          }
+        }
+      }
+      #check no error-prone measurement is allocated to more than one latnorm
+      if (sum(colSums(errorProneMatrix)>1)>0) {
+        stop("Each error-prone measurement should be allocated to exactly one latnorm variable.")
+      }
     }
+  }
 
   #fully observed vars are those that are fully observed and are covariates in the substantive model
   fullObsVars <- which((colSums(r)==n) & (colnames(originaldata) %in% smcovnames))
