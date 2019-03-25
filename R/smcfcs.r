@@ -495,7 +495,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             #take draw from posterior of covariate model parameters
             beta <- xmod$coef
             sigmasq <- summary(xmod)$sigma^2
-            #newsigmasq <- (sigmasq*xmod$df) / rchisq(1,xmod$df)
+            #draw from sigmasq posterior based on proper inverse gamma prior for sigmasq
+            #prior equivalent to 1 observation and guess of sigmasq=1
             newsigmasq <- 1/rgamma(1,shape=((n+1)/2), rate=((n*sigmasq+1)/2))
             covariance <- (newsigmasq/sigmasq)*vcov(xmod)
             newbeta = beta + MASS::mvrnorm(1, mu=rep(0,ncol(covariance)), Sigma=covariance)
@@ -511,7 +512,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
             uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
             sigmausq <- mean(uVec^2)
-            #take draw from posterior of error variance
+            #take draw from posterior of error variance, using proper inverse gamma prior
             sum_ni <- n*length(errorProneCols)
             sigmausq <- 1/rgamma(1,shape=((sum_ni+1)/2), rate=((sum_ni*sigmausq+1)/2))
 
