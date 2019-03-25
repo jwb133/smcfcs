@@ -569,31 +569,6 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           print(summary(xmod))
         }
 
-        #if latent normal, estimate error variance and calculate required conditional expectation and variance
-        #         if (method[targetCol]=="latnorm") {
-        #           errorProneCols <- which(errorProneMatrix[targetCol,]==1)
-        #           wmean <- rowMeans(imputations[[imp]][,errorProneCols], na.rm=TRUE)
-        #           n_i <- apply(imputations[[imp]][,errorProneCols], 1, sumna)
-        #           sum_ni <- sum(n_i)
-        #           #estimate error variance
-        #           if (cyclenum==1) {
-        #             xmat <- matrix(wmean, nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
-        #             uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
-        #             sigmausq <- sum(uVec^2, na.rm=TRUE) / (sum_ni - n)
-        #           }
-        #           else {
-        #             xmat <- matrix(imputations[[imp]][,targetCol], nrow=nrow(imputations[[imp]]), ncol=length(errorProneCols))
-        #             uVec <- c(as.matrix(imputations[[imp]][,errorProneCols] - xmat))
-        #             sigmausq <- sum(uVec^2, na.rm=TRUE) / sum_ni
-        #           }
-        #           #take draw from posterior of error variance
-        #           sigmausq <- sigmausq*sum_ni/rchisq(1,sum_ni)
-        #           #calculate conditional mean and variance
-        #           lambda <- newsigmasq/(newsigmasq+sigmausq/n_i)
-        #           xfitted <- xfitted + lambda * (wmean - xfitted)
-        #           newsigmasq <- newsigmasq*(1-lambda)
-        #         }
-
         #estimate parameters of substantive model
         if (smtype=="lm") {
           ymod <- lm(as.formula(smformula),imputations[[imp]])
