@@ -193,3 +193,25 @@ test_that("Checking measurement error error checks 6", {
                    method=c("latnorm", "", "", ""), errorProneMatrix=errMat)
   })
 })
+
+test_that("Checking measurement error error checks 7", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    w2 <- x+rnorm(n)
+    y <- y <- x+rnorm(n)
+    x <- rep(NA, n)
+    z <- rnorm(n)
+    z[1:50] <- NA
+
+    simData <- data.frame(w1,w2,y,z)
+    errMat <- array(0, dim=c(4,4))
+    errMat[3,1] <- 1
+    errMat[3,2] <- 1
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("", "", "","norm"), errorProneMatrix=errMat)
+  })
+})

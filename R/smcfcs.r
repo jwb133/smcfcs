@@ -348,6 +348,11 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
       }
     }
   }
+  if (is.null(errorProneMatrix)==FALSE) {
+    if (("latnorm" %in% method)==FALSE) {
+      stop("If you specify errorProneMatrix then at least one variable must be imputed using latnorm.")
+    }
+  }
 
   #fully observed vars are those that are fully observed and are covariates in the substantive model
   fullObsVars <- which((colSums(r)==n) & (colnames(originaldata) %in% smcovnames))
