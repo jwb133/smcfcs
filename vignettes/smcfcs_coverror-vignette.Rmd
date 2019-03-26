@@ -9,18 +9,113 @@ vignette: >
   %\usepackage[utf8]{inputenc}
 ---
 
-This short vignette introduces the capabilites of `smcfcs` to accommodate classical covariate measurement error. we consider the cases where internal validation data and then internal replication data are available.
+This short vignette introduces the capabilites of `smcfcs` to accommodate classical covariate measurement error. We consider the cases where internal validation data and then internal replication data are available.
 
 #Validation data
 We will simulate a dataset with internal validation data where the true covariate (x) is observed for 10\% of the sample, while every subject has an error-prone measurement (w) observed:
 
 ```{r}
+set.seed(1234)
 n <- 1000
 x <- rnorm(n)
 w <- x+rnorm(n)
 y <- x+rnorm(n)
-x[101:1000] <- NA
+x[(n*0.1):n] <- NA
 simData <- data.frame(x,w,y)
 ```
 
-We have generated code where the error-prone measurement w is equal to the true covariate x plus some independent normally distributed measurement error. Since x is observed for some of the subjects in the case of interval validation data, this is a regular missing data problem. The error-prone measurement w serves as an auxiliary variable for the purposes of imputation of x. In particular, we will impute using `smcfcs' such that w is not in the substantive model. This encodes the so called non-differential error assumption, that says that conditional on x, the error-prone measurement w provides no independent information about the outcome y.
+We have generated code where the error-prone measurement w is equal to the true covariate x plus some independent normally distributed measurement error. Since x is observed for some of the subjects in the case of interval validation data, this is a regular missing data problem. The error-prone measurement w serves as an auxiliary variable for the purposes of imputation of x. In particular, we will impute using `smcfcs' such that w is not in the substantive model. This encodes the so called non-differential error assumption, that says that conditional on x, the error-prone measurement w provides no independent information about the outcome y. An initial attempt to do this is:
+
+```{r}
+library(smcfcs)
+imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                     method=c("norm", "", ""),m=5)
+```
+
+We see from the output that `smcfcs` has not mentioned that it is using w anywhere. This is because w is fully observed and is not involved in the substantive model. To force w to be conditioned on when imputing x, we must pass an appropriate `predictorMatrix` to `smcfcs`:
+```{r}
+predMat <- array(0, dim=c(3,3))
+predMat[1,2] <- 1
+```
+We have specified that the first variable, x, be imputed using w. Note that we do not need to tell `smcfcs` to impute x using y, as this will occur automatically by virtue of y being the outcome variable in the substantive model. We can now impute again, passing `predMat` as the `predictorMatrix`:
+```{r}
+imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                     method=c("norm", "", ""),m=5,
+               predictorMatrix=predMat)
+```
+
+Now we can fit the substantive model to each imputed dataset and use the `mitools` package to pool the estimates and standard errors using Rubin's rules:
+```{r}
+library(mitools)
+impobj <- imputationList(imps$impDatasets)
+models <- with(impobj, lm(y~x))
+summary(MIcombine(models))
+```
+
+We note from the results that the fraction of missing information for the coefficient of x is high. This should not surprise us, given that x was missing for 90\% of the sample and the error-prone measurement w is quite a noisy measure of x.
+
+#Replication data
+We will now demonstrate how `smcfcs` can be used to impute a covariate x which is not observed for any subjects, but we have for at least a subset of the sample two or more error-prone replicate measurements. We first simulate the dataset:
+```{r}
+x <- rnorm(n)
+w1 <- x+rnorm(n)
+w2 <- x+rnorm(n)
+w2[(n*0.1):n] <- NA
+y <- x+rnorm(n)
+x <- rep(NA,n)
+simData <- data.frame(x,w1,w2,y)
+```
+Note that now x is missing for every subject. Every subject has an error-prone measurement w1 of x, and 10\% of the sample have a replicated measurement w2.
+
+We will now impute x using `smcfcs`. To do this we specify that x be imputed using the `latnorm` method. In addition, we pass a matrix to the `errorProneMatrix` argument of `smcfcs`, whose role is to specify, for each latent normal variable to be imputed, which variables in the data frame are error-prone measurements. `smcfcs` then imputes the missing values in x, assuming a normal classical error model for the error-prone replicates.
+
+```{r}
+errMat <- array(0, dim=c(4,4))
+errMat[1,c(2,3)] <- 1
+imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                     method=c("latnorm", "", "",""),m=5,
+               errorProneMatrix=errMat)
+```
+
+Analysing the imputed datasets, we obtain:
+```{r}
+impobj <- imputationList(imps$impDatasets)
+models <- with(impobj, lm(y~x))
+summary(MIcombine(models))
+```
+
+If we summarise one of the imputed datasets (below), we will see that `smcfcs` has not only imputed the missing values in x, but also the 'missing' values in w2. We hyphenate missing here because typically a study with replicate error-prone measurements will have intentionally planned to only take a second error-prone measurement on a random subset, so the values were never intended to be measured.
+```{r}
+summary(imps$impDatasets[[1]])
+```
+
+## Multiple covariates measured with error
+`smcfcs` can impute multiple covariates measured with error when internal replication data are available. It allows for a separate error variance for each such covariate. The following code adds a second covariate which is itself measured by two error-prone measurements, but this time with a smaller error variance. It then defines the `errorProneMatrix`, imputes and analyses the imputed datasets:
+```{r}
+x <- rnorm(n)
+x1 <- x+rnorm(n)
+x2 <- x+rnorm(n)
+w2[(n*0.1):n] <- NA
+z <- x+rnorm(n)
+z1 <- z+0.1*rnorm(n)
+z2 <- z+0.1*rnorm(n)
+y <- x-z+rnorm(n)
+x <- rep(NA,n)
+z <- rep(NA,n)
+simData <- data.frame(x,x1,x2,z,z1,z2,y)
+
+errMat <- array(0, dim=c(7,7))
+errMat[1,c(2,3)] <- 1
+errMat[4,c(5,6)] <- 1
+imps <- smcfcs(simData, smtype="lm", smformula="y~x+z",
+                     method=c("latnorm", "", "","latnorm", "", "", ""),m=5,
+               errorProneMatrix=errMat)
+```
+
+We now analyse the imputed datasets, remembering to add z into the substantive model:
+```{r}
+impobj <- imputationList(imps$impDatasets)
+models <- with(impobj, lm(y~x+z))
+summary(MIcombine(models))
+```
+We see that the fraction of missing information is lower for z than for x. This is a consequence of the fact that we generated the error-prone measurements of z to have smaller error variance than for the corresponding error-prone measurements of x.
