@@ -89,6 +89,15 @@ If we summarise one of the imputed datasets (below), we will see that `smcfcs` h
 summary(imps$impDatasets[[1]])
 ```
 
+One thing to be wary of when imputing covariates measured with error, particularly with replication data, is that convergence may take longer than in the regular missing data setting. To examine this, we re-impute one dataset using 100 iterations, and then plot the estimates against iteration number:
+```{r, fig.width=6}
+imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                     method=c("latnorm", "", "",""),m=1,numit=100,
+               errorProneMatrix=errMat)
+plot(imps$smCoefIter[1,2,])
+```
+This plot suggests it would probably be safer to impute using more than 10 iterations per imputation.
+
 ## Multiple covariates measured with error
 `smcfcs` can impute multiple covariates measured with error when internal replication data are available. It allows for a separate error variance for each such covariate. The following code adds a second covariate which is itself measured by two error-prone measurements, but this time with a smaller error variance. It then defines the `errorProneMatrix`, imputes and analyses the imputed datasets:
 ```{r}
