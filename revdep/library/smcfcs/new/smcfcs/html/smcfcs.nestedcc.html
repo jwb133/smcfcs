@@ -1,0 +1,149 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Substantive model compatible fully conditional specification...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for smcfcs.nestedcc {smcfcs}"><tr><td>smcfcs.nestedcc {smcfcs}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Substantive model compatible fully conditional specification imputation of covariates for nested case control
+studies</h2>
+
+<h3>Description</h3>
+
+<p>Multiply imputes missing covariate values using substantive model compatible
+fully conditional specification for nested case control studies.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+smcfcs.nestedcc(originaldata, smformula, set, event, nrisk, method,
+  predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000,
+  noisy = FALSE, errorProneMatrix = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>originaldata</code></td>
+<td>
+<p>The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)</p>
+</td></tr>
+<tr valign="top"><td><code>smformula</code></td>
+<td>
+<p>A formula of the form &quot;Surv(t,case)~x+strata(set)&quot;, where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term (see example).</p>
+</td></tr>
+<tr valign="top"><td><code>set</code></td>
+<td>
+<p>variable identifying matched sets in nested case-control study</p>
+</td></tr>
+<tr valign="top"><td><code>event</code></td>
+<td>
+<p>variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.</p>
+</td></tr>
+<tr valign="top"><td><code>nrisk</code></td>
+<td>
+<p>variable which is the number at risk (in the underlying full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).</p>
+</td></tr>
+<tr valign="top"><td><code>method</code></td>
+<td>
+<p>A required vector of strings specifying for each variable either
+that it does not need to be imputed (&quot;&quot;), the type of regression model to be
+be used to impute. Possible values are <code>"norm"</code> (normal linear regression),
+<code>"logreg"</code> (logistic regression), <code>"poisson"</code> (Poisson regression),
+<code>"podds"</code> (proportional odds regression for ordered categorical variables),
+<code>"mlogit"</code> (multinomial logistic regression for unordered categorical variables),
+or a custom expression which defines a passively imputed variable, e.g.
+<code>"x^2"</code> or <code>"x1*x2"</code>. <code>"latnorm"</code> indicates the variable is a latent
+normal variable which is measured with error. If this is specified for a variable,
+the <code>"errorProneMatrix"</code> argument should also be used.</p>
+</td></tr>
+<tr valign="top"><td><code>predictorMatrix</code></td>
+<td>
+<p>An optional predictor matrix. If specified, the matrix defines which
+covariates will be used as predictors in the imputation models
+(the outcome must not be included). The i'th row of the matrix should consist of
+0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
+as a covariate when imputing the i'th variable. If not specified, when
+imputing a given variable, the imputation model covariates are the other
+covariates of the substantive model which are partially observed
+(but which are not passively imputed) and any fully observed covariates (if present)
+in the substantive model. Note that the outcome variable is implicitly conditioned
+on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
+in the predictor matrix.</p>
+</td></tr>
+<tr valign="top"><td><code>m</code></td>
+<td>
+<p>The number of imputed datasets to generate. The default is 5.</p>
+</td></tr>
+<tr valign="top"><td><code>numit</code></td>
+<td>
+<p>The number of iterations to run when generating each imputation.
+In a (limited) range of simulations good performance was obtained with the
+default of 10 iterations. However, particularly when the proportion of missingness
+is large, more iterations may be required for convergence to stationarity.</p>
+</td></tr>
+<tr valign="top"><td><code>rjlimit</code></td>
+<td>
+<p>Specifies the maximum number of attempts which should be made
+when using rejection sampling to draw from imputation models. If the limit is reached
+when running a warning will be issued. In this case it is probably advisable to
+increase the <code>rjlimit</code> until the warning does not appear.</p>
+</td></tr>
+<tr valign="top"><td><code>noisy</code></td>
+<td>
+<p>logical value (default FALSE) indicating whether output should be noisy, which can
+be useful for debugging or checking that models being used are as desired.</p>
+</td></tr>
+<tr valign="top"><td><code>errorProneMatrix</code></td>
+<td>
+<p>An optional matrix which if specified indicates that some variables
+are measured with classical measurement error. If the i'th variable is measured with error
+by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
+remainder of entries 0. The i'th element of the method argument should then be specified
+as <code>"latnorm"</code>. See the measurement error vignette for more details.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This version of <code>smcfcs</code> is designed for use with nested case control studies. The function's arguments are the same
+as for the main smcfcs function, except for <code>smformula</code>, <code>set</code>, <code>event</code> and <code>nrisk</code> - see above
+for details on how these should be specified.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ruth Keogh <a href="mailto:ruth.keogh@lshtm.ac.uk">ruth.keogh@lshtm.ac.uk</a>
+</p>
+<p>Jonathan Bartlett <a href="mailto:j.w.bartlett@bath.ac.uk">j.w.bartlett@bath.ac.uk</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+#the following example is not run when the package is compiled on CRAN
+#(to keep computation time down), but it can be run by package users
+## Not run: 
+  predictorMatrix &lt;- matrix(0,nrow=dim(ex_ncc)[2],ncol=dim(ex_ncc)[2])
+  predictorMatrix[which(colnames(ex_ncc)=="x"),c(which(colnames(ex_ncc)=="z"))] &lt;- 1
+
+  imps &lt;- smcfcs.nestedcc(originaldata=ex_ncc,set="setno",nrisk="numrisk",event="d",
+                          smformula="Surv(t,case)~x+z+strata(setno)",
+                          method=c("", "", "logreg", "", "", "", "", ""),
+                          predictorMatrix=predictorMatrix)
+  library(mitools)
+  impobj &lt;- imputationList(imps$impDatasets)
+  models &lt;- with(impobj, clogit(case~x+z+strata(setno)))
+  summary(MIcombine(models))
+
+## End(Not run)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>smcfcs</em> version 1.4.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

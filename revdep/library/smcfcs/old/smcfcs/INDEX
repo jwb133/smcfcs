@@ -1,0 +1,23 @@
+ex_cc                   Simulated case cohort data
+ex_compet               Simulated example data with competing risks
+                        outcome and partially observed covariates
+ex_coxquad              Simulated example data with time to event
+                        outcome and quadratic covariate effects
+ex_lininter             Simulated example data with continuous outcome
+                        and interaction between two partially observed
+                        covariates
+ex_linquad              Simulated example data with continuous outcome
+                        and quadratic covariate effects
+ex_logisticquad         Simulated example data with binary outcome and
+                        quadratic covariate effects
+ex_ncc                  Simulated nested case-control data
+ex_poisson              Simulated example data with count outcome,
+                        modelled using Poisson regression
+smcfcs                  Substantive model compatible fully conditional
+                        specification imputation of covariates.
+smcfcs.casecohort       Substantive model compatible fully conditional
+                        specification imputation of covariates for case
+                        cohort studies
+smcfcs.nestedcc         Substantive model compatible fully conditional
+                        specification imputation of covariates for
+                        nested case control studies

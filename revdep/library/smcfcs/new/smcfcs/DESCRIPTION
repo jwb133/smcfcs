@@ -1,0 +1,29 @@
+Package: smcfcs
+Title: Multiple Imputation of Covariates by Substantive Model
+        Compatible Fully Conditional Specification
+Version: 1.4.0
+Authors@R: c(person("Jonathan", "Bartlett", email = "j.w.bartlett@bath.ac.uk",role = c("aut", "cre")),
+    person("Ruth", "Keogh", email = "ruth.keogh@lshtm.ac.uk",role = c("aut")))
+URL: http://www.missingdata.org.uk, http://thestatsgeek.com
+Description: Implements multiple imputation of missing covariates by
+    Substantive Model Compatible Fully Conditional Specification.
+    This is a modification of the popular FCS/chained equations
+    multiple imputation approach, and allows imputation of missing
+    covariate values from models which are compatible with the user
+    specified substantive model.
+Depends: R (>= 3.1.2)
+License: GPL-3
+LazyData: true
+Imports: MASS, survival, VGAM, stats
+Suggests: knitr, rmarkdown, mitools
+VignetteBuilder: knitr
+RoxygenNote: 6.1.1
+Encoding: UTF-8
+RemoteType: local
+RemoteUrl: H:\Git\smcfcs
+NeedsCompilation: no
+Packaged: 2019-03-27 16:06:28 UTC; jwb67
+Author: Jonathan Bartlett [aut, cre],
+  Ruth Keogh [aut]
+Maintainer: Jonathan Bartlett <j.w.bartlett@bath.ac.uk>
+Built: R 3.5.3; ; 2019-03-27 16:06:29 UTC; windows

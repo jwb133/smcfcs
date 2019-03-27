@@ -1,0 +1,57 @@
+
+R version 3.5.3 (2019-03-11) -- "Great Truth"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ### test-glmSeries.R --- 
+> #----------------------------------------------------------------------
+> ## Author: Thomas Alexander Gerds
+> ## Created: Feb 10 2018 (12:44) 
+> ## Version: 
+> ## Last-Updated: Feb 10 2018 (18:37) 
+> ##           By: Thomas Alexander Gerds
+> ##     Update #: 2
+> #----------------------------------------------------------------------
+> ## 
+> ### Commentary: 
+> ## 
+> ### Change Log:
+> #----------------------------------------------------------------------
+> ## 
+> ### Code:
+> library(testthat)
+> library(Publish)
+Loading required package: prodlim
+> library(data.table)
+> data(Diabetes)
+> 
+> test_that("glmSeries missing data, data.table ",{
++     Diabetes <- as.data.frame(Diabetes)
++     Diabetes$hypertension <- factor(Diabetes$bp.1s>140)
++     a <- glmSeries(vars=c("bp.2s","frame","weight","age"),formula=hypertension~gender,data=Diabetes,family=binomial)
++     expect_equal(a$Missing,c(262,12,"","","1","0"))
++     setDT(Diabetes)
++     b <- glmSeries(vars=c("bp.2s","frame","weight","age"),formula=hypertension~gender,data=Diabetes,family=binomial)
++     expect_equal(a,b)
++ })
+> 
+> 
+> 
+> ######################################################################
+> ### test-glmSeries.R ends here
+> 
+> proc.time()
+   user  system elapsed 
+   0.93    0.40    2.20 

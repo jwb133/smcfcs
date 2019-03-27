@@ -1,0 +1,108 @@
+
+R version 3.5.3 (2019-03-11) -- "Great Truth"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ### test-publish-gls.R --- 
+> #----------------------------------------------------------------------
+> ## Author: Thomas Alexander Gerds
+> ## Created: Aug 14 2017 (18:56) 
+> ## Version: 
+> ## Last-Updated: Aug 18 2017 (15:57) 
+> ##           By: Thomas Alexander Gerds
+> ##     Update #: 4
+> #----------------------------------------------------------------------
+> ## 
+> ### Commentary: 
+> ## 
+> ### Change Log:
+> #----------------------------------------------------------------------
+> ## 
+> ### Code:
+> library(testthat)
+> context("publish: gls regression")
+> 
+> ## simulation
+> library(nlme)
+> library(Publish)
+Loading required package: prodlim
+> library(lava)
+
+Attaching package: 'lava'
+
+The following object is masked from 'package:testthat':
+
+    compare
+
+> m <- lvm(Y ~ X1 + gender + group + Interaction)
+> distribution(m, ~gender) <- binomial.lvm()
+> distribution(m, ~group) <- binomial.lvm(size = 2)
+> constrain(m, Interaction ~ gender + group) <- function(x){x[,1]*x[,2]}
+> d <- sim(m, 1e2)
+> d$gender <- factor(d$gender, labels = letters[1:2])
+> d$group <- factor(d$group)
+> 
+> ## model
+> test_that("publish matches gls", {
++     e.gls <- gls(Y ~ X1 + gender+group, data = d,
++                  weights = varIdent(form = ~1|group))
++     res <- summary(regressionTable(e.gls))
++     Sgls <- summary(e.gls)$tTable
++     expect_equal(res$rawTable[c(1,3,5,6),"Coefficient"],
++                  unname(Sgls[c("X1","genderb","group1","group2"),"Value"]))
++     expect_equal(res$rawTable[c(1,3,5,6),"Pvalue"],
++                  unname(Sgls[c("X1","genderb","group1","group2"),"p-value"]))
++ })
+Error in eval(parse(text = misscall), data) : object 'X1' not found
+Error in eval(parse(text = misscall), data) : object 'gender' not found
+Error in eval(parse(text = misscall), data) : object 'group' not found
+  Variable Units Coefficient       CI.95 p-value
+1       X1              1.06 [0.86;1.26]  <0.001
+2   gender     a         Ref                    
+3              b        1.64 [1.23;2.05]  <0.001
+4    group     0         Ref                    
+5              1        1.24 [0.78;1.71]  <0.001
+6              2        3.25 [2.60;3.89]  <0.001
+> 
+> context("publish: lme regression")
+> 
+> data("Orthodont")
+> test_that("publish matches lme", {
++     fm1 <- lme(distance ~ age+Sex, 
++                random = ~1|Subject,
++                data = Orthodont) 
++     res <- publish(fm1)
++     # main effects
++     expect_equal(as.double(res$rawTable[c(1:2,4),"Coefficient"]),
++                  as.double(fixef(fm1)[1:3]))
++     expect_equal(as.double(res$rawTable[c(1:2,4),"Pvalue"]),
++                  as.double(summary(fm1)$tTable[1:3,5]))
++ })
+Error in eval(parse(text = misscall), data) : object 'age' not found
+Error in eval(parse(text = misscall), data) : object 'Sex' not found
+    Variable  Units Coefficient         CI.95    p-value 
+ (Intercept)              17.71 [16.05;19.37]    < 1e-04 
+         age               0.66   [0.54;0.78]    < 1e-04 
+         Sex   Male         Ref                          
+             Female       -2.32 [-3.89;-0.75]   0.005375 
+> 
+> 
+> 
+> ######################################################################
+> ### test-publish-gls.R ends here
+> 
+> proc.time()
+   user  system elapsed 
+   1.12    0.25    1.62 

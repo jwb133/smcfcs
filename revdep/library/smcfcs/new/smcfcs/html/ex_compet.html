@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Simulated example data with competing risks outcome and...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for ex_compet {smcfcs}"><tr><td>ex_compet {smcfcs}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Simulated example data with competing risks outcome and partially observed covariates</h2>
+
+<h3>Description</h3>
+
+<p>A dataset containing simulated competing risks data. There are two competing risks, and
+some times are also censored.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+ex_compet
+</pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 1000 rows and 4 variables:
+</p>
+
+<dl>
+<dt>t</dt><dd><p>Time to event or censoring</p>
+</dd>
+<dt>d</dt><dd><p>Indicator of whether event 1 occurred (d=1), event 2 occurred (d=2) or individual was censored (d=0)</p>
+</dd>
+<dt>x1</dt><dd><p>Partially observed binary covariate, with linear effects on log competing risk hazards</p>
+</dd>
+<dt>x2</dt><dd><p>Partially observed normally distributed (conditional on x1) covariate, with linear effects
+on log competing risk hazards</p>
+</dd>
+</dl>
+
+<hr /><div style="text-align: center;">[Package <em>smcfcs</em> version 1.4.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

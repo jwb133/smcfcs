@@ -1,0 +1,247 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><title>R: Substantive model compatible fully conditional specification...</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+
+<table width="100%" summary="page for smcfcs {smcfcs}"><tr><td>smcfcs {smcfcs}</td><td style="text-align: right;">R Documentation</td></tr></table>
+
+<h2>Substantive model compatible fully conditional specification imputation of covariates.</h2>
+
+<h3>Description</h3>
+
+<p>Multiply imputes missing covariate values using substantive model compatible
+fully conditional specification.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre>
+smcfcs(originaldata, smtype, smformula, method, predictorMatrix = NULL,
+  m = 5, numit = 10, rjlimit = 1000, noisy = FALSE,
+  errorProneMatrix = NULL)
+</pre>
+
+
+<h3>Arguments</h3>
+
+<table summary="R argblock">
+<tr valign="top"><td><code>originaldata</code></td>
+<td>
+<p>The original data frame with missing values.</p>
+</td></tr>
+<tr valign="top"><td><code>smtype</code></td>
+<td>
+<p>A string specifying the type of substantive model. Possible
+values are <code>"lm"</code>, <code>"logistic"</code>, <code>"poisson"</code>, <code>"weibull"</code>,
+<code>"coxph"</code> and <code>"compet"</code>.</p>
+</td></tr>
+<tr valign="top"><td><code>smformula</code></td>
+<td>
+<p>The formula of the substantive model. For <code>"weibull"</code> and <code>"coxph"</code> substantive
+models the left hand side should be of the form <code>"Surv(t,d)"</code>. For <code>"compet"</code>
+substantive models, a list should be passed consisting of the Cox models
+for each cause of failure (see example).</p>
+</td></tr>
+<tr valign="top"><td><code>method</code></td>
+<td>
+<p>A required vector of strings specifying for each variable either
+that it does not need to be imputed (&quot;&quot;), the type of regression model to be
+be used to impute. Possible values are <code>"norm"</code> (normal linear regression),
+<code>"logreg"</code> (logistic regression), <code>"poisson"</code> (Poisson regression),
+<code>"podds"</code> (proportional odds regression for ordered categorical variables),
+<code>"mlogit"</code> (multinomial logistic regression for unordered categorical variables),
+or a custom expression which defines a passively imputed variable, e.g.
+<code>"x^2"</code> or <code>"x1*x2"</code>. <code>"latnorm"</code> indicates the variable is a latent
+normal variable which is measured with error. If this is specified for a variable,
+the <code>"errorProneMatrix"</code> argument should also be used.</p>
+</td></tr>
+<tr valign="top"><td><code>predictorMatrix</code></td>
+<td>
+<p>An optional predictor matrix. If specified, the matrix defines which
+covariates will be used as predictors in the imputation models
+(the outcome must not be included). The i'th row of the matrix should consist of
+0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
+as a covariate when imputing the i'th variable. If not specified, when
+imputing a given variable, the imputation model covariates are the other
+covariates of the substantive model which are partially observed
+(but which are not passively imputed) and any fully observed covariates (if present)
+in the substantive model. Note that the outcome variable is implicitly conditioned
+on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
+in the predictor matrix.</p>
+</td></tr>
+<tr valign="top"><td><code>m</code></td>
+<td>
+<p>The number of imputed datasets to generate. The default is 5.</p>
+</td></tr>
+<tr valign="top"><td><code>numit</code></td>
+<td>
+<p>The number of iterations to run when generating each imputation.
+In a (limited) range of simulations good performance was obtained with the
+default of 10 iterations. However, particularly when the proportion of missingness
+is large, more iterations may be required for convergence to stationarity.</p>
+</td></tr>
+<tr valign="top"><td><code>rjlimit</code></td>
+<td>
+<p>Specifies the maximum number of attempts which should be made
+when using rejection sampling to draw from imputation models. If the limit is reached
+when running a warning will be issued. In this case it is probably advisable to
+increase the <code>rjlimit</code> until the warning does not appear.</p>
+</td></tr>
+<tr valign="top"><td><code>noisy</code></td>
+<td>
+<p>logical value (default FALSE) indicating whether output should be noisy, which can
+be useful for debugging or checking that models being used are as desired.</p>
+</td></tr>
+<tr valign="top"><td><code>errorProneMatrix</code></td>
+<td>
+<p>An optional matrix which if specified indicates that some variables
+are measured with classical measurement error. If the i'th variable is measured with error
+by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
+remainder of entries 0. The i'th element of the method argument should then be specified
+as <code>"latnorm"</code>. See the measurement error vignette for more details.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>smcfcs imputes missing values of covariates using the Substantive Model Compatible
+Fully Conditional Specification multiple imputation approach proposed by
+Bartlett <em>et al</em> 2015 (see references).
+</p>
+<p>Currently imputation is supported for linear regression (<code>"lm"</code>),
+logistic regression (<code>"logistic"</code>), Poisson regression
+(<code>"poisson"</code>), Weibull (<code>"weibull"</code>) and Cox regression
+for time to event data (<code>"coxph"</code>),
+and Cox models for competing risks data (<code>"compet"</code>). For the latter, a
+Cox model is assumed for each cause of failure, and the event indicator
+should be integer coded with 0 corresponding to censoring, 1 corresponding to
+failure from the first cause etc.
+</p>
+<p>The function returns a list. The first element <code>impDataset</code> of the list is a list of the imputed
+datasets. Models (e.g. the substantive model) can be fitted to each and results
+combined using Rubin's rules using the mitools package, as illustrated in the examples.
+</p>
+<p>The second element <code>smCoefIter</code> is a three dimensional array containing the values
+of the substantive model parameters obtained at the end of each iteration of the algorithm.
+The array is indexed by: imputation number, parameter number, iteration.
+</p>
+<p>If the substantive model is linear, logistic or Poisson regression,
+<code>smcfcs</code> will automatically impute missing outcomes, if present, using
+the specified substantive model. However, even in this case, the user should
+specify &quot;&quot; in the element of method corresponding to the outcome variable.
+</p>
+<p>The development of this package was supported by a UK Medical Research Council
+Fellowship (MR/K02180X/1). Part of its development took place while the author was
+kindly hosted by the University of Michigan's Department of Biostatistics &amp; Institute for
+Social Research.
+</p>
+<p>The structure of many of the arguments to <code>smcfcs</code> are based on those of
+the excellent <code>mice</code> package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing:
+</p>
+<p><code>impDatasets</code> a list containing the imputed datasets
+</p>
+<p><code>smCoefIter</code> a three dimension matrix containing the substantive model parameter
+values. The matrix is indexed by [imputation,parameter number,iteration]
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jonathan Bartlett <a href="mailto:j.w.bartlett@bath.ac.uk">j.w.bartlett@bath.ac.uk</a> <a href="http://www.missingdata.org.uk">http://www.missingdata.org.uk</a>
+<a href="http://thestatsgeek.com">http://thestatsgeek.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
+by fully conditional specification: accommodating the substantive model. Statistical Methods
+in Medical Research 2015; 24(4): 462-487. <a href="http://doi.org/10.1177/0962280214521348">http://doi.org/10.1177/0962280214521348</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre>
+#set random number seed to make results reproducible
+set.seed(123)
+
+#linear substantive model with quadratic covariate effect
+imps &lt;- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",
+               method=c("","","norm","x^2",""))
+
+#if mitools is installed, fit substantive model to imputed datasets
+#and combine results using Rubin's rules
+if (requireNamespace("mitools", quietly = TRUE)) {
+  library(mitools)
+  impobj &lt;- imputationList(imps$impDatasets)
+  models &lt;- with(impobj, lm(y~z+x+xsq))
+  summary(MIcombine(models))
+}
+
+#the following examples are not run when the package is compiled on CRAN
+#(to keep computation time down), but they can be run by package users
+## Not run: 
+  #examining convergence, using 100 iterations, setting m=1
+  imps &lt;- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",
+                 method=c("","","norm","x^2",""),m=1,numit=100)
+  #convergence plot from first imputation for third coefficient of substantive model
+  plot(imps$smCoefIter[1,3,])
+
+  #include auxiliary variable assuming it is conditionally independent of Y (which it is here)
+  predMatrix &lt;- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
+  predMatrix[3,] &lt;- c(0,1,0,0,1)
+  imps &lt;- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",
+                 method=c("","","norm","x^2",""),predictorMatrix=predMatrix)
+
+  #impute missing x1 and x2, where they interact in substantive model
+  imps &lt;- smcfcs(ex_lininter, smtype="lm", smformula="y~x1+x2+x1*x2",
+                 method=c("","norm","logreg"))
+
+  #logistic regression substantive model, with quadratic covariate effects
+  imps &lt;- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",
+                 method=c("","","norm","x^2",""))
+
+  #Poisson regression substantive model
+  imps &lt;- smcfcs(ex_poisson, smtype="poisson", smformula="y~x+z",
+                 method=c("","norm",""))
+  if (requireNamespace("mitools", quietly = TRUE)) {
+    library(mitools)
+    impobj &lt;- imputationList(imps$impDatasets)
+    models &lt;- with(impobj, glm(y~x+z,family=poisson))
+    summary(MIcombine(models))
+  }
+
+  #Cox regression substantive model, with only main covariate effects
+  if (requireNamespace("survival", quietly = TRUE)) {
+    imps &lt;- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
+                   method=c("","","","norm","x^2",""))
+
+    #competing risks substantive model, with only main covariate effects
+    imps &lt;- smcfcs(ex_compet, smtype="compet",
+                   smformula=c("Surv(t,d==1)~x1+x2", "Surv(t,d==2)~x1+x2"),
+                   method=c("","","logreg","norm"))
+  }
+
+  #if mitools is installed, fit model for first competing risk
+  if (requireNamespace("mitools", quietly = TRUE)) {
+    library(mitools)
+    impobj &lt;- imputationList(imps$impDatasets)
+    models &lt;- with(impobj, coxph(Surv(t,d==1)~x1+x2))
+    summary(MIcombine(models))
+  }
+
+
+## End(Not run)
+</pre>
+
+<hr /><div style="text-align: center;">[Package <em>smcfcs</em> version 1.4.0 <a href="00Index.html">Index</a>]</div>
+</body></html>

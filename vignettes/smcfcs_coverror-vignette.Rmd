@@ -4,7 +4,7 @@ author: "Jonathan Bartlett"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{smcfcs}
+  %\VignetteIndexEntry{smcfcs_measerror}
   %\VignetteEngine{knitr::rmarkdown}
   %\usepackage[utf8]{inputenc}
 ---
