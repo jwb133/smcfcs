@@ -39,9 +39,9 @@
 #'
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible
-#' values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"coxph"}
-#'  and \code{"compet"}.
-#' @param smformula The formula of the substantive model. For \code{"coxph"} substantive
+#' values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
+#' \code{"coxph"} and \code{"compet"}.
+#' @param smformula The formula of the substantive model. For \code{"weibull"} and \code{"coxph"} substantive
 #' models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 #' substantive models, a list should be passed consisting of the Cox models
 #' for each cause of failure (see example).
@@ -177,7 +177,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
   #create matrix of response indicators
   r <- 1*(is.na(originaldata)==0)
 
-  if ((smtype %in% c("lm", "logistic", "poisson", "coxph", "compet", "casecohort","nestedcc"))==FALSE) #RUTH 21/03/2017: ADDED 'nestedcc' OPTION HERE
+  if ((smtype %in% c("lm", "logistic", "poisson", "coxph", "compet", "casecohort","nestedcc", "weibull"))==FALSE)
     stop(paste("Substantive model type ",smtype," not recognised.",sep=""))
 
   #find column numbers of partially observed, fully observed variables, and outcome
@@ -192,6 +192,11 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     basehaz <- survival::basehaz(nullMod)
     H0indices <- match(originaldata[,timeCol], basehaz[,2])
     rm(nullMod)
+  } else if (smtype=="weibull") {
+    timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
+    dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
+    outcomeCol <- c(timeCol, dCol)
+    d <- originaldata[,dCol]
   } else if (smtype=="compet") {
 
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[2]])]
@@ -606,6 +611,16 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             print(summary(ymod))
           }
         }
+        else if (smtype=="weibull") {
+          ymod <- survival::survreg(as.formula(smformula), data=imputations[[imp]], dist="weibull")
+          outcomeModBeta <-  c(coef(ymod), log(ymod$scale)) +
+            MASS::mvrnorm(1, mu=rep(0,ncol(vcov(ymod))), Sigma=vcov(ymod))
+          weibullScale <- exp(tail(outcomeModBeta,1))
+          outcomeModBeta <- head(outcomeModBeta, -1)
+          if (noisy==TRUE) {
+            print(summary(ymod))
+          }
+        }
         else if (smtype=="compet") {
           for (cause in 1:numCauses) {
             ymod <- survival::coxph(as.formula(smformula[[cause]]), imputations[[imp]])
@@ -721,6 +736,12 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               outcomeDens <- dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
             }
+            else if (smtype=="weibull") {
+              outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
+              #weibull survival function
+              outcomeDens <- (1-d[imputationNeeded])*(1-psurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale))+
+                d[imputationNeeded]*(dsurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale))
+            }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
@@ -795,8 +816,13 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               prob = dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
               reject = 1*(uDraw>prob)
-            }
-            else if ((smtype=="coxph") | (smtype=="casecohort")) {
+            } else if (smtype=="weibull") {
+              outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
+              s_t <- 1-psurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale)
+              prob <- -exp(1)*log(s_t)*s_t
+              prob <- d[imputationNeeded]*prob + (1-d[imputationNeeded])*s_t
+              reject <- 1*(uDraw>prob)
+            } else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               s_t = exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
@@ -863,6 +889,16 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             else if (smtype=="poisson") {
               outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
               prob = dpois(tempData[,outcomeCol], exp(outmodxb))
+              reject = 1*(uDraw>prob)
+            }
+            else if (smtype=="weibull") {
+              outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
+              s_t <- 1-psurvreg(tempData[,timeCol], mean=outmodxb, scale=weibullScale)
+              if (d[i]==1) {
+                prob <- -exp(1)*log(s_t)*s_t
+              } else {
+                prob <- s_t
+              }
               reject = 1*(uDraw>prob)
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {

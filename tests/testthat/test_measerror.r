@@ -3,6 +3,28 @@ library(survival)
 library(mitools)
 context("Covariate measurement error testing")
 
+test_that("Linear regression with cov. measurement error runs", {
+  expect_error({
+    set.seed(1234)
+
+    n<- 100 #sample size
+    x <- rnorm(n)
+    w1 <- x+rnorm(n)
+    w2 <- x+rnorm(n)
+    y <- x+rnorm(n)
+    x <- rep(NA, n)
+
+    simData <- data.frame(x,w1,w2,y)
+
+    errMat <- matrix(0, nrow=4, ncol=4)
+    errMat[1,c(2,3)] <- 1
+
+    imps <- smcfcs(simData, smtype="lm", smformula="y~x",
+                   method=c("latnorm", "", "", ""),
+                   errorProneMatrix=errMat,numit=100,m=1)
+  }, NA)
+})
+
 test_that("Linear regression with cov. measurement error is consistent", {
   skip_on_cran()
   expect_equal({
@@ -23,9 +45,9 @@ test_that("Linear regression with cov. measurement error is consistent", {
     imps <- smcfcs(simData, smtype="lm", smformula="y~x",
                    method=c("latnorm", "", "", ""),
                    errorProneMatrix=errMat,numit=100,m=1)
-    abs(coef(lm(y~x, data=imps$impDatasets[[1]]))[2]-1)<0.05
+    as.logical(abs(coef(lm(y~x, data=imps$impDatasets[[1]]))[2]-1)<0.05)
 }, TRUE)
-  })
+})
 
 test_that("Linear regression with cov. measurement error coverage is ok", {
   skip_on_cran()
@@ -59,4 +81,4 @@ test_that("Linear regression with cov. measurement error coverage is ok", {
     #check coverage is close to 95%
     abs(mean((ests[,1]<1) & (ests[,2]>1))-0.95)<(qnorm(0.99)*((0.95*0.05)/nSim)^0.5)
 }, TRUE)
-  })
+})
