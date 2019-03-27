@@ -12,10 +12,10 @@ smcfcs(originaldata, smtype, smformula, method, predictorMatrix = NULL,
 \item{originaldata}{The original data frame with missing values.}
 
 \item{smtype}{A string specifying the type of substantive model. Possible
-values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"coxph"}
- and \code{"compet"}.}
+values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
+\code{"coxph"} and \code{"compet"}.}
 
-\item{smformula}{The formula of the substantive model. For \code{"coxph"} substantive
+\item{smformula}{The formula of the substantive model. For \code{"weibull"} and \code{"coxph"} substantive
 models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 substantive models, a list should be passed consisting of the Cox models
 for each cause of failure (see example).}
@@ -83,7 +83,8 @@ Bartlett \emph{et al} 2015 (see references).
 
 Currently imputation is supported for linear regression (\code{"lm"}),
 logistic regression (\code{"logistic"}), Poisson regression
-(\code{"poisson"}), Cox regression for time to event data (\code{"coxph"}),
+(\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
+for time to event data (\code{"coxph"}),
 and Cox models for competing risks data (\code{"compet"}). For the latter, a
 Cox model is assumed for each cause of failure, and the event indicator
 should be integer coded with 0 corresponding to censoring, 1 corresponding to

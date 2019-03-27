@@ -9,7 +9,8 @@
 #'
 #' Currently imputation is supported for linear regression (\code{"lm"}),
 #' logistic regression (\code{"logistic"}), Poisson regression
-#' (\code{"poisson"}), Cox regression for time to event data (\code{"coxph"}),
+#' (\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
+#' for time to event data (\code{"coxph"}),
 #' and Cox models for competing risks data (\code{"compet"}). For the latter, a
 #' Cox model is assumed for each cause of failure, and the event indicator
 #' should be integer coded with 0 corresponding to censoring, 1 corresponding to
@@ -336,7 +337,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
         stop("The errorProneMatrix should be a square matrix with number of rows equal to the number of variables in the dataset.")
       }
       #check entries of errorProneMatrix only consists of 0s and 1s
-      if (identical(sort(unique(as.vector(errMat))),c(0,1))==FALSE) {
+      if (identical(sort(unique(as.vector(errorProneMatrix))),c(0,1))==FALSE) {
         stop("The errorProneMatrix should only consist of 0s and 1s.")
       }
       #check each latnorm variable has at least 2 error-prones
@@ -615,8 +616,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           ymod <- survival::survreg(as.formula(smformula), data=imputations[[imp]], dist="weibull")
           outcomeModBeta <-  c(coef(ymod), log(ymod$scale)) +
             MASS::mvrnorm(1, mu=rep(0,ncol(vcov(ymod))), Sigma=vcov(ymod))
-          weibullScale <- exp(tail(outcomeModBeta,1))
-          outcomeModBeta <- head(outcomeModBeta, -1)
+          weibullScale <- exp(utils::tail(outcomeModBeta,1))
+          outcomeModBeta <- utils::head(outcomeModBeta, -1)
           if (noisy==TRUE) {
             print(summary(ymod))
           }
@@ -739,8 +740,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             else if (smtype=="weibull") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               #weibull survival function
-              outcomeDens <- (1-d[imputationNeeded])*(1-psurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale))+
-                d[imputationNeeded]*(dsurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale))
+              outcomeDens <- (1-d[imputationNeeded])*(1-survival::psurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale))+
+                d[imputationNeeded]*(survival::dsurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale))
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
@@ -818,7 +819,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               reject = 1*(uDraw>prob)
             } else if (smtype=="weibull") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
-              s_t <- 1-psurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale)
+              s_t <- 1-survival::psurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale)
               prob <- -exp(1)*log(s_t)*s_t
               prob <- d[imputationNeeded]*prob + (1-d[imputationNeeded])*s_t
               reject <- 1*(uDraw>prob)
@@ -893,7 +894,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             }
             else if (smtype=="weibull") {
               outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
-              s_t <- 1-psurvreg(tempData[,timeCol], mean=outmodxb, scale=weibullScale)
+              s_t <- 1-survival::psurvreg(tempData[,timeCol], mean=outmodxb, scale=weibullScale)
               if (d[i]==1) {
                 prob <- -exp(1)*log(s_t)*s_t
               } else {
