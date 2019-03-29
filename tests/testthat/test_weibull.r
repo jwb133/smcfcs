@@ -51,7 +51,7 @@ test_that("Weibull imputation is consistent, cts covariate", {
     t <- rsurvreg(n, mean=x+z, scale=2)
     d <- 1*(t<10)
     t[d==0] <- 10
-    x[(runif(n)<0.01)] <- NA
+    x[(runif(n)<0.5)] <- NA
 
     simData <- data.frame(t,d,x,z)
 
