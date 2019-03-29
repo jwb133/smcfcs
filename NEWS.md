@@ -1,3 +1,5 @@
+Version 1.4.0 - adding covariate measurement error and Weibull substantive model functionality.
+
 Version 1.3.1 - fixing a bug in a check smcfcs does that every variable that should have an imputation method specified does.
 
 Version 1.3.0 - adding functionality for nested case control and case cohort studies
