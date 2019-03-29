@@ -897,6 +897,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               s_t <- 1-survival::psurvreg(tempData[,timeCol], mean=outmodxb, scale=weibullScale)
               if (d[i]==1) {
                 prob <- -exp(1)*log(s_t)*s_t
+                #the following line fixes a numerical error which occurs if s_t=0 for any draws
+                prob[is.na(prob)] <- 0
               } else {
                 prob <- s_t
               }
@@ -927,7 +929,6 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               }
               reject = 1*(uDraw > prob )
             }
-
             if (sum(reject)<rjlimit) {
               imputations[[imp]][i,targetCol] <- tempData[reject==0,targetCol][1]
             } else {
