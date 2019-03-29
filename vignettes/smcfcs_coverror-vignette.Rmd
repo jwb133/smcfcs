@@ -9,7 +9,7 @@ vignette: >
   %\usepackage[utf8]{inputenc}
 ---
 
-This short vignette introduces the capabilites of `smcfcs` to accommodate classical covariate measurement error. We consider the cases where internal validation data and then internal replication data are available.
+This short vignette introduces the capabilities of `smcfcs` to accommodate classical covariate measurement error. We consider the cases where internal validation data and then internal replication data are available.
 
 #Validation data
 We will simulate a dataset with internal validation data where the true covariate (x) is observed for 10\% of the sample, while every subject has an error-prone measurement (w) observed:
