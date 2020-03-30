@@ -9,7 +9,7 @@ test_that("Cox imputation is approximately unbiased", {
     n <- 10000
     z <- rnorm(n)
     x <- z+rnorm(n)
-    t <- -log(runif(n))/(0.01*exp(x+z))
+    t <- -log(runif(n))/(1*exp(x+z))
     d <- 1*(t<10)
     t[d==0] <- 10
     x[(runif(n)<0.5)] <- NA

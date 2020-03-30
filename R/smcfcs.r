@@ -189,7 +189,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
 
-    nullMod <- survival::coxph(Surv(originaldata[,timeCol],originaldata[,dCol])~1)
+    nullMod <- survival::coxph(Surv(originaldata[,timeCol],originaldata[,dCol])~1,
+                               control = survival::coxph.control(timefix = FALSE))
     basehaz <- survival::basehaz(nullMod)
     H0indices <- match(originaldata[,timeCol], basehaz[,2])
     rm(nullMod)
@@ -210,7 +211,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     outcomeModBeta <- vector("list", numCauses)
     linpred <- vector("list", numCauses)
     for (cause in 1:numCauses) {
-      nullMod <- survival::coxph(as.formula(paste(strsplit(smformula[[cause]],"~")[[1]][1],"~1")), originaldata)
+      nullMod <- survival::coxph(as.formula(paste(strsplit(smformula[[cause]],"~")[[1]][1],"~1")), originaldata,
+                                 control = survival::coxph.control(timefix = FALSE))
       basehaz <- survival::basehaz(nullMod)
       H0[[cause]] <- basehaz[,1]
       H0indices[[cause]] <- match(originaldata[,timeCol], basehaz[,2])
@@ -603,7 +605,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           }
         }
         else if (smtype=="coxph") {
-          ymod <- survival::coxph(as.formula(smformula), imputations[[imp]])
+          ymod <- survival::coxph(as.formula(smformula), imputations[[imp]],
+                                  control = survival::coxph.control(timefix = FALSE))
           outcomeModBeta <- modPostDraw(ymod)
           ymod$coefficients <- outcomeModBeta
           basehaz <- survival::basehaz(ymod, centered=FALSE)[,1]
@@ -624,7 +627,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
         }
         else if (smtype=="compet") {
           for (cause in 1:numCauses) {
-            ymod <- survival::coxph(as.formula(smformula[[cause]]), imputations[[imp]])
+            ymod <- survival::coxph(as.formula(smformula[[cause]]), imputations[[imp]],
+                                    control = survival::coxph.control(timefix = FALSE))
             outcomeModBeta[[cause]] <- modPostDraw(ymod)
             ymod$coefficients <- outcomeModBeta[[cause]]
             basehaz <- survival::basehaz(ymod, centered=FALSE)[,1]
@@ -635,7 +639,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           }
         }
         else if (smtype=="casecohort") {
-          ymod <- survival::coxph(as.formula(smformula2), imputations[[imp]])
+          ymod <- survival::coxph(as.formula(smformula2), imputations[[imp]],
+                                  control = survival::coxph.control(timefix = FALSE))
           outcomeModBeta <- modPostDraw(ymod)
 
           cumhaz.denom.elements=exp(model.matrix(as.formula(smformula),imputations[[imp]])[,-1] %*% outcomeModBeta)
@@ -649,7 +654,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           }
         }
         else if (smtype=="nestedcc") {
-          ymod <- survival::coxph(as.formula(smformula), imputations[[imp]])
+          ymod <- survival::coxph(as.formula(smformula), imputations[[imp]],
+                                  control = survival::coxph.control(timefix = FALSE))
           outcomeModBeta <- modPostDraw(ymod)
 
           explan.matrix<-model.matrix(ymod)
