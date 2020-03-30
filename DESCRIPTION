@@ -4,7 +4,7 @@ Title: Multiple Imputation of Covariates by Substantive Model Compatible Fully
 Version: 1.4.1
 Authors@R: c(person("Jonathan", "Bartlett", email = "j.w.bartlett@bath.ac.uk",role = c("aut", "cre")),
     person("Ruth", "Keogh", email = "ruth.keogh@lshtm.ac.uk",role = c("aut")),
-    person("Claus", "Ekstrøm",role = c("ctb")),
+    person("Claus Thorn", "Ekstrøm",role = c("ctb")),
     person("Edouard", "Bonneville",role = c("ctb")))
 URL: http://www.missingdata.org.uk, http://thestatsgeek.com
 Description: Implements multiple imputation of missing covariates by
