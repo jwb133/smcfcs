@@ -119,7 +119,7 @@ prep_iters <- function(x, contrast) {
   } else {
 
     # No intercept for other survival models
-    if (smtype %in% c("weibull", "coxph")) {
+    if (smtype %in% c("weibull", "coxph", "casecohort", "nestedcc")) {
       coef_names <- get_coef_names(smformula, dat, intercept = F, contrast)
     } else {
       coef_names <- get_coef_names(smformula, dat, intercept = T, contrast)
@@ -168,8 +168,18 @@ get_coef_names <- function(smformula,
     contr_list <- replace(contr_list, values = contrast)
   } else contr_list <- NULL
 
+  smformula_matrix <- as.formula(paste0("~ +", rhs))
+
+  # Check if there is stratification - if so remove from model matrix
+  # (stratification means different baseline hazards, coefficients still same)
+  if (grepl(x = rhs, pattern = "strata")) {
+    strata_var <- gsub(x = rhs, pattern = ".*\\(|\\).*", replacement = "")
+    rm_strata <- as.formula(paste0("~ . - strata(", strata_var, ")"))
+    smformula_matrix <- update(smformula_matrix, rm_strata)
+  }
+
   model_mat <- stats::model.matrix(
-    object = as.formula(paste0("~ +", rhs)),
+    object = smformula_matrix,
     data = dat,
     contrasts.arg = contr_list
   )

@@ -38,7 +38,7 @@ the imputation procedure. This is done for each regression coefficient,
 and each line corresponds to an imputed dataset.
 }
 \details{
-The names of coefficients
+Requires loading of ggplot2 plotting library.
 }
 \examples{
 \dontrun{
@@ -53,8 +53,12 @@ smformula = list(
 method = c("", "", "norm", "norm")
 )
 
+library(ggplot2)
 plot(imps)
 plot(imps, include = c("x1-cause1", "x2-cause2"))
 }
 
+}
+\author{
+Edouard F. Bonneville \email{e.f.bonneville@lumc.nl}
 }
