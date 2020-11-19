@@ -1,8 +1,26 @@
-#' Plot convergence of a smcfcs object
+#' Assess convergence of a smcfcs object
 #'
-#' Visualises the contents of smCoefIter.
+#' Visualises the contents of smCoefIter. Specifically, it plots the parameter
+#' estimates of the substantive model against the number of iterations from
+#' the imputation procedure. This is done for each regression coefficient,
+#' and each line corresponds to an imputed dataset.
+#'
+#' The names of coefficients
 #'
 #' @param x An object of class 'smcfcs'
+#' @param include Character vector of coefficient names for which to return the
+#' convergence plot. Default is "all" and returns plots for all coefficients in
+#' a facetted manner.
+#'
+#' Recommendation is to plot first with include = "all", and then select
+#' coefficient names to zoom in to.
+#'
+#' For competing risks, the coefficients are indexed by their cause. E.g. for
+#' coefficient of a variable x1 in a model for cause 2, will be labelled
+#' "x1-cause2".
+#' @param contrast Contrast to choose for any ordered categorical covariates
+#' in the substantive model, see ?stats::contrasts .
+#' Default is "contr.treatment".
 #' @param ... Additional parameters to pass on to ggplot2::facet_wrap(),
 #' eg. nrow = 2
 #'
@@ -24,19 +42,36 @@
 #' )
 #'
 #' plot(imps)
+#' plot(imps, include = c("x1-cause1", "x2-cause2"))
 #' }
 #'
 #' @importFrom rlang .data
 plot.smcfcs <- function(x,
+                        include = "all",
+                        contrast = "contr.treatment",
                         #use_ggplot = F,
-                        #include = "all",
                         ...) {
 
   if (!inherits(x, "smcfcs"))
     stop("'x' must be a 'smcfcs' object")
 
   # Prepare data
-  df_plot <- prep_iters(x)
+  df_plot <- prep_iters(x, contrast = contrast)
+
+  # Choose plots to include
+  if (length(include) >= 1 & include[1] != "all") {
+
+    coef_names = unique(df_plot$covar)
+    if (any(!(include %in% coef_names))) {
+
+      mssg <- paste0(
+        "include should be character vector containing any combination of: '",
+        paste0(coef_names, collapse = "','"),
+        "'; or simply 'all'"
+      )
+      stop(mssg)
+    } else df_plot <- df_plot[df_plot$covar %in% include, ]
+  }
 
   # Make plot
   p <- ggplot2::ggplot(
@@ -54,23 +89,26 @@ plot.smcfcs <- function(x,
 }
 
 
-# Helpers for the plot function
-prep_iters <- function(x) {
+# Prepare data for plotting
+prep_iters <- function(x, contrast) {
 
   # Extract meta data
   M <- dim(x$smCoefIter)[1]
-  numit <- dim(x$smCoefIter)[3]
   smtype <- x$smInfo$smtype
   smformula <- x$smInfo$smformula
   dat <- x$impDatasets[[1]] # for names in model matrix
+  numit <- dim(x$smCoefIter)[3]
+
+  if (numit < 2)
+    stop("Re-run smcfcs() with numit >= 2 in order to assess convergence")
 
   # Check if competing risks
   if (smtype == "compet") {
 
     K <- length(smformula)
     cause_coef_names <- lapply(X = 1:K, FUN = function(k) {
-      names_mod <- get_coef_names(smformula[k], dat, intercept = F)
-      paste0(names_mod, ".cause", as.character(k))
+      names_mod <- get_coef_names(smformula[k], dat, intercept = F, contrast)
+      paste0(names_mod, "-cause", as.character(k))
     })
 
     coef_names <- unlist(cause_coef_names)
@@ -79,9 +117,9 @@ prep_iters <- function(x) {
 
     # No intercept for other survival models
     if (smtype %in% c("weibull", "coxph")) {
-      coef_names <- get_coef_names(smformula, dat, intercept = F)
+      coef_names <- get_coef_names(smformula, dat, intercept = F, contrast)
     } else {
-      coef_names <- get_coef_names(smformula, dat, intercept = T)
+      coef_names <- get_coef_names(smformula, dat, intercept = T, contrast)
     }
   }
 
@@ -114,13 +152,23 @@ prep_iters <- function(x) {
 
 get_coef_names <- function(smformula,
                            dat,
-                           intercept) {
+                           intercept,
+                           contrast) {
 
   rhs <- gsub(x = smformula, pattern = ".*~", replacement = "")
 
+  # Check if any ordered categorical
+  check_ordered <- lapply(dat, is.ordered)
+
+  if (any(unlist(check_ordered))) {
+    contr_list <- check_ordered[check_ordered == 1]
+    contr_list <- replace(contr_list, values = contrast)
+  } else contr_list <- NULL
+
   model_mat <- stats::model.matrix(
     object = as.formula(paste0("~ +", rhs)),
-    data = dat
+    data = dat,
+    contrasts.arg = contr_list
   )
 
   # For survival models

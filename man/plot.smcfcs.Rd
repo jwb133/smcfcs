@@ -2,12 +2,27 @@
 % Please edit documentation in R/plot_convergence.R
 \name{plot.smcfcs}
 \alias{plot.smcfcs}
-\title{Plot convergence of a smcfcs object}
+\title{Assess convergence of a smcfcs object}
 \usage{
-\method{plot}{smcfcs}(x, ...)
+\method{plot}{smcfcs}(x, include = "all", contrast = "contr.treatment", ...)
 }
 \arguments{
 \item{x}{An object of class 'smcfcs'}
+
+\item{include}{Character vector of coefficient names for which to return the
+convergence plot. Default is "all" and returns plots for all coefficients in
+a facetted manner.
+
+Recommendation is to plot first with include = "all", and then select
+coefficient names to zoom in to.
+
+For competing risks, the coefficients are indexed by their cause. E.g. for
+coefficient of a variable x1 in a model for cause 2, will be labelled
+"x1-cause2".}
+
+\item{contrast}{Contrast to choose for any ordered categorical covariates
+in the substantive model, see ?stats::contrasts .
+Default is "contr.treatment".}
 
 \item{...}{Additional parameters to pass on to ggplot2::facet_wrap(),
 eg. nrow = 2}
@@ -17,7 +32,13 @@ A ggplot2 object, containing the convergence plots, facetted per
 covariate in the substantive model
 }
 \description{
-Visualises the contents of smCoefIter.
+Visualises the contents of smCoefIter. Specifically, it plots the parameter
+estimates of the substantive model against the number of iterations from
+the imputation procedure. This is done for each regression coefficient,
+and each line corresponds to an imputed dataset.
+}
+\details{
+The names of coefficients
 }
 \examples{
 \dontrun{
@@ -33,6 +54,7 @@ method = c("", "", "norm", "norm")
 )
 
 plot(imps)
+plot(imps, include = c("x1-cause1", "x2-cause2"))
 }
 
 }
