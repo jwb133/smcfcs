@@ -4,9 +4,18 @@
 \alias{smcfcs}
 \title{Substantive model compatible fully conditional specification imputation of covariates.}
 \usage{
-smcfcs(originaldata, smtype, smformula, method, predictorMatrix = NULL,
-  m = 5, numit = 10, rjlimit = 1000, noisy = FALSE,
-  errorProneMatrix = NULL)
+smcfcs(
+  originaldata,
+  smtype,
+  smformula,
+  method,
+  predictorMatrix = NULL,
+  m = 5,
+  numit = 10,
+  rjlimit = 1000,
+  noisy = FALSE,
+  errorProneMatrix = NULL
+)
 }
 \arguments{
 \item{originaldata}{The original data frame with missing values.}
@@ -102,6 +111,7 @@ If the substantive model is linear, logistic or Poisson regression,
 \code{smcfcs} will automatically impute missing outcomes, if present, using
 the specified substantive model. However, even in this case, the user should
 specify "" in the element of method corresponding to the outcome variable.
+
 
 The development of this package was supported by a UK Medical Research Council
 Fellowship (MR/K02180X/1). Part of its development took place while the author was

@@ -980,8 +980,15 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     warning(paste("Rejection sampling failed ",rjFailCount," times (across all variables, iterations, and imputations). You may want to increase the rejection sampling limit.",sep=""))
   }
 
-  list(impDatasets=imputations, smCoefIter=smCoefIter)
+  # Added smformula and smtype to metadata, and make "smcfcs class"
+  res <- list(
+    impDatasets = imputations,
+    smCoefIter = smCoefIter,
+    smInfo = list("smtype" = smtype, "smformula" = smformula)
+  )
+  class(res) <- "smcfcs"
 
+  return(res)
 }
 
 updatePassiveVars <- function(data, method, passivecols) {

@@ -4,12 +4,14 @@
 \name{ex_poisson}
 \alias{ex_poisson}
 \title{Simulated example data with count outcome, modelled using Poisson regression}
-\format{A data frame with 1000 rows and 3 variables:
+\format{
+A data frame with 1000 rows and 3 variables:
 \describe{
   \item{y}{Count outcome}
   \item{z}{Fully observed covariate, with linear effect on outcome}
   \item{x}{Partially observed normally distributed covariate, with linear effect on outcome}
-}}
+}
+}
 \usage{
 ex_poisson
 }

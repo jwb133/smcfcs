@@ -4,9 +4,19 @@
 \alias{smcfcs.casecohort}
 \title{Substantive model compatible fully conditional specification imputation of covariates for case cohort studies}
 \usage{
-smcfcs.casecohort(originaldata, smformula, sampfrac, in.subco, method,
-  predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000,
-  noisy = FALSE, errorProneMatrix = NULL)
+smcfcs.casecohort(
+  originaldata,
+  smformula,
+  sampfrac,
+  in.subco,
+  method,
+  predictorMatrix = NULL,
+  m = 5,
+  numit = 10,
+  rjlimit = 1000,
+  noisy = FALSE,
+  errorProneMatrix = NULL
+)
 }
 \arguments{
 \item{originaldata}{The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)}

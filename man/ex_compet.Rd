@@ -4,14 +4,16 @@
 \name{ex_compet}
 \alias{ex_compet}
 \title{Simulated example data with competing risks outcome and partially observed covariates}
-\format{A data frame with 1000 rows and 4 variables:
+\format{
+A data frame with 1000 rows and 4 variables:
 \describe{
   \item{t}{Time to event or censoring}
   \item{d}{Indicator of whether event 1 occurred (d=1), event 2 occurred (d=2) or individual was censored (d=0)}
   \item{x1}{Partially observed binary covariate, with linear effects on log competing risk hazards}
   \item{x2}{Partially observed normally distributed (conditional on x1) covariate, with linear effects
   on log competing risk hazards}
-}}
+}
+}
 \usage{
 ex_compet
 }

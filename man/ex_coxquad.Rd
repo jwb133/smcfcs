@@ -4,7 +4,8 @@
 \name{ex_coxquad}
 \alias{ex_coxquad}
 \title{Simulated example data with time to event outcome and quadratic covariate effects}
-\format{A data frame with 1000 rows and 6 variables:
+\format{
+A data frame with 1000 rows and 6 variables:
 \describe{
   \item{t}{Time to event or censoring}
   \item{d}{Binary indicator of whether event occurred or individual was censored}
@@ -12,7 +13,8 @@
   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome (on log hazard scale)}
   \item{xsq}{The square of x, which thus has missing values also}
   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
-}}
+}
+}
 \usage{
 ex_coxquad
 }
