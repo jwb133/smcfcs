@@ -5,7 +5,9 @@
 #' the imputation procedure. This is done for each regression coefficient,
 #' and each line corresponds to an imputed dataset.
 #'
-#' The names of coefficients
+#' Requires loading of ggplot2 plotting library.
+#'
+#' @author Edouard F. Bonneville \email{e.f.bonneville@@lumc.nl}
 #'
 #' @param x An object of class 'smcfcs'
 #' @param include Character vector of coefficient names for which to return the
@@ -41,6 +43,7 @@
 #' method = c("", "", "norm", "norm")
 #' )
 #'
+#' library(ggplot2)
 #' plot(imps)
 #' plot(imps, include = c("x1-cause1", "x2-cause2"))
 #' }
