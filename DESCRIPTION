@@ -5,7 +5,7 @@ Version: 1.4.1
 Authors@R: c(person("Jonathan", "Bartlett", email = "j.w.bartlett@bath.ac.uk",role = c("aut", "cre")),
     person("Ruth", "Keogh", email = "ruth.keogh@lshtm.ac.uk",role = c("aut")),
     person("Claus Thorn", "Ekstrøm",role = c("ctb")),
-    person("Edouard", "Bonneville",role = c("ctb")))
+    person("Edouard F.", "Bonneville",role = c("ctb")))
 URL: http://www.missingdata.org.uk, http://thestatsgeek.com
 Description: Implements multiple imputation of missing covariates by
     Substantive Model Compatible Fully Conditional Specification.
@@ -21,11 +21,13 @@ Imports:
     MASS,
     survival,
     VGAM,
-    stats
+    stats,
+    rlang
 Suggests:
     knitr,
     rmarkdown,
-    mitools
+    mitools,
+    ggplot2
 VignetteBuilder: knitr
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.1
 Encoding: UTF-8

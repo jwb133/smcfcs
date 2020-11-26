@@ -4,7 +4,8 @@
 \name{ex_cc}
 \alias{ex_cc}
 \title{Simulated case cohort data}
-\format{A data frame with 1571 rows and 7 variables:
+\format{
+A data frame with 1571 rows and 7 variables:
 \describe{
   \item{t}{Time to event or censoring}
   \item{d}{Indicator of whether event 1 occurred (d=1), or not (d=0)}
@@ -13,7 +14,8 @@
   \item{in.subco}{A binary indicator of whether the subject is in the sub-cohort}
   \item{id}{An id variable}
   \item{entertime}{The entry time variable to be used in the analysis}
-}}
+}
+}
 \usage{
 ex_cc
 }

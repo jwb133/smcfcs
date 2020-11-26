@@ -5,9 +5,20 @@
 \title{Substantive model compatible fully conditional specification imputation of covariates for nested case control
 studies}
 \usage{
-smcfcs.nestedcc(originaldata, smformula, set, event, nrisk, method,
-  predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000,
-  noisy = FALSE, errorProneMatrix = NULL)
+smcfcs.nestedcc(
+  originaldata,
+  smformula,
+  set,
+  event,
+  nrisk,
+  method,
+  predictorMatrix = NULL,
+  m = 5,
+  numit = 10,
+  rjlimit = 1000,
+  noisy = FALSE,
+  errorProneMatrix = NULL
+)
 }
 \arguments{
 \item{originaldata}{The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)}

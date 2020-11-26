@@ -4,7 +4,8 @@
 \name{ex_ncc}
 \alias{ex_ncc}
 \title{Simulated nested case-control data}
-\format{A data frame with 728 rows and 8 variables:
+\format{
+A data frame with 728 rows and 8 variables:
 \describe{
   \item{t}{Time to event or censoring}
   \item{d}{Indicator of whether event 1 occurred (d=1), or not (d=0)}
@@ -14,7 +15,8 @@
   \item{numrisk}{Number of patients at risk at time of case's event}
   \item{setno}{The case-control set number}
   \item{case}{Binary indicator of case (=1) or control (=0)}
-}}
+}
+}
 \usage{
 ex_ncc
 }

@@ -4,14 +4,16 @@
 \name{ex_logisticquad}
 \alias{ex_logisticquad}
 \title{Simulated example data with binary outcome and quadratic covariate effects}
-\format{A data frame with 1000 rows and 5 variables:
+\format{
+A data frame with 1000 rows and 5 variables:
 \describe{
   \item{y}{Binary outcome}
   \item{z}{Fully observed covariate, with linear effect on outcome (on log odds scale)}
   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome (on log odds scale)}
   \item{xsq}{The square of x, which thus has missing values also}
   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
-}}
+}
+}
 \usage{
 ex_logisticquad
 }
