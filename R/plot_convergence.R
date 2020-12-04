@@ -58,6 +58,11 @@ plot.smcfcs <- function(x,
   if (!inherits(x, "smcfcs"))
     stop("'x' must be a 'smcfcs' object")
 
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package ggplot2 needed for this function to work. Please install it.",
+         call. = FALSE)
+  }
+
   # Prepare data
   df_plot <- prep_iters(x, contrast = contrast)
 
