@@ -53,7 +53,6 @@ smformula = list(
 method = c("", "", "norm", "norm")
 )
 
-library(ggplot2)
 plot(imps)
 plot(imps, include = c("x1-cause1", "x2-cause2"))
 }
