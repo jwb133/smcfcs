@@ -11,7 +11,7 @@ vignette: >
 
 This short vignette introduces the capabilities of `smcfcs` to accommodate classical covariate measurement error. We consider the cases where internal validation data and then internal replication data are available.
 
-#Validation data
+# Validation data
 We will simulate a dataset with internal validation data where the true covariate (x) is observed for 10\% of the sample, while every subject has an error-prone measurement (w) observed:
 
 ```{r}
@@ -54,7 +54,7 @@ summary(MIcombine(models))
 
 We note from the results that the fraction of missing information for the coefficient of x is high. This should not surprise us, given that x was missing for 90\% of the sample and the error-prone measurement w is quite a noisy measure of x.
 
-#Replication data
+# Replication data
 We will now demonstrate how `smcfcs` can be used to impute a covariate x which is not observed for any subjects, but we have for at least a subset of the sample two or more error-prone replicate measurements. We first simulate the dataset:
 ```{r}
 x <- rnorm(n)
@@ -96,6 +96,7 @@ imps <- smcfcs(simData, smtype="lm", smformula="y~x",
                errorProneMatrix=errMat)
 plot(imps$smCoefIter[1,2,])
 ```
+
 This plot suggests it would probably be safer to impute using more than 10 iterations per imputation.
 
 ## Multiple covariates measured with error
