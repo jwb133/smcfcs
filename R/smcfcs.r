@@ -41,8 +41,9 @@
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible
 #' values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
-#' \code{"coxph"} and \code{"compet"}.
-#' @param smformula The formula of the substantive model. For \code{"weibull"} and \code{"coxph"} substantive
+#' \code{"coxph"}, \code{"compet"}, \code{"dtsam"}.
+#' @param smformula The formula of the substantive model. For \code{"weibull"}, \code{"coxph"}
+#' and \code{"dtsam"} substantive
 #' models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 #' substantive models, a list should be passed consisting of the Cox models
 #' for each cause of failure (see example).
@@ -167,6 +168,31 @@ smcfcs.nestedcc <- function(originaldata,smformula,set,event,nrisk,method,predic
 #this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
 smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,errorProneMatrix=NULL,
                         ...) {
+
+  #a helper function which calculates the substantive model probability value
+  #for each individual for the discrete time survival (logistic) substantive model
+  dtsamOutcomeDens <- function(inputData) {
+    inputDataN <- dim(inputData)[1]
+    #first add in time effects on log odds scale
+    outmodxb <- matrix(outcomeModBeta[1:nTimePoints], nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+    #calculate covariate effects
+    covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
+                                  inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-nTimePoints)
+    #add in covariate effects
+    outmodxb <- outmodxb + matrix(covXbEffects, nrow=inputDataN, ncol=nTimePoints)
+    #prob is matrix of conditional probabilities/hazard of event in each period
+    prob <- expit(outmodxb)
+    logSurvProb <- log(1-prob)
+    logSurvProbCumSum <- cbind(rep(0,inputDataN),t(apply(logSurvProb, 1, cumsum)))
+
+    #create vector of last time point each person survived to, +1
+    lastSurvPlusOne <- 1 + inputData[,timeCol] - inputData[,dCol]
+    #create vector of log of probability of survival to time when each person actually survived to
+    logSurvProbIndividual <- logSurvProbCumSum[cbind(1:inputDataN,lastSurvPlusOne)]
+    #return vector of outcome density values
+    exp(logSurvProbIndividual + d*log(prob[cbind(1:inputDataN, originaldata[,timeCol])]))
+  }
+
   #get extra arguments passed in ...
   extraArgs <- list(...)
 
@@ -178,7 +204,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
   #create matrix of response indicators
   r <- 1*(is.na(originaldata)==0)
 
-  if ((smtype %in% c("lm", "logistic", "poisson", "coxph", "compet", "casecohort","nestedcc", "weibull"))==FALSE)
+  if ((smtype %in% c("lm", "logistic", "poisson", "coxph", "compet", "casecohort","nestedcc",
+                     "weibull","dtsam"))==FALSE)
     stop(paste("Substantive model type ",smtype," not recognised.",sep=""))
 
   #find column numbers of partially observed, fully observed variables, and outcome
@@ -199,6 +226,14 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
+  } else if (smtype=="dtsam") {
+    timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
+    dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
+    outcomeCol <- c(timeCol, dCol)
+    d <- originaldata[,dCol]
+    #determine cut points as unique failure times
+    cutPoints <- unique(originaldata[d==1,timeCol])
+    nTimePoints <- length(cutPoints)
   } else if (smtype=="compet") {
 
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[2]])]
@@ -597,6 +632,18 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
             print(summary(ymod))
           }
         }
+        else if (smtype=="dtsam") {
+          #split data to long form
+          longData <- survival::survSplit(as.formula(smformula), data=imputations[[imp]], cut=cutPoints)
+          #fit logistic model
+          dtsamFormula <- paste(colnames(imputations[[imp]])[dCol],"~-1+factor(tstart)+",
+                                strsplit(smformula, "~")[[1]][2],sep="")
+          ymod <- glm(as.formula(dtsamFormula), family="binomial", data=longData)
+          outcomeModBeta = modPostDraw(ymod)
+          if (noisy==TRUE) {
+            print(summary(ymod))
+          }
+        }
         else if (smtype=="poisson") {
           ymod <- glm(as.formula(smformula),family="poisson",imputations[[imp]])
           outcomeModBeta = modPostDraw(ymod)
@@ -739,6 +786,9 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob <- expit(outmodxb[imputationNeeded])
               outcomeDens <- prob*imputations[[imp]][imputationNeeded,outcomeCol] + (1-prob)*(1-imputations[[imp]][imputationNeeded,outcomeCol])
             }
+            else if (smtype=="dtsam") {
+              outcomeDens <- dtsamOutcomeDens(imputations[[imp]])[imputationNeeded]
+            }
             else if (smtype=="poisson") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               outcomeDens <- dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
@@ -819,6 +869,10 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob = prob*imputations[[imp]][imputationNeeded,outcomeCol] + (1-prob)*(1-imputations[[imp]][imputationNeeded,outcomeCol])
               reject = 1*(uDraw>prob)
             }
+            else if (smtype=="dtsam") {
+              prob <-  dtsamOutcomeDens(imputations[[imp]])[imputationNeeded]
+              reject = 1*(uDraw>prob)
+            }
             else if (smtype=="poisson") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
               prob = dpois(imputations[[imp]][imputationNeeded,outcomeCol], exp(outmodxb[imputationNeeded]))
@@ -891,6 +945,10 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               outmodxb <-  model.matrix(as.formula(smformula),tempData) %*% outcomeModBeta
               prob = expit(outmodxb)
               prob = prob*tempData[,outcomeCol] + (1-prob)*(1-tempData[,outcomeCol])
+              reject = 1*(uDraw>prob)
+            }
+            else if (smtype=="dtsam") {
+              prob <-  dtsamOutcomeDens(tempData)
               reject = 1*(uDraw>prob)
             }
             else if (smtype=="poisson") {
@@ -1020,4 +1078,5 @@ modPostDraw <- function(modobj) {
   varcov <- vcov(modobj)
   beta + MASS::mvrnorm(1, mu=rep(0,ncol(varcov)), Sigma=varcov)
 }
+
 
