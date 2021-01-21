@@ -7,7 +7,7 @@
 #' Fully Conditional Specification multiple imputation approach proposed by
 #' Bartlett \emph{et al} 2015 (see references).
 #'
-#' Currently imputation is supported for linear regression (\code{"lm"}),
+#' Imputation is supported for linear regression (\code{"lm"}),
 #' logistic regression (\code{"logistic"}), Poisson regression
 #' (\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
 #' for time to event data (\code{"coxph"}),
@@ -15,6 +15,12 @@
 #' Cox model is assumed for each cause of failure, and the event indicator
 #' should be integer coded with 0 corresponding to censoring, 1 corresponding to
 #' failure from the first cause etc.
+#'
+#' Discrete time survival analysis logistic models are now also supported with
+#' \code{smtype="dtsam"}. For this substantive model type, like for the other
+#' substantive model types, \code{smcfcs} expects the \code{originaldata} to have
+#' one row per subject. Variables indicating the discrete time of failure/censoring
+#' and the event indicator should be passed in \code{smformula}, as shown in the example.
 #'
 #' The function returns a list. The first element \code{impDataset} of the list is a list of the imputed
 #' datasets. Models (e.g. the substantive model) can be fitted to each and results

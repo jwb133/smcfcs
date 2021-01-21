@@ -22,9 +22,10 @@ smcfcs(
 
 \item{smtype}{A string specifying the type of substantive model. Possible
 values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
-\code{"coxph"} and \code{"compet"}.}
+\code{"coxph"}, \code{"compet"}, \code{"dtsam"}.}
 
-\item{smformula}{The formula of the substantive model. For \code{"weibull"} and \code{"coxph"} substantive
+\item{smformula}{The formula of the substantive model. For \code{"weibull"}, \code{"coxph"}
+and \code{"dtsam"} substantive
 models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 substantive models, a list should be passed consisting of the Cox models
 for each cause of failure (see example).}
@@ -90,7 +91,7 @@ smcfcs imputes missing values of covariates using the Substantive Model Compatib
 Fully Conditional Specification multiple imputation approach proposed by
 Bartlett \emph{et al} 2015 (see references).
 
-Currently imputation is supported for linear regression (\code{"lm"}),
+Imputation is supported for linear regression (\code{"lm"}),
 logistic regression (\code{"logistic"}), Poisson regression
 (\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
 for time to event data (\code{"coxph"}),
@@ -98,6 +99,12 @@ and Cox models for competing risks data (\code{"compet"}). For the latter, a
 Cox model is assumed for each cause of failure, and the event indicator
 should be integer coded with 0 corresponding to censoring, 1 corresponding to
 failure from the first cause etc.
+
+Discrete time survival analysis logistic models are now also supported with
+\code{smtype="dtsam"}. For this substantive model type, like for the other
+substantive model types, \code{smcfcs} expects the \code{originaldata} to have
+one row per subject. Variables indicating the discrete time of failure/censoring
+and the event indicator should be passed in \code{smformula}, as shown in the example.
 
 The function returns a list. The first element \code{impDataset} of the list is a list of the imputed
 datasets. Models (e.g. the substantive model) can be fitted to each and results
@@ -189,6 +196,23 @@ if (requireNamespace("mitools", quietly = TRUE)) {
     models <- with(impobj, coxph(Surv(t,d==1)~x1+x2))
     summary(MIcombine(models))
   }
+
+  #discrete time survival analysis example
+  M <- 5
+  imps <- smcfcs(ex_dtsam, "dtsam", "Surv(failtime,d)~x1+x2",
+                 method=c("logreg","", "", ""),m=M)
+  #fit dtsam model to each dataset manually, since we need
+  #to expand to person-period data form first
+  ests <- vector(mode = "list", length = M)
+  vars <- vector(mode = "list", length = M)
+  for (i in 1:M) {
+    longData <- survSplit(Surv(failtime,d)~x1+x2, data=imps$impDatasets[[i]],
+                          cut=unique(ex_dtsam$failtime[ex_dtsam$d==1]))
+    mod <- glm(d~-1+factor(tstart)+x1+x2, family="binomial", data=longData)
+    ests[[i]] <- coef(mod)
+    vars[[i]] <- diag(vcov(mod))
+  }
+  summary(MIcombine(ests,vars))
 
 }
 }

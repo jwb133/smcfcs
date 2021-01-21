@@ -14,7 +14,7 @@ x[runif(n)>xobspr] <- NA
 
 ex_linquad <- data.frame(y,z,x,xsq=x^2,v)
 
-devtools::use_data(ex_linquad, overwrite=TRUE)
+usethis::use_data(ex_linquad, overwrite=TRUE)
 
 #linear substantive model with interaction
 n <- 1000
@@ -29,7 +29,7 @@ x2[runif(n)>0.5] <- NA
 ex_lininter <- data.frame(y,x1,x2)
 ex_lininter$x2 <- factor(ex_lininter$x2)
 
-devtools::use_data(ex_lininter, overwrite=TRUE)
+usethis::use_data(ex_lininter, overwrite=TRUE)
 
 #logistic substantive model with quadratic covariate effect
 n <- 1000
@@ -48,7 +48,7 @@ x[runif(n)>xobspr] <- NA
 
 ex_logisticquad <- data.frame(y,z,x,xsq=x^2,v)
 
-devtools::use_data(ex_logisticquad, overwrite=TRUE)
+usethis::use_data(ex_logisticquad, overwrite=TRUE)
 
 #Cox substantive model with quadratic covariate effect
 n <- 1000
@@ -69,7 +69,7 @@ x[runif(n)>xobspr] <- NA
 
 ex_coxquad <- data.frame(t,d,z,x,xsq=x^2,v)
 
-devtools::use_data(ex_coxquad, overwrite=TRUE)
+usethis::use_data(ex_coxquad, overwrite=TRUE)
 
 #competing risks data
 n <- 1000
@@ -91,7 +91,7 @@ x2[runif(n)>0.5] <- NA
 
 ex_compet <- data.frame(t,d,x1,x2)
 
-devtools::use_data(ex_compet, overwrite=TRUE)
+usethis::use_data(ex_compet, overwrite=TRUE)
 
 #Poisson regression
 n <- 1000
@@ -104,7 +104,7 @@ x[runif(n)>(exp(y)/(1+exp(y)))] <- NA
 
 ex_poisson <- data.frame(y,x,z)
 
-devtools::use_data(ex_poisson, overwrite=TRUE)
+usethis::use_data(ex_poisson, overwrite=TRUE)
 
 #case cohort
 n <- 10000
@@ -125,7 +125,7 @@ ex_cc <- fullcohortdata[(fullcohortdata$in.subco==1) | (fullcohortdata$d==1),]
 ex_cc$entertime <- 0
 ex_cc$entertime[ex_cc$in.subco==0] <- ex_cc$t[ex_cc$in.subco==0] - 0.000001
 
-devtools::use_data(ex_cc, overwrite=TRUE)
+usethis::use_data(ex_cc, overwrite=TRUE)
 
 #nested case control
 n <- 10000
@@ -165,8 +165,39 @@ for (i in which(fullcohortdata$d==1))
 ex_ncc$setno <- rep(1:no.sample,each=m+1)
 ex_ncc$case <- rep(c(1,rep(0,m)),no.sample)
 
-devtools::use_data(ex_ncc, overwrite=TRUE)
+usethis::use_data(ex_ncc, overwrite=TRUE)
 
+#discrete time survival analysis
+n <- 1000
+x1 <- 1*(runif(n)<0.5)
+x2 <- x1+rnorm(n)
+#define number of time points
+T <- 10
+#define vector of intercepts
+alpha <- seq(-1,-0.1,0.1)
+beta <- c(1,-1)
+yMat <- array(0, dim=c(n,T))
+for (i in 1:T) {
+  yMat[,i] <- 1*(runif(n)<expit(alpha[i]+beta[1]*x1+beta[2]*x2))
+}
+failtime <- apply(yMat,1,function(x) which(x==1)[1])
+#event indicator
+d <- rep(1,n)
+d[is.na(failtime)] <- 0
+failtime[is.na(failtime)] <- 10
+mean(d)
+#add in some additional completely random censoring
+cTime <- ceiling(10*runif(n))
+t <- failtime
+t[cTime<failtime] <- cTime[cTime<failtime]
+d[cTime<failtime] <- 0
+mean(d)
+
+#make some data missing in x1
+x1[runif(n)<expit((x2-mean(x2)/sd(x2)))] <- NA
+
+ex_dtsam <- data.frame(x1=x1, x2=x2, failtime=t, d=d)
+usethis::use_data(ex_dtsam, overwrite=TRUE)
 
 # #covariate measurement error
 # n <- 10000
@@ -181,4 +212,4 @@ devtools::use_data(ex_ncc, overwrite=TRUE)
 #
 # ex_coverr <- data.frame(y,x=NA,w1,w2)
 #
-# devtools::use_data(ex_coverr, overwrite=TRUE)
+# usethis::use_data(ex_coverr, overwrite=TRUE)
