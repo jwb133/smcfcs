@@ -3,6 +3,7 @@
 S3method(plot,smcfcs)
 export(smcfcs)
 export(smcfcs.casecohort)
+export(smcfcs.dtsam)
 export(smcfcs.nestedcc)
 import(stats)
 importFrom(rlang,.data)

@@ -128,3 +128,16 @@
 #'
 "ex_ncc"
 
+#' Simulated discrete time survival data set
+#'
+#' A dataset containing simulated discrete time survival data.
+#'
+#' @format A data frame with 1000 rows and 8 variables:
+#' \describe{
+#'   \item{x1}{A binary variable with missing values}
+#'   \item{x2}{A fully observed continuous variable}
+#'   \item{failtime}{The discrete failure/censoring time}
+#'   \item{d}{Indicator of failure (=1) or censoring (=0)}
+#' }
+#'
+"ex_ncc"

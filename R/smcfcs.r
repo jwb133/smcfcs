@@ -16,12 +16,6 @@
 #' should be integer coded with 0 corresponding to censoring, 1 corresponding to
 #' failure from the first cause etc.
 #'
-#' Discrete time survival analysis logistic models are now also supported with
-#' \code{smtype="dtsam"}. For this substantive model type, like for the other
-#' substantive model types, \code{smcfcs} expects the \code{originaldata} to have
-#' one row per subject. Variables indicating the discrete time of failure/censoring
-#' and the event indicator should be passed in \code{smformula}, as shown in the example.
-#'
 #' The function returns a list. The first element \code{impDataset} of the list is a list of the imputed
 #' datasets. Models (e.g. the substantive model) can be fitted to each and results
 #' combined using Rubin's rules using the mitools package, as illustrated in the examples.
@@ -47,10 +41,9 @@
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible
 #' values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
-#' \code{"coxph"}, \code{"compet"}, \code{"dtsam"}.
-#' @param smformula The formula of the substantive model. For \code{"weibull"}, \code{"coxph"}
-#' and \code{"dtsam"} substantive
-#' models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
+#' \code{"coxph"}, \code{"compet"}.
+#' @param smformula The formula of the substantive model. For \code{"weibull"} and \code{"coxph"}
+#' substantive models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 #' substantive models, a list should be passed consisting of the Cox models
 #' for each cause of failure (see example).
 #' @param method A required vector of strings specifying for each variable either
@@ -99,7 +92,7 @@
 #' values. The matrix is indexed by [imputation,parameter number,iteration]
 #'
 #' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk} \url{http://www.missingdata.org.uk}
-#' \url{http://thestatsgeek.com}
+#' \url{https://thestatsgeek.com}
 #'
 #' @example data-raw/examples.r
 #'
@@ -171,6 +164,38 @@ smcfcs.nestedcc <- function(originaldata,smformula,set,event,nrisk,method,predic
               errorProneMatrix=errorProneMatrix)
 }
 
+#' Substantive model compatible fully conditional specification imputation of covariates for
+#' discrete time survival analysis
+#'
+#' Multiply imputes missing covariate values using substantive model compatible
+#' fully conditional specification for discrete time survival analysis.
+#'
+#' For this substantive model type, like for the other substantive model types, \code{smcfcs} expects the \code{originaldata} to have
+#' one row per subject. Variables indicating the discrete time of failure/censoring
+#' and the event indicator should be passed in \code{smformula}, as described.
+#'
+#' The default is to model the effect of time as a factor. This will not work in datasets where
+#' there is not at least one observed event in each time period. In such cases you must specify
+#' a simpler model for the effect of time. At the moment you can specify either a linear or quadratic
+#' effect of time (on the log odds scale).
+#'
+#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
+#'
+#' @param originaldata The data in wide form (i.e. one row per subject)
+#' @param smformula A formula of the form "Surv(t,d)~x1+x2+x3", where t is the discrete time variable, d is the binary event
+#' indicator, and the covariates should not include time
+#' @param timeEffects Specifies how the effect of time is modelled. \code{timeEffects="factor"} (the default) models time as a
+#' factor variable. \code{timeEffects="linear"} and \code{timeEffects="quad"} specify that time be modelled as a continuous
+#' linear or quadratic effect on the log odds scale respectively
+#'
+#' @inheritParams smcfcs
+#' @example data-raw/dtsam_example.r
+#' @export
+smcfcs.dtsam <- function(originaldata,smformula,timeEffects="factor",method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,errorProneMatrix=NULL) {
+  smcfcs.core(originaldata,smtype="dtsam",smformula,method,predictorMatrix,m,numit,rjlimit,noisy,timeEffects=timeEffects,
+              errorProneMatrix=errorProneMatrix)
+}
+
 #this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
 smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,errorProneMatrix=NULL,
                         ...) {
@@ -179,11 +204,31 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
   #for each individual for the discrete time survival (logistic) substantive model
   dtsamOutcomeDens <- function(inputData) {
     inputDataN <- dim(inputData)[1]
-    #first add in time effects on log odds scale
-    outmodxb <- matrix(outcomeModBeta[1:nTimePoints], nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
-    #calculate covariate effects
-    covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
-                                  inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-nTimePoints)
+
+    if (extraArgs$timeEffects=="factor") {
+      #first add in time effects on log odds scale
+      outmodxb <- matrix(outcomeModBeta[1:nTimePoints], nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+      #calculate covariate effects
+      covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
+                                    inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-nTimePoints)
+    } else if (extraArgs$timeEffects=="linear") {
+      #linear time
+      #first add in time effects on log odds scale
+      outmodxb <- outcomeModBeta[1] +
+        matrix(outcomeModBeta[2]*(1:nTimePoints), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+      #calculate covariate effects
+      covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
+                                    inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-2)
+    } else {
+      #quadratic time
+      #first add in time effects on log odds scale
+      outmodxb <- outcomeModBeta[1] +
+        matrix(outcomeModBeta[2]*(1:nTimePoints)+outcomeModBeta[3]*((1:nTimePoints)^2), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+      #calculate covariate effects
+      covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
+                                    inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-3)
+    }
+
     #add in covariate effects
     outmodxb <- outmodxb + matrix(covXbEffects, nrow=inputDataN, ncol=nTimePoints)
     #prob is matrix of conditional probabilities/hazard of event in each period
@@ -197,6 +242,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     logSurvProbIndividual <- logSurvProbCumSum[cbind(1:inputDataN,lastSurvPlusOne)]
     #return vector of outcome density values
     exp(logSurvProbIndividual + d*log(prob[cbind(1:inputDataN, originaldata[,timeCol])]))
+
   }
 
   #get extra arguments passed in ...
@@ -237,8 +283,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
-    #determine cut points as unique failure times
-    cutPoints <- unique(originaldata[d==1,timeCol])
+    #determine cut points
+    cutPoints <- 1:max(originaldata[,timeCol])
     nTimePoints <- length(cutPoints)
   } else if (smtype=="compet") {
 
@@ -642,8 +688,18 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           #split data to long form
           longData <- survival::survSplit(as.formula(smformula), data=imputations[[imp]], cut=cutPoints)
           #fit logistic model
-          dtsamFormula <- paste(colnames(imputations[[imp]])[dCol],"~-1+factor(tstart)+",
+          if (extraArgs$timeEffects=="factor") {
+            dtsamFormula <- paste(colnames(imputations[[imp]])[dCol],"~-1+factor(tstart)+",
                                 strsplit(smformula, "~")[[1]][2],sep="")
+          } else if (extraArgs$timeEffects=="linear") {
+            #linear time effect
+            dtsamFormula <- paste(colnames(imputations[[imp]])[dCol],"~tstart+",
+                                  strsplit(smformula, "~")[[1]][2],sep="")
+          } else {
+            #quadratic effect of time
+            dtsamFormula <- paste(colnames(imputations[[imp]])[dCol],"~tstart+I(tstart^2)+",
+                                  strsplit(smformula, "~")[[1]][2],sep="")
+          }
           ymod <- glm(as.formula(dtsamFormula), family="binomial", data=longData)
           outcomeModBeta = modPostDraw(ymod)
           if (noisy==TRUE) {

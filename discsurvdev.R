@@ -1,4 +1,4 @@
-n <- 10000
+n <- 100000
 library(MASS)
 
 #source Caro's file defining genDiscSurv - this is a slightly modified version
@@ -10,6 +10,10 @@ source("genDiscsurv.R")
 simData <- data.frame(genDiscSurv(n=n))
 head(simData)
 summary(simData)
+
+longFullData <- survSplit(Surv(y,failed)~X1+X2+X3+X4+X5, data=simData, cut=unique(simData$y[simData$failed==1]))
+mod <- glm(failed~-1+factor(tstart)+X1+X2+X3+X4+X5, family="binomial", data=longFullData)
+summary(mod)
 
 #make some data missing completely at random
 simData$X1[runif(n)<0.5] <- NA

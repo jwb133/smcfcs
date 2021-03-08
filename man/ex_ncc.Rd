@@ -16,11 +16,23 @@ A data frame with 728 rows and 8 variables:
   \item{setno}{The case-control set number}
   \item{case}{Binary indicator of case (=1) or control (=0)}
 }
+
+A data frame with 1000 rows and 8 variables:
+\describe{
+  \item{x1}{A binary variable with missing values}
+  \item{x2}{A fully observed continuous variable}
+  \item{failtime}{The discrete failure/censoring time}
+  \item{d}{Indicator of failure (=1) or censoring (=0)}
+}
 }
 \usage{
+ex_ncc
+
 ex_ncc
 }
 \description{
 A dataset containing simulated nested case-control data.
+
+A dataset containing simulated discrete time survival data.
 }
 \keyword{datasets}

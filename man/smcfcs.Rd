@@ -22,11 +22,10 @@ smcfcs(
 
 \item{smtype}{A string specifying the type of substantive model. Possible
 values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
-\code{"coxph"}, \code{"compet"}, \code{"dtsam"}.}
+\code{"coxph"}, \code{"compet"}.}
 
-\item{smformula}{The formula of the substantive model. For \code{"weibull"}, \code{"coxph"}
-and \code{"dtsam"} substantive
-models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
+\item{smformula}{The formula of the substantive model. For \code{"weibull"} and \code{"coxph"}
+substantive models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}
 substantive models, a list should be passed consisting of the Cox models
 for each cause of failure (see example).}
 
@@ -99,12 +98,6 @@ and Cox models for competing risks data (\code{"compet"}). For the latter, a
 Cox model is assumed for each cause of failure, and the event indicator
 should be integer coded with 0 corresponding to censoring, 1 corresponding to
 failure from the first cause etc.
-
-Discrete time survival analysis logistic models are now also supported with
-\code{smtype="dtsam"}. For this substantive model type, like for the other
-substantive model types, \code{smcfcs} expects the \code{originaldata} to have
-one row per subject. Variables indicating the discrete time of failure/censoring
-and the event indicator should be passed in \code{smformula}, as shown in the example.
 
 The function returns a list. The first element \code{impDataset} of the list is a list of the imputed
 datasets. Models (e.g. the substantive model) can be fitted to each and results
@@ -223,5 +216,5 @@ in Medical Research 2015; 24(4): 462-487. \url{https://doi.org/10.1177/096228021
 }
 \author{
 Jonathan Bartlett \email{j.w.bartlett@bath.ac.uk} \url{http://www.missingdata.org.uk}
-\url{http://thestatsgeek.com}
+\url{https://thestatsgeek.com}
 }
