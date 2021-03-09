@@ -22,10 +22,12 @@ smcfcs.dtsam(
 \item{originaldata}{The data in wide form (i.e. one row per subject)}
 
 \item{smformula}{A formula of the form "Surv(t,d)~x1+x2+x3", where t is the discrete time variable, d is the binary event
-indicator, and the covariates should not include time}
+indicator, and the covariates should not include time. The time variable should be
+an integer coded numeric variable taking values from 1 up to the final time period.}
 
 \item{timeEffects}{Specifies how the effect of time is modelled. \code{timeEffects="factor"} (the default) models time as a
-factor variable. \code{timeEffects="linear"} specifies that time be modelled as a continuous linear covariate on the log odds scale}
+factor variable. \code{timeEffects="linear"} and \code{timeEffects="quad"} specify that time be modelled as a continuous
+linear or quadratic effect on the log odds scale respectively.}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
@@ -82,8 +84,8 @@ and the event indicator should be passed in \code{smformula}, as described.
 
 The default is to model the effect of time as a factor. This will not work in datasets where
 there is not at least one observed event in each time period. In such cases you must specify
-a simpler model for the effect of time. At the moment you can specify a linear (on the log odds scale)
-effect of time.
+a simpler parametric model for the effect of time. At the moment you can specify either a linear or quadratic
+effect of time (on the log odds scale).
 }
 \examples{
 #the following example is not run when the package is compiled on CRAN
@@ -91,7 +93,7 @@ effect of time.
 \dontrun{
   #discrete time survival analysis example
   M <- 5
-  imps <- smcfcs(ex_dtsam, "dtsam", "Surv(failtime,d)~x1+x2",
+  imps <- smcfcs.dtsam(ex_dtsam, "Surv(failtime,d)~x1+x2",
                  method=c("logreg","", "", ""),m=M)
   #fit dtsam model to each dataset manually, since we need
   #to expand to person-period data form first

@@ -176,7 +176,7 @@ smcfcs.nestedcc <- function(originaldata,smformula,set,event,nrisk,method,predic
 #'
 #' The default is to model the effect of time as a factor. This will not work in datasets where
 #' there is not at least one observed event in each time period. In such cases you must specify
-#' a simpler model for the effect of time. At the moment you can specify either a linear or quadratic
+#' a simpler parametric model for the effect of time. At the moment you can specify either a linear or quadratic
 #' effect of time (on the log odds scale).
 #'
 #' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
@@ -184,10 +184,10 @@ smcfcs.nestedcc <- function(originaldata,smformula,set,event,nrisk,method,predic
 #' @param originaldata The data in wide form (i.e. one row per subject)
 #' @param smformula A formula of the form "Surv(t,d)~x1+x2+x3", where t is the discrete time variable, d is the binary event
 #' indicator, and the covariates should not include time. The time variable should be
-#' an integer coded numeric variable taking values from 1 up to the final time period
+#' an integer coded numeric variable taking values from 1 up to the final time period.
 #' @param timeEffects Specifies how the effect of time is modelled. \code{timeEffects="factor"} (the default) models time as a
 #' factor variable. \code{timeEffects="linear"} and \code{timeEffects="quad"} specify that time be modelled as a continuous
-#' linear or quadratic effect on the log odds scale respectively
+#' linear or quadratic effect on the log odds scale respectively.
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/dtsam_example.r
@@ -200,51 +200,6 @@ smcfcs.dtsam <- function(originaldata,smformula,timeEffects="factor",method,pred
 #this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
 smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,errorProneMatrix=NULL,
                         ...) {
-
-  #a helper function which calculates the substantive model probability value
-  #for each individual for the discrete time survival (logistic) substantive model
-  dtsamOutcomeDens <- function(inputData) {
-    inputDataN <- dim(inputData)[1]
-
-    if (extraArgs$timeEffects=="factor") {
-      #first add in time effects on log odds scale
-      outmodxb <- matrix(outcomeModBeta[1:nTimePoints], nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
-      #calculate covariate effects
-      covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
-                                    inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-nTimePoints)
-    } else if (extraArgs$timeEffects=="linear") {
-      #linear time
-      #first add in time effects on log odds scale
-      outmodxb <- outcomeModBeta[1] +
-        matrix(outcomeModBeta[2]*((1:nTimePoints)-1), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
-      #calculate covariate effects
-      covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
-                                    inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-2)
-    } else {
-      #quadratic time
-      #first add in time effects on log odds scale
-      outmodxb <- outcomeModBeta[1] +
-        matrix(outcomeModBeta[2]*((1:nTimePoints)-1)+outcomeModBeta[3]*(((1:nTimePoints)-1)^2), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
-      #calculate covariate effects
-      covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
-                                    inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-3)
-    }
-
-    #add in covariate effects
-    outmodxb <- outmodxb + matrix(covXbEffects, nrow=inputDataN, ncol=nTimePoints)
-    #prob is matrix of conditional probabilities/hazard of event in each period
-    prob <- expit(outmodxb)
-    logSurvProb <- log(1-prob)
-    logSurvProbCumSum <- cbind(rep(0,inputDataN),t(apply(logSurvProb, 1, cumsum)))
-
-    #create vector of last time point each person survived to, +1
-    lastSurvPlusOne <- 1 + inputData[,timeCol] - inputData[,dCol]
-    #create vector of log of probability of survival to time when each person actually survived to
-    logSurvProbIndividual <- logSurvProbCumSum[cbind(1:inputDataN,lastSurvPlusOne)]
-    #return vector of outcome density values
-    exp(logSurvProbIndividual + d*log(prob[cbind(1:inputDataN, originaldata[,timeCol])]))
-
-  }
 
   #get extra arguments passed in ...
   extraArgs <- list(...)
@@ -287,6 +242,24 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     #determine cut points
     cutPoints <- 1:max(originaldata[,timeCol])
     nTimePoints <- length(cutPoints)
+
+    #check all time points are integers
+    if (!all(unique(originaldata[,timeCol]) == floor(unique(originaldata[,timeCol])))) {
+      stop("Your time variable must only take positive integer values.")
+    }
+    #check all time points are positive
+    if (any(unique(originaldata[,timeCol]) <= 0)) {
+      stop("Your time variable must only take positive integer values.")
+    }
+
+    #if factor time effects, check there are some events at each integer value
+    #so that model can fit
+    if (extraArgs$timeEffects=="factor") {
+      if (!identical(sort(unique(originaldata[,timeCol][originaldata[,dCol]==1])), as.numeric(cutPoints))) {
+        stop("You cannot fit a dtsam model with factor time effects since there are some periods with no events. See documentation for timeEffects argument for parametric alternatives")
+      }
+    }
+
   } else if (smtype=="compet") {
 
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula[[1]])[[2]][[2]])]
@@ -850,7 +823,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               outcomeDens <- prob*imputations[[imp]][imputationNeeded,outcomeCol] + (1-prob)*(1-imputations[[imp]][imputationNeeded,outcomeCol])
             }
             else if (smtype=="dtsam") {
-              outcomeDens <- dtsamOutcomeDens(imputations[[imp]])[imputationNeeded]
+              outcomeDens <- dtsamOutcomeDens(imputations[[imp]],extraArgs$timeEffects,outcomeModBeta,nTimePoints
+                                              ,smformula,timeCol,dCol)[imputationNeeded]
             }
             else if (smtype=="poisson") {
               outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]]) %*% outcomeModBeta
@@ -933,7 +907,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               reject = 1*(uDraw>prob)
             }
             else if (smtype=="dtsam") {
-              prob <-  dtsamOutcomeDens(imputations[[imp]])[imputationNeeded]
+              prob <-  dtsamOutcomeDens(imputations[[imp]],extraArgs$timeEffects,outcomeModBeta,nTimePoints
+                                        ,smformula,timeCol,dCol)[imputationNeeded]
               reject = 1*(uDraw>prob)
             }
             else if (smtype=="poisson") {
@@ -1011,7 +986,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               reject = 1*(uDraw>prob)
             }
             else if (smtype=="dtsam") {
-              prob <-  dtsamOutcomeDens(tempData)
+              prob <-  dtsamOutcomeDens(tempData,extraArgs$timeEffects,outcomeModBeta,nTimePoints
+                                        ,smformula,timeCol,dCol)
               reject = 1*(uDraw>prob)
             }
             else if (smtype=="poisson") {
@@ -1142,4 +1118,47 @@ modPostDraw <- function(modobj) {
   beta + MASS::mvrnorm(1, mu=rep(0,ncol(varcov)), Sigma=varcov)
 }
 
+#a helper function which calculates the substantive model probability value
+#for each individual for the discrete time survival (logistic) substantive model
+dtsamOutcomeDens <- function(inputData,timeEffects,outcomeModBeta,nTimePoints,smformula,timeCol,dCol) {
+  inputDataN <- dim(inputData)[1]
 
+  if (timeEffects=="factor") {
+    #first add in time effects on log odds scale
+    outmodxb <- matrix(outcomeModBeta[1:nTimePoints], nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+    #calculate covariate effects
+    covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
+                                  inputData) %*% utils::tail(outcomeModBeta,length(outcomeModBeta)-nTimePoints)
+  } else if (timeEffects=="linear") {
+    #linear time
+    #first add in time effects on log odds scale
+    outmodxb <- outcomeModBeta[1] +
+      matrix(outcomeModBeta[2]*((1:nTimePoints)-1), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+    #calculate covariate effects
+    covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
+                                  inputData) %*% utils::tail(outcomeModBeta,length(outcomeModBeta)-2)
+  } else {
+    #quadratic time
+    #first add in time effects on log odds scale
+    outmodxb <- outcomeModBeta[1] +
+      matrix(outcomeModBeta[2]*((1:nTimePoints)-1)+outcomeModBeta[3]*(((1:nTimePoints)-1)^2), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+    #calculate covariate effects
+    covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
+                                  inputData) %*% utils::tail(outcomeModBeta,length(outcomeModBeta)-3)
+  }
+
+  #add in covariate effects
+  outmodxb <- outmodxb + matrix(covXbEffects, nrow=inputDataN, ncol=nTimePoints)
+  #prob is matrix of conditional probabilities/hazard of event in each period
+  prob <- expit(outmodxb)
+  logSurvProb <- log(1-prob)
+  logSurvProbCumSum <- cbind(rep(0,inputDataN),t(apply(logSurvProb, 1, cumsum)))
+
+  #create vector of last time point each person survived to, +1
+  lastSurvPlusOne <- 1 + inputData[,timeCol] - inputData[,dCol]
+  #create vector of log of probability of survival to time when each person actually survived to
+  logSurvProbIndividual <- logSurvProbCumSum[cbind(1:inputDataN,lastSurvPlusOne)]
+  #return vector of outcome density values
+  exp(logSurvProbIndividual + inputData[,dCol]*log(prob[cbind(1:inputDataN, inputData[,timeCol])]))
+
+}

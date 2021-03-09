@@ -140,4 +140,4 @@
 #'   \item{d}{Indicator of failure (=1) or censoring (=0)}
 #' }
 #'
-"ex_ncc"
+"ex_dtsam"
