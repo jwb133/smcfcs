@@ -183,7 +183,8 @@ smcfcs.nestedcc <- function(originaldata,smformula,set,event,nrisk,method,predic
 #'
 #' @param originaldata The data in wide form (i.e. one row per subject)
 #' @param smformula A formula of the form "Surv(t,d)~x1+x2+x3", where t is the discrete time variable, d is the binary event
-#' indicator, and the covariates should not include time
+#' indicator, and the covariates should not include time. The time variable should be
+#' an integer coded numeric variable taking values from 1 up to the final time period
 #' @param timeEffects Specifies how the effect of time is modelled. \code{timeEffects="factor"} (the default) models time as a
 #' factor variable. \code{timeEffects="linear"} and \code{timeEffects="quad"} specify that time be modelled as a continuous
 #' linear or quadratic effect on the log odds scale respectively
