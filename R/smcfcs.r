@@ -216,7 +216,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
       #linear time
       #first add in time effects on log odds scale
       outmodxb <- outcomeModBeta[1] +
-        matrix(outcomeModBeta[2]*(1:nTimePoints), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+        matrix(outcomeModBeta[2]*((1:nTimePoints)-1), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
       #calculate covariate effects
       covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
                                     inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-2)
@@ -224,7 +224,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
       #quadratic time
       #first add in time effects on log odds scale
       outmodxb <- outcomeModBeta[1] +
-        matrix(outcomeModBeta[2]*(1:nTimePoints)+outcomeModBeta[3]*((1:nTimePoints)^2), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
+        matrix(outcomeModBeta[2]*((1:nTimePoints)-1)+outcomeModBeta[3]*(((1:nTimePoints)-1)^2), nrow=inputDataN, ncol=nTimePoints,byrow=TRUE)
       #calculate covariate effects
       covXbEffects <-  model.matrix(as.formula(paste("~-1+",strsplit(smformula, "~")[[1]][2],sep="")),
                                     inputData) %*% tail(outcomeModBeta,length(outcomeModBeta)-3)

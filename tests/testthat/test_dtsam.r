@@ -155,7 +155,7 @@ test_that("MAR is unbiased, cts covariate missing", {
   }, TRUE)
 })
 
-test_that("MCAR is unbiased, binary covariate missing, linear time effect", {
+test_that("MAR is unbiased, binary covariate missing, linear time effect", {
   skip_on_cran()
   expect_equal({
     set.seed(1234)
@@ -184,7 +184,7 @@ test_that("MCAR is unbiased, binary covariate missing, linear time effect", {
     mod <- glm(d~tstart+x1+x2, family="binomial", data=longData)
     summary(mod)
 
-    simData$x1[runif(n)<0.5] <- NA
+    simData$x1[runif(n)<expit((x2-mean(x2)/sd(x2)))] <- NA
     #simData$x2[runif(n)<0.25] <- NA
 
     #impute using smcfcs.dtsam
@@ -213,7 +213,7 @@ test_that("MCAR is unbiased, binary covariate missing, linear time effect", {
   }, TRUE)
 })
 
-test_that("MCAR is unbiased, binary covariate missing, quadratic time effect", {
+test_that("MAR is unbiased, binary covariate missing, quadratic time effect", {
   skip_on_cran()
   expect_equal({
     set.seed(1234)
@@ -242,7 +242,7 @@ test_that("MCAR is unbiased, binary covariate missing, quadratic time effect", {
     mod <- glm(d~tstart+I(tstart^2)+x1+x2, family="binomial", data=longData)
     summary(mod)
 
-    simData$x1[runif(n)<0.5] <- NA
+    simData$x1[runif(n)<expit((x2-mean(x2)/sd(x2)))] <- NA
     #simData$x2[runif(n)<0.25] <- NA
 
     #impute using smcfcs.dtsam
