@@ -6,7 +6,7 @@ Authors@R: c(person("Jonathan", "Bartlett", email = "j.w.bartlett@bath.ac.uk",ro
     person("Ruth", "Keogh", email = "ruth.keogh@lshtm.ac.uk",role = c("aut")),
     person("Claus Thorn", "Ekstrøm",role = c("ctb")),
     person("Edouard F.", "Bonneville",role = c("ctb")))
-URL: http://www.missingdata.org.uk, http://thestatsgeek.com
+URL: https://github.com/jwb133/smcfcs
 Description: Implements multiple imputation of missing covariates by
     Substantive Model Compatible Fully Conditional Specification.
     This is a modification of the popular FCS/chained equations
