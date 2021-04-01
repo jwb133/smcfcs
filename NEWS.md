@@ -1,3 +1,5 @@
+Version 1.5.0 - adding discrete time survival analysis functionality
+
 Version 1.4.2 - adding convergence plot functionality
 
 Version 1.4.1 - adding coxph control option to stop error occurring due to recent change in survival package default behaviour handling of ties
