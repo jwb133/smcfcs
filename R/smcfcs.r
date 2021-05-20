@@ -837,8 +837,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
                 d[imputationNeeded]*(survival::dsurvreg(imputations[[imp]][imputationNeeded,timeCol], mean=outmodxb[imputationNeeded], scale=weibullScale))
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
-              outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
-              outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+              outmodxb <- predict(ymod, newdata=imputations[[imp]], type='lp')
               outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))* (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
             }
             else if (smtype=="nestedcc") {
@@ -922,8 +921,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               prob <- d[imputationNeeded]*prob + (1-d[imputationNeeded])*s_t
               reject <- 1*(uDraw>prob)
             } else if ((smtype=="coxph") | (smtype=="casecohort")) {
-              outmodxb <-  model.matrix(as.formula(smformula),imputations[[imp]])
-              outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+              outmodxb <- predict(ymod, newdata=imputations[[imp]], type='lp')
               s_t = exp(-H0[imputationNeeded]* exp(outmodxb[imputationNeeded]))
               prob = exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded]* exp(outmodxb[imputationNeeded])) ) * H0[imputationNeeded]
               prob = d[imputationNeeded]*prob + (1-d[imputationNeeded])*s_t
@@ -1008,8 +1006,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
               reject = 1*(uDraw>prob)
             }
             else if ((smtype=="coxph") | (smtype=="casecohort")) {
-              outmodxb <-  model.matrix(as.formula(smformula),tempData)
-              outmodxb <- as.matrix(outmodxb[,2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+              outmodxb <- predict(ymod, newdata=tempData, type='lp')
               s_t = exp(-H0[i]* exp(outmodxb))
               prob = exp(1 + outmodxb - (H0[i]* exp(outmodxb)) ) * H0[i]
               prob = d[i]*prob + (1-d[i])*s_t
