@@ -42,9 +42,9 @@ output from the workers. Useful to diagnose rejection sampling warnings.
 File path must be formulated as "path/to/filename.txt".}
 
 \item{...}{Additional arguments to pass on to \link[smcfcs]{smcfcs},
-\link[smcfcs.casecohort]{smcfcs.casecohort},
-\link[smcfcs.dtsam]{smcfcs.dtsam}, or
-\link[smcfcs.nestedcc]{smcfcs.nestedcc}.}
+\link[smcfcs]{smcfcs.casecohort},
+\link[smcfcs]{smcfcs.dtsam}, or
+\link[smcfcs]{smcfcs.nestedcc}.}
 }
 \value{
 An object of type "smcfcs", as would usually be returned from
