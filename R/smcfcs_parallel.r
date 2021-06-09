@@ -7,6 +7,7 @@
 #' the arguments required for the standard smcfcs call, and then
 #'
 #' @author Edouard Bonneville \email{e.f.bonneville@@lumc.nl}
+#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
 #'
 #' @param smcfcs_func Specifies which base smcfcs function to call. Possible values
 #' are `smcfcs`, `smcfcs.casecohort`, `smcfcs.dtasam`, `smcfcs.nestedcc`. Defaults

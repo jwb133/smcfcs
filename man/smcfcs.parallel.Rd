@@ -2,7 +2,7 @@
 % Please edit documentation in R/smcfcs_parallel.r
 \name{smcfcs.parallel}
 \alias{smcfcs.parallel}
-\title{Parallel smcfcs}
+\title{Parallel substantive model compatible imputation}
 \usage{
 smcfcs.parallel(
   smcfcs_func = "smcfcs",
@@ -79,4 +79,6 @@ method = c("", "", "norm", "norm")
 }
 \author{
 Edouard Bonneville \email{e.f.bonneville@lumc.nl}
+
+Jonathan Bartlett \email{j.w.bartlett@bath.ac.uk}
 }
