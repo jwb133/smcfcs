@@ -22,7 +22,9 @@ Imports:
     survival,
     VGAM,
     stats,
-    rlang
+    rlang,
+    checkmate,
+    abind
 Suggests:
     knitr,
     rmarkdown,
