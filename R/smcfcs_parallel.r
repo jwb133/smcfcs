@@ -1,9 +1,10 @@
-#' Parallel smcfcs
+#' Parallel substantive model compatible imputation
 #'
 #' Runs substantive model compatible imputation using parallel cores
 #'
 #' This function can be used to call one of the substantive model compatible imputation
-#' methods using parallel cores, to reduce computation time.
+#' methods using parallel cores, to reduce computation time. You must specify
+#' the arguments required for the standard smcfcs call, and then
 #'
 #' @author Edouard Bonneville \email{e.f.bonneville@@lumc.nl}
 #'
@@ -25,7 +26,10 @@
 #' @param outfile Optional character path to location for
 #' output from the workers. Useful to diagnose rejection sampling warnings.
 #' File path must be formulated as "path/to/filename.txt".
-#' @param ... Additional arguments to pass on to \link[smcfcs]{smcfcs}.
+#' @param ... Additional arguments to pass on to \link[smcfcs]{smcfcs},
+#' \link[smcfcs.casecohort]{smcfcs.casecohort},
+#' \link[smcfcs.dtsam]{smcfcs.dtsam}, or
+#' \link[smcfcs.nestedcc]{smcfcs.nestedcc}.
 #'
 #' @return An object of type "smcfcs", as would usually be returned from
 #' \link[smcfcs]{smcfcs}.
@@ -116,16 +120,34 @@ smcfcs.parallel <- function(smcfcs_func="smcfcs",
 
     parallel::clusterExport(
       cl = cl,
-      varlist = c("args", "imp_specs", "seed", "m", "n_cores", "cl_type", "Surv", smcfcs_func),
+      varlist = c("args", "imp_specs", "seed", "m", "n_cores", "cl_type", "Surv", "strata",
+                  "smcfcs", "smcfcs.casecohort", "smcfcs.dtsam", "smcfcs.nestedcc"),
       envir = environment()
     )
 
-    # Run the imputations - with progress bar
-    pbapply::pboptions(type = "txt")
-    imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
-      args$m <- imp_specs[x]
-      do.call(args$smcfcs_func, args)
-    })
+    # Run the imputations
+    if (smcfcs_func=="smcfcs") {
+      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
+        args$m <- imp_specs[x]
+        do.call(smcfcs::smcfcs, args)
+      })
+    } else if (smcfcs_func=="smcfcs.casecohort") {
+      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
+        args$m <- imp_specs[x]
+        do.call(smcfcs::smcfcs.casecohort, args)
+      })
+    } else if (smcfcs_func=="smcfcs.dtsam") {
+      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
+        args$m <- imp_specs[x]
+        do.call(smcfcs::smcfcs.dtsam, args)
+      })
+    } else {
+      #smcfcs.nestedcc
+      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
+        args$m <- imp_specs[x]
+        do.call(smcfcs::smcfcs.nestedcc, args)
+      })
+    }
 
     parallel::stopCluster(cl)
 
