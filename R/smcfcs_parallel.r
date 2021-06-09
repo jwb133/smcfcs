@@ -4,7 +4,8 @@
 #'
 #' This function can be used to call one of the substantive model compatible imputation
 #' methods using parallel cores, to reduce computation time. You must specify
-#' the arguments required for the standard smcfcs call, and then
+#' the arguments required for the standard smcfcs call, and then specify your
+#' the arguments for how to use parallel cores.
 #'
 #' @author Edouard Bonneville \email{e.f.bonneville@@lumc.nl}
 #' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
