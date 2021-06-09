@@ -43,6 +43,7 @@
 #' parallel::detectCores()
 #'
 #' imps <- smcfcs.parallel(
+#' smcfcs_func="smcfcs",
 #' seed = 2021,
 #' n_cores = parallel::detectCores() - 1,
 #' originaldata = smcfcs::ex_compet,

@@ -56,7 +56,8 @@ Runs substantive model compatible imputation using parallel cores
 \details{
 This function can be used to call one of the substantive model compatible imputation
 methods using parallel cores, to reduce computation time. You must specify
-the arguments required for the standard smcfcs call, and then
+the arguments required for the standard smcfcs call, and then specify your
+the arguments for how to use parallel cores.
 }
 \examples{
 \dontrun{
@@ -64,6 +65,7 @@ the arguments required for the standard smcfcs call, and then
 parallel::detectCores()
 
 imps <- smcfcs.parallel(
+smcfcs_func="smcfcs",
 seed = 2021,
 n_cores = parallel::detectCores() - 1,
 originaldata = smcfcs::ex_compet,
