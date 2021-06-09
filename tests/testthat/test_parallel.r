@@ -3,7 +3,6 @@ library(survival)
 context("Testing parallel computation")
 
 test_that("Cox imputation runs in parallel", {
-  skip_on_cran()
   expect_error({
     set.seed(1234)
     n <- 10000
@@ -22,7 +21,6 @@ test_that("Cox imputation runs in parallel", {
 })
 
 test_that("Test case cohort imputation runs", {
-  skip_on_cran()
   expect_error({
     set.seed(1234)
 
@@ -53,7 +51,6 @@ test_that("Test case cohort imputation runs", {
 })
 
 test_that("Nested case control imputation runs", {
-  skip_on_cran()
   expect_error({
     set.seed(1234)
 
