@@ -105,7 +105,7 @@ prep_iters <- function(x) {
     stop("Re-run smcfcs() with numit >= 2 in order to assess convergence")
 
   # Check if competing risks
-  if (smtype == "compet") {
+  coef_names <- if (smtype == "compet") {
 
     K <- length(smformula)
     cause_coef_names <- lapply(X = seq_len(K), FUN = function(k) {
@@ -113,16 +113,14 @@ prep_iters <- function(x) {
       paste0(names_mod, "-cause", as.character(k))
     })
 
-    coef_names <- unlist(cause_coef_names)
+    unlist(cause_coef_names)
 
+  } else if (smtype %in% c("weibull", "coxph", "casecohort", "nestedcc")) {
+    get_coef_names(smformula, dat, intercept = FALSE)
+  } else if (smtype == "dtsam"){
+    get_dtsam_names(smformula, dat, x$extraArgs$timeEffects)
   } else {
-
-    # No intercept for other survival models
-    if (smtype %in% c("weibull", "coxph", "casecohort", "nestedcc")) {
-      coef_names <- get_coef_names(smformula, dat, intercept = FALSE)
-    } else {
-      coef_names <- get_coef_names(smformula, dat, intercept = TRUE)
-    }
+    get_coef_names(smformula, dat, intercept = TRUE)
   }
 
   # Prepare df for plotting
@@ -152,12 +150,43 @@ prep_iters <- function(x) {
   return(ests_long)
 }
 
+get_dtsam_names <- function(smformula,
+                            dat,
+                            timeEffects) {
+
+  # Get sides of formula
+  rhs <- gsub(x = smformula, pattern = ".*~", replacement = "")
+  lhs <- gsub(x = smformula, pattern = "~.*", replacement = "")
+  surv_obj <- with(dat, eval(parse(text = lhs)))
+  time_var <- as.matrix(surv_obj)[, "time"]
+
+  # Make longdata
+  cutPoints <- seq_len(max(time_var)) # Probably change to unique timepoints later
+  longData <- survival::survSplit(as.formula(smformula), data = dat, cut = cutPoints)
+
+  # Get model matrix formula
+  smformula_matrix <- if (timeEffects == "factor") {
+    paste0("~ -1 + factor(tstart) + ", rhs)
+  } else if (timeEffects == "linear") {
+    paste0("~ tstart + ", rhs)
+  } else paste0("~ tstart + I(tstart^2) + ", rhs)
+
+  # Make matrix
+  model_mat <- stats::model.matrix(
+    object = as.formula(smformula_matrix),
+    data = longData
+  )
+
+  coef_names <- colnames(model_mat)
+
+  return(coef_names)
+}
+
 get_coef_names <- function(smformula,
                            dat,
                            intercept) {
 
   rhs <- gsub(x = smformula, pattern = ".*~", replacement = "")
-
   smformula_matrix <- as.formula(paste0("~ +", rhs))
 
   # Check if there is stratification - if so remove from model matrix
@@ -174,7 +203,7 @@ get_coef_names <- function(smformula,
   )
 
   # For survival models
-  if (intercept == F) {
+  if (intercept == FALSE) {
     model_mat <- model_mat[, !(colnames(model_mat) %in% "(Intercept)")]
   }
 
