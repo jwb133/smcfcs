@@ -4,7 +4,7 @@
 \alias{plot.smcfcs}
 \title{Assess convergence of a smcfcs object}
 \usage{
-\method{plot}{smcfcs}(x, include = "all", contrast = "contr.treatment", ...)
+\method{plot}{smcfcs}(x, include = "all", ...)
 }
 \arguments{
 \item{x}{An object of class 'smcfcs'}
@@ -19,10 +19,6 @@ coefficient names to zoom in to.
 For competing risks, the coefficients are indexed by their cause. E.g. for
 coefficient of a variable x1 in a model for cause 2, will be labelled
 "x1-cause2".}
-
-\item{contrast}{Contrast to choose for any ordered categorical covariates
-in the substantive model, see ?stats::contrasts .
-Default is "contr.treatment".}
 
 \item{...}{Additional parameters to pass on to ggplot2::facet_wrap(),
 eg. nrow = 2}

@@ -20,9 +20,6 @@
 #' For competing risks, the coefficients are indexed by their cause. E.g. for
 #' coefficient of a variable x1 in a model for cause 2, will be labelled
 #' "x1-cause2".
-#' @param contrast Contrast to choose for any ordered categorical covariates
-#' in the substantive model, see ?stats::contrasts .
-#' Default is "contr.treatment".
 #' @param ... Additional parameters to pass on to ggplot2::facet_wrap(),
 #' eg. nrow = 2
 #'
@@ -50,8 +47,6 @@
 #' @importFrom rlang .data
 plot.smcfcs <- function(x,
                         include = "all",
-                        contrast = "contr.treatment",
-                        #use_ggplot = F,
                         ...) {
 
   if (!inherits(x, "smcfcs"))
@@ -63,7 +58,7 @@ plot.smcfcs <- function(x,
   }
 
   # Prepare data
-  df_plot <- prep_iters(x, contrast = contrast)
+  df_plot <- prep_iters(x)
 
   # Choose plots to include
   if (length(include) >= 1 & include[1] != "all") {
@@ -97,7 +92,7 @@ plot.smcfcs <- function(x,
 
 
 # Prepare data for plotting
-prep_iters <- function(x, contrast) {
+prep_iters <- function(x) {
 
   # Extract meta data
   M <- dim(x$smCoefIter)[1]
@@ -113,8 +108,8 @@ prep_iters <- function(x, contrast) {
   if (smtype == "compet") {
 
     K <- length(smformula)
-    cause_coef_names <- lapply(X = 1:K, FUN = function(k) {
-      names_mod <- get_coef_names(smformula[k], dat, intercept = F, contrast)
+    cause_coef_names <- lapply(X = seq_len(K), FUN = function(k) {
+      names_mod <- get_coef_names(smformula[k], dat, intercept = FALSE)
       paste0(names_mod, "-cause", as.character(k))
     })
 
@@ -124,17 +119,17 @@ prep_iters <- function(x, contrast) {
 
     # No intercept for other survival models
     if (smtype %in% c("weibull", "coxph", "casecohort", "nestedcc")) {
-      coef_names <- get_coef_names(smformula, dat, intercept = F, contrast)
+      coef_names <- get_coef_names(smformula, dat, intercept = FALSE)
     } else {
-      coef_names <- get_coef_names(smformula, dat, intercept = T, contrast)
+      coef_names <- get_coef_names(smformula, dat, intercept = TRUE)
     }
   }
 
   # Prepare df for plotting
-  ests_list <- lapply(X = 1:M, function(m) {
+  ests_list <- lapply(X = seq_len(M), function(m) {
 
     coef_dat <- as.data.frame(t(x$smCoefIter[m, ,]))
-    coef_dat$iters <- 1:numit
+    coef_dat$iters <- seq_len(numit)
     coef_dat$imp <- m
 
     return(coef_dat)
@@ -159,18 +154,9 @@ prep_iters <- function(x, contrast) {
 
 get_coef_names <- function(smformula,
                            dat,
-                           intercept,
-                           contrast) {
+                           intercept) {
 
   rhs <- gsub(x = smformula, pattern = ".*~", replacement = "")
-
-  # Check if any ordered categorical
-  check_ordered <- lapply(dat, is.ordered)
-
-  if (any(unlist(check_ordered))) {
-    contr_list <- check_ordered[check_ordered == 1]
-    contr_list <- replace(contr_list, values = contrast)
-  } else contr_list <- NULL
 
   smformula_matrix <- as.formula(paste0("~ +", rhs))
 
@@ -184,8 +170,7 @@ get_coef_names <- function(smformula,
 
   model_mat <- stats::model.matrix(
     object = smformula_matrix,
-    data = dat,
-    contrasts.arg = contr_list
+    data = dat
   )
 
   # For survival models
