@@ -7,7 +7,7 @@
 #' the arguments required for the standard smcfcs call, and then specify your
 #' the arguments for how to use parallel cores.
 #'
-#' @author Edouard Bonneville \email{e.f.bonneville@@lumc.nl}
+#' @author Edouard F. Bonneville \email{e.f.bonneville@@lumc.nl}
 #' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
 #'
 #' @param smcfcs_func Specifies which base smcfcs function to call. Possible values
@@ -56,44 +56,33 @@
 #' method = c("", "", "norm", "norm")
 #' )
 #' }
-smcfcs.parallel <- function(smcfcs_func="smcfcs",
-                       seed = NULL,
-                       m = 5,
-                       m_per_core = NULL,
-                       n_cores = parallel::detectCores() - 1,
-                       cl_type = "PSOCK",
-                       outfile = "",
-                       ...) {
+smcfcs.parallel <- function(smcfcs_func = "smcfcs",
+                            seed = NULL,
+                            m = 5,
+                            m_per_core = NULL,
+                            n_cores = parallel::detectCores() - 1,
+                            cl_type = "PSOCK",
+                            outfile = "",
+                            ...) {
 
-  checkmate::matchArg(x= smcfcs_func, choices=c("smcfcs", "smcfcs.casecohort",
-                                                "smcfcs.dtsam", "smcfcs.nestedcc"))
+  checkmate::matchArg(
+    x = smcfcs_func,
+    choices = c("smcfcs", "smcfcs.casecohort", "smcfcs.dtsam", "smcfcs.nestedcc")
+  )
+
+  # Save chosen function as string and and expression for later use
+  smcfcs_func_string <- paste0("smcfcs::", smcfcs_func)
+  smcfcs_func_expr <- parse(text = smcfcs_func_string)
 
   # Check smcfcs arguments
   args <- list(...)
-  if (smcfcs_func=="smcfcs") {
-    args_smcfcs <- names(formals(smcfcs::smcfcs))
-  } else if (smcfcs_func=="smcfcs.casecohort") {
-    args_smcfcs <- names(formals(smcfcs::smcfcs.casecohort))
-  } else if (smcfcs_func=="smcfcs.dtsam") {
-    args_smcfcs <- names(formals(smcfcs::smcfcs.dtsam))
-  } else {
-    #smcfcs.nestedcc
-    args_smcfcs <- names(formals(smcfcs::smcfcs.nestedcc))
-  }
+  args_smcfcs <- names(formals(eval(smcfcs_func_expr)))
   check_args <- !(names(args) %in% args_smcfcs)
 
   if (any(check_args)) {
     wrong_args <- paste(names(args)[check_args], collapse = ", ")
-    if (smcfcs_func=="smcfcs") {
-      mssg <- paste0("The following are not valid arguments of smcfcs::smcfcs : ", wrong_args)
-    } else if (smcfcs_func=="smcfcs.casecohort") {
-      mssg <- paste0("The following are not valid arguments of smcfcs::smcfcs.casecohort : ", wrong_args)
-    } else if (smcfcs_func=="smcfcs.dtsam") {
-      mssg <- paste0("The following are not valid arguments of smcfcs::smcfcs.dtsam : ", wrong_args)
-    } else {
-      #smcfcs.nestedcc
-      mssg <- paste0("The following are not valid arguments of smcfcs::smcfcs.nestedcc : ", wrong_args)
-    }
+    mssg <- paste0("The following are not valid arguments of",
+                   smcfcs_func_string, " : ", wrong_args)
     stop(mssg)
   }
 
@@ -109,8 +98,7 @@ smcfcs.parallel <- function(smcfcs_func="smcfcs",
   if (n_cores == 1) {
     if (!is.null(seed)) set.seed(seed)
     args$m <- m
-
-    res <- do.call(paste("smcfcs::", smcfcs_func, sep=""), args)
+    res <- do.call(eval(smcfcs_func_expr), args)
 
   } else {
 
@@ -121,36 +109,23 @@ smcfcs.parallel <- function(smcfcs_func="smcfcs",
     cl <- parallel::makeCluster(n_cores, type = cl_type, outfile = outfile)
     if (!is.null(seed)) parallel::clusterSetRNGStream(cl, seed)
 
+    # Export necessary objects/functions
+    parallel::clusterCall(cl, assign, "Surv", survival::Surv, envir = .GlobalEnv)
+    parallel::clusterCall(cl, assign, "strata", survival::strata, envir = .GlobalEnv)
     parallel::clusterExport(
       cl = cl,
-      varlist = c("args", "imp_specs", "seed", "m", "n_cores", "cl_type", "Surv", "strata",
-                  "smcfcs", "smcfcs.casecohort", "smcfcs.dtsam", "smcfcs.nestedcc"),
+      varlist = c(
+        "args", "imp_specs", "seed", "m", "n_cores", "cl_type", "smcfcs",
+        "smcfcs.casecohort", "smcfcs.dtsam", "smcfcs.nestedcc", "smcfcs_func_expr"
+      ),
       envir = environment()
     )
 
     # Run the imputations
-    if (smcfcs_func=="smcfcs") {
-      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
-        args$m <- imp_specs[x]
-        do.call(smcfcs::smcfcs, args)
-      })
-    } else if (smcfcs_func=="smcfcs.casecohort") {
-      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
-        args$m <- imp_specs[x]
-        do.call(smcfcs::smcfcs.casecohort, args)
-      })
-    } else if (smcfcs_func=="smcfcs.dtsam") {
-      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
-        args$m <- imp_specs[x]
-        do.call(smcfcs::smcfcs.dtsam, args)
-      })
-    } else {
-      #smcfcs.nestedcc
-      imps <- parallel::parLapply(cl = cl, X = 1:length(imp_specs), function(x) {
-        args$m <- imp_specs[x]
-        do.call(smcfcs::smcfcs.nestedcc, args)
-      })
-    }
+    imps <- parallel::parLapply(cl = cl, X = seq_along(imp_specs), function(x) {
+      args$m <- imp_specs[x]
+      do.call(eval(smcfcs_func_expr), args)
+    })
 
     parallel::stopCluster(cl)
 

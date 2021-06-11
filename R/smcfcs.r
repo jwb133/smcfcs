@@ -224,7 +224,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
 
-    nullMod <- survival::coxph(Surv(originaldata[,timeCol],originaldata[,dCol])~1,
+    nullMod <- survival::coxph(survival::Surv(originaldata[,timeCol],originaldata[,dCol])~1,
                                control = survival::coxph.control(timefix = FALSE))
     basehaz <- survival::basehaz(nullMod)
     H0indices <- match(originaldata[,timeCol], basehaz[,2])

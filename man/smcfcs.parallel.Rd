@@ -80,7 +80,7 @@ method = c("", "", "norm", "norm")
 }
 }
 \author{
-Edouard Bonneville \email{e.f.bonneville@lumc.nl}
+Edouard F. Bonneville \email{e.f.bonneville@lumc.nl}
 
 Jonathan Bartlett \email{j.w.bartlett@bath.ac.uk}
 }
