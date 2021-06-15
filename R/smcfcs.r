@@ -99,9 +99,8 @@
 #' @references Bartlett JW, Seaman SR, White IR, Carpenter JR. Multiple imputation of covariates
 #' by fully conditional specification: accommodating the substantive model. Statistical Methods
 #' in Medical Research 2015; 24(4): 462-487. \doi{10.1177/0962280214521348}
-
 #' @import stats
-
+#' @importFrom survival Surv
 #' @export
 smcfcs <- function(originaldata,smtype,smformula,method,predictorMatrix=NULL,m=5,numit=10,rjlimit=1000,noisy=FALSE,errorProneMatrix=NULL) {
   #call core  smcfcs function, passing through arguments
@@ -224,7 +223,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
 
-    nullMod <- survival::coxph(Surv(originaldata[,timeCol],originaldata[,dCol])~1,
+    nullMod <- survival::coxph(survival::Surv(originaldata[,timeCol],originaldata[,dCol])~1,
                                control = survival::coxph.control(timefix = FALSE))
     basehaz <- survival::basehaz(nullMod)
     H0indices <- match(originaldata[,timeCol], basehaz[,2])
@@ -1081,7 +1080,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
   res <- list(
     impDatasets = imputations,
     smCoefIter = smCoefIter,
-    smInfo = list("smtype" = smtype, "smformula" = smformula)
+    smInfo = list("smtype" = smtype, "smformula" = smformula),
+    extraArgs = extraArgs # For plot of dtsam
   )
   class(res) <- "smcfcs"
 
