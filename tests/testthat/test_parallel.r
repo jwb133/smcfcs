@@ -16,7 +16,7 @@ test_that("Cox imputation runs in parallel", {
     simData <- data.frame(t,d,x,z)
 
     imps <- smcfcs.parallel(originaldata=simData, smtype="coxph", smformula="Surv(t, d)~x+z",
-                   method=c("", "", "norm", ""), m=5, n_cores=2)
+                   method=c("", "", "norm", ""), m=5, n_cores=2, seed=7243)
   }, NA)
 })
 
@@ -34,7 +34,7 @@ test_that("smcfcs.parallel works with 1 imputation per core", {
     simData <- data.frame(t,d,x,z)
 
     imps <- smcfcs.parallel(originaldata=simData, smtype="coxph", smformula="Surv(t, d)~x+z",
-                            method=c("", "", "norm", ""), m=5, n_cores=5)
+                            method=c("", "", "norm", ""), m=5, n_cores=5, seed=7243)
   }, NA)
 })
 
@@ -52,8 +52,8 @@ test_that("smcfcs.parallel throws error if you specify more cores than necessary
     simData <- data.frame(t,d,x,z)
 
     imps <- smcfcs.parallel(originaldata=simData, smtype="coxph", smformula="Surv(t, d)~x+z",
-                            method=c("", "", "norm", ""), m=5, n_cores=10)
-  }, NA)
+                            method=c("", "", "norm", ""), m=5, n_cores=10, seed=7243)
+  }, NULL)
 })
 
 test_that("Test case cohort imputation runs", {
@@ -81,7 +81,7 @@ test_that("Test case cohort imputation runs", {
     ccdata$entertime[ccdata$in.subco==0] <- ccdata$t[ccdata$in.subco==0] - 0.000001
     imps <- smcfcs.parallel(originaldata=ccdata, smformula="Surv(entertime, t, d)~x+z", sampfrac=0.1,
                               in.subco="in.subco", method=c("", "", "logreg", "", "", "", ""),
-                            smcfcs_func = "smcfcs.casecohort", m=5, n_cores=2)
+                            smcfcs_func = "smcfcs.casecohort", m=5, n_cores=2, seed=7243)
 
   }, NA)
 })
@@ -133,7 +133,7 @@ test_that("Nested case control imputation runs", {
 
     imps <- smcfcs.parallel(originaldata=ncc,set="setno",nrisk="numrisk",event="d",smformula="Surv(t,case)~x+z+strata(setno)",
                             method=c("", "", "norm", "", "", "", "", ""),predictorMatrix=predictorMatrix,
-                            smcfcs_func = "smcfcs.nestedcc", m=5, n_cores=2)
+                            smcfcs_func = "smcfcs.nestedcc", m=5, n_cores=2, seed=7243)
 
     }, NA)
 })
@@ -168,6 +168,6 @@ test_that("DTSAM imputation runs", {
     M <- 5
     imps <- smcfcs.parallel(originaldata=simData, smformula="Surv(failtime,d)~x1+x2",
                          method=c("logreg","", "", ""),
-                         smcfcs_func = "smcfcs.dtsam", m=M, n_cores=2)
+                         smcfcs_func = "smcfcs.dtsam", m=M, n_cores=2, seed=7243)
   }, NA)
 })

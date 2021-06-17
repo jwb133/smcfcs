@@ -13,7 +13,7 @@
 #' @param smcfcs_func Specifies which base smcfcs function to call. Possible values
 #' are `smcfcs`, `smcfcs.casecohort`, `smcfcs.dtasam`, `smcfcs.nestedcc`. Defaults
 #' to `smcfcs`.
-#' @param seed Optional seed, set as `set.seed` when `n_cores = 1`,
+#' @param seed A required seed, set as `set.seed` when `n_cores = 1`,
 #' or as `parallel::clusterSetRNGStream` when `n_cores > 1`.
 #' @param m Number of imputed datasets to generate.
 #' @param n_cores Number of cores over which to split the `m` imputations. If
@@ -55,7 +55,7 @@
 #' )
 #' }
 smcfcs.parallel <- function(smcfcs_func = "smcfcs",
-                            seed = NULL,
+                            seed,
                             m = 5,
                             n_cores = parallel::detectCores() - 1,
                             cl_type = "PSOCK",
