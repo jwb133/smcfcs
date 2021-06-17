@@ -6,7 +6,7 @@
 \usage{
 smcfcs.parallel(
   smcfcs_func = "smcfcs",
-  seed = NULL,
+  seed,
   m = 5,
   n_cores = parallel::detectCores() - 1,
   cl_type = "PSOCK",
@@ -19,7 +19,7 @@ smcfcs.parallel(
 are `smcfcs`, `smcfcs.casecohort`, `smcfcs.dtasam`, `smcfcs.nestedcc`. Defaults
 to `smcfcs`.}
 
-\item{seed}{Optional seed, set as `set.seed` when `n_cores = 1`,
+\item{seed}{A required seed, set as `set.seed` when `n_cores = 1`,
 or as `parallel::clusterSetRNGStream` when `n_cores > 1`.}
 
 \item{m}{Number of imputed datasets to generate.}

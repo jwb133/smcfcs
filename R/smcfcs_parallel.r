@@ -84,7 +84,7 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
   }
 
   # Check parallel arguments
-  checkmate::assert_numeric(x = seed, null.ok = TRUE, any.missing = FALSE, len = 1)
+  checkmate::assert_int(x = seed, lower=0)
   checkmate::assert_int(x = m, lower = 1)
   #checkmate::assert_int(x = m_per_core, lower = 1, upper = max(1,floor(m / n_cores)), null.ok = TRUE)
   checkmate::matchArg(x = cl_type, choices = c("PSOCK", "FORK"))

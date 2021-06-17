@@ -71,9 +71,7 @@ test_that("Linear regression with cov. measurement error coverage is ok", {
       errMat <- matrix(0, nrow=4, ncol=4)
       errMat[1,c(2,3)] <- 1
 
-      imps <- smcfcs.parallel(smcfcs_func="smcfcs",
-                              n_cores=5,
-                              originaldata=simData,
+      imps <- smcfcs(originaldata=simData,
                               smtype="lm",
                               smformula="y~x",
                               method=c("latnorm", "", "", ""),
