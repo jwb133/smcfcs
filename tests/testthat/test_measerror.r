@@ -71,14 +71,18 @@ test_that("Linear regression with cov. measurement error coverage is ok", {
       errMat <- matrix(0, nrow=4, ncol=4)
       errMat[1,c(2,3)] <- 1
 
-      imps <- smcfcs(simData, smtype="lm", smformula="y~x",
-                     method=c("latnorm", "", "", ""),
-                     errorProneMatrix=errMat,numit=100,m=5)
+      imps <- smcfcs.parallel(smcfcs_func="smcfcs",
+                              n_cores=5,
+                              originaldata=simData,
+                              smtype="lm",
+                              smformula="y~x",
+                              method=c("latnorm", "", "", ""),
+                              errorProneMatrix=errMat,numit=100,m=5)
       impobj <- imputationList(imps$impDatasets)
-      models <- with(impobj, lm(y~x))
-      ests[i,] <- c(summary(MIcombine(models))[2,3], summary(MIcombine(models))[2,4])
+      modelSummary <- summary(MIcombine(with(impobj, lm(y~x))))
+      ests[i,] <- c(modelSummary[2,3], modelSummary[2,4])
     }
     #check coverage is close to 95%
-    abs(mean((ests[,1]<1) & (ests[,2]>1))-0.95)<(qnorm(0.99)*((0.95*0.05)/nSim)^0.5)
+    abs(mean((ests[,1]<1) & (ests[,2]>1))-0.95)<(qnorm(0.999)*((0.95*0.05)/nSim)^0.5)
 }, TRUE)
 })

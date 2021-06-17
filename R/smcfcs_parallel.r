@@ -20,8 +20,6 @@
 #' `n_cores` is not divisible exactly by `m`, one of the cores will perform
 #' more/less imputations that the rest such that the final result still contains
 #' `m` imputed datasets.
-#' @param m_per_core Optional number of imputations per core.
-#' Default is `floor(m / n_cores)`, which it cannot be larger than.
 #' @param cl_type Either "PSOCK" or "FORK". If running on a Windows system
 #' "PSOCK" is recommended, otherwise for Linux/Mac machines "FORK" tends to
 #' offer faster computation - see \link[mice]{parlmice}.
@@ -45,7 +43,7 @@
 #' imps <- smcfcs.parallel(
 #' smcfcs_func="smcfcs",
 #' seed = 2021,
-#' n_cores = parallel::detectCores() - 1,
+#' n_cores = 2,
 #' originaldata = smcfcs::ex_compet,
 #' m = 10,
 #' smtype = "compet",
@@ -59,7 +57,6 @@
 smcfcs.parallel <- function(smcfcs_func = "smcfcs",
                             seed = NULL,
                             m = 5,
-                            m_per_core = NULL,
                             n_cores = parallel::detectCores() - 1,
                             cl_type = "PSOCK",
                             outfile = "",
@@ -89,7 +86,7 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
   # Check parallel arguments
   checkmate::assert_numeric(x = seed, null.ok = TRUE, any.missing = FALSE, len = 1)
   checkmate::assert_int(x = m, lower = 1)
-  checkmate::assert_int(x = m_per_core, lower = 1, upper = floor(m / n_cores), null.ok = TRUE)
+  #checkmate::assert_int(x = m_per_core, lower = 1, upper = max(1,floor(m / n_cores)), null.ok = TRUE)
   checkmate::matchArg(x = cl_type, choices = c("PSOCK", "FORK"))
   checkmate::assert_int(x = n_cores, lower = 1, upper = min(parallel::detectCores(), m))
   if (outfile != "") checkmate::assert_path_for_output(x = outfile, overwrite = TRUE)
@@ -103,7 +100,7 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
   } else {
 
     # Determine number of imputations per core
-    imp_specs <- determine_imp_specs(n_cores, m, m_per_core)
+    imp_specs <- determine_imp_specs(n_cores, m)
 
     # Set up the cluster
     cl <- parallel::makeCluster(n_cores, type = cl_type, outfile = outfile)
@@ -139,16 +136,10 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
 
 # Prepare imputations per core
 determine_imp_specs <- function(n_cores,
-                                m,
-                                m_per_core) {
+                                m) {
 
-  if (!is.null(m_per_core)) {
-    imp_specs <- rep(m_per_core, times = floor(m / m_per_core))
-    modul <- m %% m_per_core
-  } else {
-    imp_specs <- rep(floor(m / n_cores), times = n_cores)
-    modul <- m %% n_cores
-  }
+  imp_specs <- rep(floor(m / n_cores), times = n_cores)
+  modul <- m %% n_cores
 
   # Add remaining imps to add to m
   if (modul != 0) imp_specs[length(imp_specs)] <- imp_specs[length(imp_specs)] + modul
