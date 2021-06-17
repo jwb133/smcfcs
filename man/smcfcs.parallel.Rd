@@ -8,7 +8,6 @@ smcfcs.parallel(
   smcfcs_func = "smcfcs",
   seed = NULL,
   m = 5,
-  m_per_core = NULL,
   n_cores = parallel::detectCores() - 1,
   cl_type = "PSOCK",
   outfile = "",
@@ -24,9 +23,6 @@ to `smcfcs`.}
 or as `parallel::clusterSetRNGStream` when `n_cores > 1`.}
 
 \item{m}{Number of imputed datasets to generate.}
-
-\item{m_per_core}{Optional number of imputations per core.
-Default is `floor(m / n_cores)`, which it cannot be larger than.}
 
 \item{n_cores}{Number of cores over which to split the `m` imputations. If
 `n_cores` is not divisible exactly by `m`, one of the cores will perform
@@ -67,7 +63,7 @@ parallel::detectCores()
 imps <- smcfcs.parallel(
 smcfcs_func="smcfcs",
 seed = 2021,
-n_cores = parallel::detectCores() - 1,
+n_cores = 2,
 originaldata = smcfcs::ex_compet,
 m = 10,
 smtype = "compet",
