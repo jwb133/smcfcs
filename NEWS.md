@@ -1,3 +1,5 @@
+Version 1.6.0 - adding parallel core functionality
+
 Version 1.5.0 - adding discrete time survival analysis functionality
 
 Version 1.4.2 - adding convergence plot functionality
