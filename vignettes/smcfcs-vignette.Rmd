@@ -136,4 +136,4 @@ by fully conditional specification: accommodating the substantive model.
 <a href="https://doi.org/10.1177/0962280214521348">Statistical Methods in Medical Research</a>, 2015; 24(4):462-487
 
 van Buuren S, Groothuis-Oudshoorn K. mice:  Multivariate Imputation by Chained
-Equations in R. <a href="https://www.jstatsoft.org/v45/i03/paper">Journal of Statistical Software</a>, 2011; 45(3)
+Equations in R. <a href="https://doi.org/10.18637/jss.v045.i03">Journal of Statistical Software</a>, 2011; 45(3)
