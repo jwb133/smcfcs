@@ -11,8 +11,10 @@
 #' logistic regression (\code{"logistic"}), Poisson regression
 #' (\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
 #' for time to event data (\code{"coxph"}),
-#' and Cox models for competing risks data (\code{"compet"}). For the latter, a
-#' Cox model is assumed for each cause of failure, and the event indicator
+#' and Cox models for competing risks data (\code{"compet"}). For \code{"coxph"},
+#' the event indicator should be integer coded with 0 for censoring and 1 for event.
+#' For \code{"compet"}, a Cox model is assumed for each cause specific hazard function,
+#' and the event indicator
 #' should be integer coded with 0 corresponding to censoring, 1 corresponding to
 #' failure from the first cause etc.
 #'
@@ -222,6 +224,9 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
+    if (!(identical(unique(d),c(0,1))) & !(identical(unique(d),1))) {
+      stop("Event indicator for coxph must be coded 0/1 for censoring/event.")
+    }
 
     nullMod <- survival::coxph(survival::Surv(originaldata[,timeCol],originaldata[,dCol])~1,
                                control = survival::coxph.control(timefix = FALSE))
