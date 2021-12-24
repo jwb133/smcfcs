@@ -94,8 +94,10 @@ Imputation is supported for linear regression (\code{"lm"}),
 logistic regression (\code{"logistic"}), Poisson regression
 (\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
 for time to event data (\code{"coxph"}),
-and Cox models for competing risks data (\code{"compet"}). For the latter, a
-Cox model is assumed for each cause of failure, and the event indicator
+and Cox models for competing risks data (\code{"compet"}). For \code{"coxph"},
+the event indicator should be integer coded with 0 for censoring and 1 for event.
+For \code{"compet"}, a Cox model is assumed for each cause specific hazard function,
+and the event indicator
 should be integer coded with 0 corresponding to censoring, 1 corresponding to
 failure from the first cause etc.
 
