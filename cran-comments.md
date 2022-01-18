@@ -6,4 +6,6 @@
 * R hub Fedora Linux, R-devel, clang, gfortran
 
 ## R CMD check results
+Modified URL in vignette as required after previous CRAN submission attempt.
+
 No notes or warnings on Mac. On R hub I get a 'checking Rd cross-references note about the mice package being unavailable to check Rd xrefs, but I'm not sure why (the package is on CRAN). On the R hub Windows build I get a note about lastMiKTeXException being found when checking for detritus. On the R hub Windows I also get a qpdf warning, but from my previous submissions I don't think this is a problem for CRAN.
