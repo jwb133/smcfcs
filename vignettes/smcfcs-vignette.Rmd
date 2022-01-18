@@ -17,7 +17,7 @@ The most popular approach to imputation uses parametric models for the missing v
 
 ## Joint model and FCS multiple imputation
 
-When multiple variables are affected by missingness, the traditional approach to imputation is to specify a joint (or multivariate model) for the partially observed variables. One of the earliest examples of this was MI  using the multivariate normal model. Rather than specifying a joint model directly, a popular alternative is the fully conditional specification (FCS), or chained equations approach. In FCS MI separate conditional models are specified for each partially observed variable. In each of these conditional models, by default all of the variables serve as predictors. For an overview of the FCS MI and an implementation of it in R, see <a href="https://www.jstatsoft.org/v45/i03/paper">van Buuren and Groothuis-Oudshoorn</a>.
+When multiple variables are affected by missingness, the traditional approach to imputation is to specify a joint (or multivariate model) for the partially observed variables. One of the earliest examples of this was MI  using the multivariate normal model. Rather than specifying a joint model directly, a popular alternative is the fully conditional specification (FCS), or chained equations approach. In FCS MI separate conditional models are specified for each partially observed variable. In each of these conditional models, by default all of the variables serve as predictors. For an overview of the FCS MI and an implementation of it in R, see <a href="https://doi.org/10.18637/jss.v045.i03">van Buuren and Groothuis-Oudshoorn</a>.
 
 ## Imputation model compatibility
 
