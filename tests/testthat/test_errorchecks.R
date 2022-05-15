@@ -233,3 +233,20 @@ test_that("Cox imputation fails if event indicator is not coded right", {
                    method=c("", "", "norm", ""))
   })
 })
+
+test_that("Cox error check doesn't fail when events are 1 1 1 0 0 0", {
+  expect_error({
+    set.seed(1234)
+    n <- 100
+    z <- rnorm(n)
+    x <- z+rnorm(n)
+    t <- runif(n)
+    d <- c(rep(1,n/2),rep(0,n/2))
+    x[(runif(n)<0.5)] <- NA
+
+    simData <- data.frame(t,d,x,z)
+
+    imps <- smcfcs(simData, smtype="coxph", smformula="Surv(t, d)~x+z",
+                   method=c("", "", "norm", ""))
+  }, NA)
+})

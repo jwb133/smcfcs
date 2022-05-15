@@ -1,11 +1,11 @@
+The only change in this new version of the package is it makes a fix to an error check that I added in the last update
+
 ## Test environments
-* local Mac install, R 4.1.2
-* local Windows 11, R 4.1.2
-* R hub builder Windows Server 2022, R-devel, 64 bit
-* R hub Ubuntu Linux 20.04.1 LTS, R-release, GCC
-* R hub Fedora Linux, R-devel, clang, gfortran
+* local Mac install, R 4.2.0
+* Win Builder R version 4.2.0 (2022-04-22 ucrt)
+* Win Builder R Under development (unstable) (2022-05-13 r82357 ucrt)
 
 ## R CMD check results
-Modified URL in vignette as required after previous CRAN submission attempt.
+0 errors, 0 warnings, 0 notes on local Mac.
 
-No notes or warnings on Mac. On R hub I get a 'checking Rd cross-references note about the mice package being unavailable to check Rd xrefs, but I'm not sure why (the package is on CRAN). On the R hub Windows build I get a note about lastMiKTeXException being found when checking for detritus. On the R hub Windows I also get a qpdf warning, but from my previous submissions I don't think this is a problem for CRAN.
+Win Builder had 1 warning 'Found the following (possibly) invalid URLs' for a URL in one of the vignettes.

@@ -1,3 +1,5 @@
+Version 1.6.1 - fixing an issue with coxph error check added in previous version
+
 Version 1.6.1 - adding check for event indicator values for coxph models
 
 Version 1.6.0 - adding parallel core functionality
