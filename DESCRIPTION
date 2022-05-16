@@ -24,7 +24,8 @@ Imports:
     stats,
     rlang,
     checkmate,
-    abind
+    abind,
+    brglm2
 Suggests:
     knitr,
     rmarkdown,
