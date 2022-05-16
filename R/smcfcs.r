@@ -8,7 +8,7 @@
 #' Bartlett \emph{et al} 2015 (see references).
 #'
 #' Imputation is supported for linear regression (\code{"lm"}),
-#' logistic regression (\code{"logistic"}), bias reduced logistic regression (\code{"brlogistic"),
+#' logistic regression (\code{"logistic"}), bias reduced logistic regression (\code{"brlogistic"}),
 #' Poisson regression (\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
 #' for time to event data (\code{"coxph"}),
 #' and Cox models for competing risks data (\code{"compet"}). For \code{"coxph"},
@@ -31,8 +31,8 @@
 #' the specified substantive model. However, even in this case, the user should
 #' specify "" in the element of method corresponding to the outcome variable.
 #'
-#' The bias reduced methods make use of the brglm2 package to fit the corresponding glms
-#' using the Firth's bias reduced approach. These may be particularly useful to use in case
+#' The bias reduced methods make use of the \code{\link[brglm2]{brglm2}} package to fit the corresponding glms
+#' using Firth's bias reduced approach. These may be particularly useful to use in case
 #' of perfect prediction, since the resulting model estimates are always guaranteed to be
 #' finite, even in the case of perfect prediction.
 #'
@@ -46,7 +46,7 @@
 #'
 #' @param originaldata The original data frame with missing values.
 #' @param smtype A string specifying the type of substantive model. Possible
-#' values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
+#' values are \code{"lm"}, \code{"logistic"}, \code{"brlogistic"}, \code{"poisson"}, \code{"weibull"},
 #' \code{"coxph"}, \code{"compet"}.
 #' @param smformula The formula of the substantive model. For \code{"weibull"} and \code{"coxph"}
 #' substantive models the left hand side should be of the form \code{"Surv(t,d)"}. For \code{"compet"}

@@ -21,7 +21,7 @@ smcfcs(
 \item{originaldata}{The original data frame with missing values.}
 
 \item{smtype}{A string specifying the type of substantive model. Possible
-values are \code{"lm"}, \code{"logistic"}, \code{"poisson"}, \code{"weibull"},
+values are \code{"lm"}, \code{"logistic"}, \code{"brlogistic"}, \code{"poisson"}, \code{"weibull"},
 \code{"coxph"}, \code{"compet"}.}
 
 \item{smformula}{The formula of the substantive model. For \code{"weibull"} and \code{"coxph"}
@@ -32,7 +32,8 @@ for each cause of failure (see example).}
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
 be used to impute. Possible values are \code{"norm"} (normal linear regression),
-\code{"logreg"} (logistic regression), \code{"poisson"} (Poisson regression),
+\code{"logreg"} (logistic regression), \code{"brlogreg"} (bias reduced logistic regression),
+\code{"poisson"} (Poisson regression),
 \code{"podds"} (proportional odds regression for ordered categorical variables),
 \code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 or a custom expression which defines a passively imputed variable, e.g.
@@ -91,8 +92,8 @@ Fully Conditional Specification multiple imputation approach proposed by
 Bartlett \emph{et al} 2015 (see references).
 
 Imputation is supported for linear regression (\code{"lm"}),
-logistic regression (\code{"logistic"}), Poisson regression
-(\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
+logistic regression (\code{"logistic"}), bias reduced logistic regression (\code{"brlogistic"}),
+Poisson regression (\code{"poisson"}), Weibull (\code{"weibull"}) and Cox regression
 for time to event data (\code{"coxph"}),
 and Cox models for competing risks data (\code{"compet"}). For \code{"coxph"},
 the event indicator should be integer coded with 0 for censoring and 1 for event.
@@ -114,9 +115,13 @@ If the substantive model is linear, logistic or Poisson regression,
 the specified substantive model. However, even in this case, the user should
 specify "" in the element of method corresponding to the outcome variable.
 
+The bias reduced methods make use of the \code{\link[brglm2]{brglm2}} package to fit the corresponding glms
+using Firth's bias reduced approach. These may be particularly useful to use in case
+of perfect prediction, since the resulting model estimates are always guaranteed to be
+finite, even in the case of perfect prediction.
 
-The development of this package was supported by a UK Medical Research Council
-Fellowship (MR/K02180X/1). Part of its development took place while the author was
+The development of this package was supported by the UK Medical Research Council
+(Fellowship MR/K02180X/1 and grant MR/T023953/1). Part of its development took place while Bartlett was
 kindly hosted by the University of Michigan's Department of Biostatistics & Institute for
 Social Research.
 

@@ -34,7 +34,8 @@ smcfcs.nestedcc(
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
 be used to impute. Possible values are \code{"norm"} (normal linear regression),
-\code{"logreg"} (logistic regression), \code{"poisson"} (Poisson regression),
+\code{"logreg"} (logistic regression), \code{"brlogreg"} (bias reduced logistic regression),
+\code{"poisson"} (Poisson regression),
 \code{"podds"} (proportional odds regression for ordered categorical variables),
 \code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
 or a custom expression which defines a passively imputed variable, e.g.
