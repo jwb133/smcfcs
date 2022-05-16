@@ -1,4 +1,7 @@
-Version 1.6.1 - fixing an issue with coxph error check added in previous version
+Version 1.7.0 - Adding bias reduced logistic options to smtype and method
+arguments
+
+Version 1.6.2 - fixing an issue with coxph error check added in previous version
 
 Version 1.6.1 - adding check for event indicator values for coxph models
 

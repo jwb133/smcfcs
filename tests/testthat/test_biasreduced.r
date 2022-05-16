@@ -75,3 +75,20 @@ test_that("brlogreg gives results with minimal bias under perfect prediction bet
     ttestRes$p.value>0.05
   }, TRUE)
 })
+
+
+test_that("smcfcs gives no warnings or errors with perfect prediction and brlogistic method
+          for substantive model and covariate model", {
+  expect_error({
+    n <- 10
+    x <- c(0,0,0,0,0,1,1,1,1,1)
+    y <- c(0,0,0,0,0,1,1,1,1,1)
+    x[c(5,10)] <- NA
+
+    simData <- data.frame(x,y)
+    rm(x,y)
+
+    imps <- smcfcs(simData, smtype="brlogistic", smformula="y~x",
+                   method=c("brlogreg", ""), m=1)
+  }, NA)
+})
