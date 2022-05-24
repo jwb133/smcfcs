@@ -2,19 +2,23 @@ library(smcfcs)
 context("Bias reduced model testing")
 
 test_that("smcfcs gives error with perfect prediction and logreg method", {
+  #note that this is not guaranteed (for an arbitrary seed) to give an error
+  #because smcfcs initialises by randomly selecting some observed values, and
+  #these are used in the covariate model fits (unlike in mice)
   suppressWarnings(
   expect_error({
     n <- 10
     z <- c(0,0,0,0,0,1,1,1,1,1)
     x <- z
+    y <- x+rnorm(n)
     x[c(5,10)] <- NA
-    y <- rnorm(n)
 
     simData <- data.frame(x,z,y)
     #impute x using z as an auxiliary variable
     predMat <- array(0, dim=c(3,3))
     predMat[1,2] <- 1
     rm(x,z,y)
+    set.seed(62377)
     imps <- smcfcs(simData, smtype="lm", smformula="y~x",
                    method=c("logreg", "", ""), predictorMatrix=predMat, m=1)
   }))
@@ -25,15 +29,15 @@ test_that("smcfcs gives no warnings or errors with perfect prediction and brlogr
     n <- 10
     z <- c(0,0,0,0,0,1,1,1,1,1)
     x <- z
+    y <- x+rnorm(n)
     x[c(5,10)] <- NA
-    y <- rnorm(n)
 
     simData <- data.frame(x,z,y)
     rm(x,z,y)
     #impute x using z as an auxiliary variable
     predMat <- array(0, dim=c(3,3))
     predMat[1,2] <- 1
-
+    set.seed(62377)
     imps <- smcfcs(simData, smtype="lm", smformula="y~x",
                    method=c("brlogreg", "", ""), predictorMatrix=predMat, m=1)
   }, NA)
@@ -87,7 +91,7 @@ test_that("smcfcs gives no warnings or errors with perfect prediction and brlogi
 
     simData <- data.frame(x,y)
     rm(x,y)
-
+    set.seed(62377)
     imps <- smcfcs(simData, smtype="brlogistic", smformula="y~x",
                    method=c("brlogreg", ""), m=1)
   }, NA)
