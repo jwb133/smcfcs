@@ -1,11 +1,10 @@
-The only change in this new version of the package is it makes a fix to an error check that I added in the last update
-
 ## Test environments
-* local Mac install, R 4.2.0
-* Win Builder R version 4.2.0 (2022-04-22 ucrt)
-* Win Builder R Under development (unstable) (2022-05-13 r82357 ucrt)
+* local Windows 11 install, R 4.2.0
+* R Hub Windows Server 2022, R-devel, 64 bit
+* R Hub Ubuntu Linux 20.04.1 LTS, R-release, GCC
+* R Hub Fedora Linux, R-devel, clang, gfortran
 
 ## R CMD check results
-0 errors, 0 warnings, 0 notes on local Mac.
+0 errors, 0 warnings, 0 notes on local Windows.
 
-Win Builder had 1 warning 'Found the following (possibly) invalid URLs' for a URL in one of the vignettes.
+On R Hub Windows R-devel, I get: note on checking Rd cross-references - Package unavailable to check Rd xrefs: 'mice', and a note - checking for detritus in the temp directory - Found the following files/directories: 'lastMiKTeXException'. Not sure why mice package would be unavailable.
