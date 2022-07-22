@@ -13,7 +13,7 @@
 #' @param smcfcs_func Specifies which base smcfcs function to call. Possible values
 #' are `smcfcs`, `smcfcs.casecohort`, `smcfcs.dtasam`, `smcfcs.nestedcc`. Defaults
 #' to `smcfcs`.
-#' @param seed A required seed, set as `set.seed` when `n_cores = 1`,
+#' @param seed Optional seed, set as `set.seed` when `n_cores = 1`,
 #' or as `parallel::clusterSetRNGStream` when `n_cores > 1`.
 #' @param m Number of imputed datasets to generate.
 #' @param n_cores Number of cores over which to split the `m` imputations. If
@@ -55,7 +55,7 @@
 #' )
 #' }
 smcfcs.parallel <- function(smcfcs_func = "smcfcs",
-                            seed,
+                            seed = NULL,
                             m = 5,
                             n_cores = parallel::detectCores() - 1,
                             cl_type = "PSOCK",
@@ -84,7 +84,7 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
   }
 
   # Check parallel arguments
-  checkmate::assert_int(x = seed, lower=0)
+  checkmate::assert_int(x = seed, null.ok = TRUE)
   checkmate::assert_int(x = m, lower = 1)
   #checkmate::assert_int(x = m_per_core, lower = 1, upper = max(1,floor(m / n_cores)), null.ok = TRUE)
   checkmate::matchArg(x = cl_type, choices = c("PSOCK", "FORK"))
@@ -104,7 +104,7 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
 
     # Set up the cluster
     cl <- parallel::makeCluster(n_cores, type = cl_type, outfile = outfile)
-    if (!is.null(seed)) parallel::clusterSetRNGStream(cl, seed)
+    parallel::clusterSetRNGStream(cl, seed)
 
     # Export necessary objects/functions
     parallel::clusterCall(cl, assign, "Surv", survival::Surv, envir = .GlobalEnv)

@@ -56,24 +56,6 @@ test_that("smcfcs.parallel throws error if you specify more cores than necessary
   }, NULL)
 })
 
-test_that("smcfcs.parallel throws error if you specify negative seed", {
-  expect_error({
-    set.seed(1234)
-    n <- 100
-    z <- rnorm(n)
-    x <- z+rnorm(n)
-    t <- -log(runif(n))/(1*exp(x+z))
-    d <- 1*(t<10)
-    t[d==0] <- 10
-    x[(runif(n)<0.5)] <- NA
-
-    simData <- data.frame(t,d,x,z)
-
-    imps <- smcfcs.parallel(originaldata=simData, smtype="coxph", smformula="Surv(t, d)~x+z",
-                            method=c("", "", "norm", ""), m=5, n_cores=2, seed=-7243)
-  }, NULL)
-})
-
 test_that("smcfcs.parallel throws error if you specify non-integer seed", {
   expect_error({
     set.seed(1234)
