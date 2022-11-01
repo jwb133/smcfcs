@@ -229,7 +229,7 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     outcomeCol <- c(timeCol, dCol)
     d <- originaldata[,dCol]
-    if (!(identical(sort(unique(d)),c(0,1))) & !(identical(unique(d),1))) {
+    if (!(all(sort(unique(d))==c(0,1))) & !(all(unique(d)==1))) {
       stop("Event indicator for coxph must be coded 0/1 for censoring/event.")
     }
 
