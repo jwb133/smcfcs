@@ -1,3 +1,5 @@
+Version 1.7.1 - Allowing parallel runs without seed being specified, and fixing survival data error trap
+
 Version 1.7.0 - Adding bias reduced logistic options to smtype and method
 arguments
 
