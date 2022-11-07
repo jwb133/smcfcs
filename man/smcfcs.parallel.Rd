@@ -78,5 +78,5 @@ method = c("", "", "norm", "norm")
 \author{
 Edouard F. Bonneville \email{e.f.bonneville@lumc.nl}
 
-Jonathan Bartlett \email{j.w.bartlett@bath.ac.uk}
+Jonathan Bartlett \email{jonathan.bartlett1@lshtm.ac.uk}
 }

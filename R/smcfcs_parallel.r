@@ -8,7 +8,7 @@
 #' the arguments for how to use parallel cores.
 #'
 #' @author Edouard F. Bonneville \email{e.f.bonneville@@lumc.nl}
-#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
+#' @author Jonathan Bartlett \email{jonathan.bartlett1@@lshtm.ac.uk}
 #'
 #' @param smcfcs_func Specifies which base smcfcs function to call. Possible values
 #' are `smcfcs`, `smcfcs.casecohort`, `smcfcs.dtasam`, `smcfcs.nestedcc`. Defaults
