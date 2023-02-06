@@ -573,6 +573,8 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           } else {
             xfitted <- model.matrix(xmod) %*% newbeta
           }
+          print("Covariate model has just been fitted. xfitted summary is")
+          print(summary(xfitted))
         } else if  (method[targetCol]=="latnorm") {
             #estimate parameters of covariate model
             xmod <- lm(xmodformula, data=xmoddata)
@@ -910,9 +912,14 @@ smcfcs.core <- function(originaldata,smtype,smformula,method,predictorMatrix=NUL
           firstTryLimit <- 25
           j <- 1
 
+          print("smcfcs is about to start rejection sampling")
+
           while ((length(imputationNeeded)>0) & (j<firstTryLimit)) {
             #sample from covariate model
             if ((method[targetCol]=="norm") | (method[targetCol]=="latnorm")) {
+              print("proposal draw about to happen")
+              print(length(imputationNeeded))
+              print(summary(xfitted[imputationNeeded]))
               imputations[[imp]][imputationNeeded,targetCol] <- rnorm(length(imputationNeeded),xfitted[imputationNeeded],newsigmasq^0.5)
             }
             else if (method[targetCol]=="poisson") {
