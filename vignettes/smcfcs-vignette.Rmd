@@ -47,15 +47,15 @@ To illustrate the package, we use the simple example data frame `ex_linquad`, wh
 
 ```{r}
 library(smcfcs)
-ex_linquad[1:10,]
+ex_linquad[1:10, ]
 ```
 
 As shown, the `xsq` variable is equal to the square of the `x` variable. Since the latter has missing values, so does the former. We now impute the missing values in `x` and `xsq`, compatibly with a substantive model for the outcome `y` which is specified as a linear regression, with `z`, `x` and `xsq` as covariates:
 
 ```{r}
 set.seed(123)
-#impute missing values in x, compatibly with quadratic substantive model
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""))
+# impute missing values in x, compatibly with quadratic substantive model
+imps <- smcfcs(ex_linquad, smtype = "lm", smformula = "y~z+x+xsq", method = c("", "", "norm", "x^2", ""))
 ```
 
 As demonstrated here, the minimal arguments to pass to `smcfcs` are the data frame to be used, the substantive model type, the substantive model formula, and a method vector. The substantive model type specifies whether the model for the outcome is linear, logistic or Cox regression, or a competing risks analysis (see documentation). The `smformula` specifies the linear predictor of the substantive/outcome model. Here we specified that the outcome `y` is assumed to follow a linear regression model, with `z`, `x` and `xsq` as predictors.
@@ -67,15 +67,15 @@ Having generated the imputed datasets, we can now fit our substantive model of i
 # fit substantive model
 library(mitools)
 impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, lm(y~z+x+xsq))
+models <- with(impobj, lm(y ~ z + x + xsq))
 summary(MIcombine(models))
 ```
 
 Here the data were simulated such that the coefficients of `z`, `x` and `xsq` are all 1. The estimates we have obtained are (reassuringly) close to these true parameter values. To illustrate the dangers of imputing a covariate using an imputation model which is not compatible with the substantive model, we now re-impute `x`, but this time imputing compatibly with a model for `y` which does not allow for the quadratic effect:
 
 ```{r}
-#impute missing values in x, compatibly with model for y which omits the quadratic effect
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x",method=c("","","norm","x^2",""))
+# impute missing values in x, compatibly with model for y which omits the quadratic effect
+imps <- smcfcs(ex_linquad, smtype = "lm", smformula = "y~z+x", method = c("", "", "norm", "x^2", ""))
 ```
 
 `smcfcs` has issued some warnings about rejection sampling. We discuss this later in this vignette, but here we will continue and proceed to fit a model for `y` which includes both `x` and `xsq` (plus `z`) as covariates:
@@ -83,7 +83,7 @@ imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x",method=c("","","norm",
 ```{r}
 # fit substantive model
 impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, lm(y~z+x+xsq))
+models <- with(impobj, lm(y ~ z + x + xsq))
 summary(MIcombine(models))
 ```
 
@@ -94,22 +94,22 @@ One of the strengths of multiple imputation in general is the possibility to use
 
 When using `smcfcs` to impute missing covariates, auxiliary variables `v` can be included by adding them as an additional covariate in the substantive model, as passed using the `smformula` argument. Here we are imputing `x` compatibly with a certain specification of model for the outcome. Our substantive model of interest is then a simpler model which omits `v`. For example, in the quadratic example dataset, we can add the auxiliary variable `v` using:
 ```{r}
-#impute, including v as a covariate in the substantive/outcome model
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq+v",method=c("","","norm","x^2",""))
+# impute, including v as a covariate in the substantive/outcome model
+imps <- smcfcs(ex_linquad, smtype = "lm", smformula = "y~z+x+xsq+v", method = c("", "", "norm", "x^2", ""))
 # fit substantive model, which omits v
 impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, lm(y~z+x+xsq))
+models <- with(impobj, lm(y ~ z + x + xsq))
 summary(MIcombine(models))
 ```
 For outcome models other than linear regression, this approach is not entirely justifiable due to the lack of collapsibility of non-linear models. For example, if a Cox model is assumed for a failure time given variables `x` and `v`, the hazard function given only `x` (i.e. omitting `v` from the model) is no longer a Cox model. Further research is warranted to explore how this might affect the resulting inferences.
 
 It is also possible to include the auxiliary variable `v` without adding it to the outcome model (as given in the `smformula` argument), through specification of the `predictorMatrix` argument. Doing so conditions on `v`, but assumes that the outcome is independent of `v`, conditional on whatever covariates are specified in `smformula`. This should thus only be used when the latter assumption is justified. When it is, inferences will in general be more efficient. To make this assumption when imputing `x` in the `ex_linquad` data, we define a `predictorMatrix` which will specify that `x` be imputed using both `z` and `v`, but we omit `v` from the `smformula` argument: 
 ```{r}
-predMatrix <- array(0, dim=c(ncol(ex_linquad),ncol(ex_linquad)))
-predMatrix[3,] <- c(0,1,0,0,1)
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),predictorMatrix=predMatrix)
+predMatrix <- array(0, dim = c(ncol(ex_linquad), ncol(ex_linquad)))
+predMatrix[3, ] <- c(0, 1, 0, 0, 1)
+imps <- smcfcs(ex_linquad, smtype = "lm", smformula = "y~z+x+xsq", method = c("", "", "norm", "x^2", ""), predictorMatrix = predMatrix)
 impobj <- imputationList(imps$impDatasets)
-models <- with(impobj, lm(y~z+x+xsq))
+models <- with(impobj, lm(y ~ z + x + xsq))
 summary(MIcombine(models))
 ```
 
@@ -122,9 +122,9 @@ Like standard chained equations or FCS imputation, the SMC-FCS algorithm must be
 
 ```{r, fig.width = 6, fig.height = 4}
 # impute once with a larger number of iterations than the default 10
-imps <- smcfcs(ex_linquad, smtype="lm", smformula="y~z+x+xsq",method=c("","","norm","x^2",""),predictorMatrix=predMatrix,m=1,numit=100)
+imps <- smcfcs(ex_linquad, smtype = "lm", smformula = "y~z+x+xsq", method = c("", "", "norm", "x^2", ""), predictorMatrix = predMatrix, m = 1, numit = 100)
 # plot estimates of the fourth parameter of the substantive model against iteration number
-plot(imps$smCoefIter[1,4,])
+plot(imps$smCoefIter[1, 4, ])
 ```
 
 The plot shows that the process appears to converge rapidly, such that the default choice of `numit=10` is probably fine here. Of course we should also examine the corresponding plots for the other parameters of the substantive model, since convergence may require more than 10 iterations for some of these.

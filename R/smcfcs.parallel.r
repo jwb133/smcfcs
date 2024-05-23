@@ -41,17 +41,17 @@
 #' parallel::detectCores()
 #'
 #' imps <- smcfcs.parallel(
-#' smcfcs_func="smcfcs",
-#' seed = 2021,
-#' n_cores = 2,
-#' originaldata = smcfcs::ex_compet,
-#' m = 10,
-#' smtype = "compet",
-#' smformula = list(
-#' "Surv(t, d == 1) ~ x1 + x2",
-#' "Surv(t, d == 2) ~ x1 + x2"
-#' ),
-#' method = c("", "", "norm", "norm")
+#'   smcfcs_func = "smcfcs",
+#'   seed = 2021,
+#'   n_cores = 2,
+#'   originaldata = smcfcs::ex_compet,
+#'   m = 10,
+#'   smtype = "compet",
+#'   smformula = list(
+#'     "Surv(t, d == 1) ~ x1 + x2",
+#'     "Surv(t, d == 2) ~ x1 + x2"
+#'   ),
+#'   method = c("", "", "norm", "norm")
 #' )
 #' }
 smcfcs.parallel <- function(smcfcs_func = "smcfcs",
@@ -61,7 +61,6 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
                             cl_type = "PSOCK",
                             outfile = "",
                             ...) {
-
   checkmate::matchArg(
     x = smcfcs_func,
     choices = c("smcfcs", "smcfcs.casecohort", "smcfcs.dtsam", "smcfcs.nestedcc")
@@ -78,15 +77,17 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
 
   if (any(check_args)) {
     wrong_args <- paste(names(args)[check_args], collapse = ", ")
-    mssg <- paste0("The following are not valid arguments of",
-                   smcfcs_func_string, " : ", wrong_args)
+    mssg <- paste0(
+      "The following are not valid arguments of",
+      smcfcs_func_string, " : ", wrong_args
+    )
     stop(mssg)
   }
 
   # Check parallel arguments
   checkmate::assert_int(x = seed, null.ok = TRUE)
   checkmate::assert_int(x = m, lower = 1)
-  #checkmate::assert_int(x = m_per_core, lower = 1, upper = max(1,floor(m / n_cores)), null.ok = TRUE)
+  # checkmate::assert_int(x = m_per_core, lower = 1, upper = max(1,floor(m / n_cores)), null.ok = TRUE)
   checkmate::matchArg(x = cl_type, choices = c("PSOCK", "FORK"))
   checkmate::assert_int(x = n_cores, lower = 1, upper = min(parallel::detectCores(), m))
   if (outfile != "") checkmate::assert_path_for_output(x = outfile, overwrite = TRUE)
@@ -96,9 +97,7 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
     if (!is.null(seed)) set.seed(seed)
     args$m <- m
     res <- do.call(eval(smcfcs_func_expr), args)
-
   } else {
-
     # Determine number of imputations per core
     imp_specs <- determine_imp_specs(n_cores, m)
 
@@ -137,7 +136,6 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
 # Prepare imputations per core
 determine_imp_specs <- function(n_cores,
                                 m) {
-
   imp_specs <- rep(floor(m / n_cores), times = n_cores)
   modul <- m %% n_cores
 
@@ -149,9 +147,8 @@ determine_imp_specs <- function(n_cores,
 
 # Helper to combine smcfcs objects
 combine_smcfcs_objects <- function(smcfcs_list) {
-
   # Combine imputed datasets
-  ls_impdats <- do.call("c",  lapply(smcfcs_list, "[[", "impDatasets"))
+  ls_impdats <- do.call("c", lapply(smcfcs_list, "[[", "impDatasets"))
 
   # Combine monitoring of imputations
   coef_array <- abind::abind(lapply(smcfcs_list, "[[", "smCoefIter"), along = 1)

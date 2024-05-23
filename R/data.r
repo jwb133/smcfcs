@@ -1,4 +1,3 @@
-
 #' Simulated example data with continuous outcome and quadratic covariate effects
 #'
 #' A dataset containing simulated data where the outcome depends quadratically

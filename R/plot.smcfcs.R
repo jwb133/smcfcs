@@ -31,13 +31,13 @@
 #' \dontrun{
 #' # Use simulated competing risks example in package
 #' imps <- smcfcs(
-#' originaldata = ex_compet,
-#' smtype = "compet",
-#' smformula = list(
-#' "Surv(t, d == 1) ~ x1 + x2",
-#' "Surv(t, d == 2) ~ x1 + x2"
-#' ),
-#' method = c("", "", "norm", "norm")
+#'   originaldata = ex_compet,
+#'   smtype = "compet",
+#'   smformula = list(
+#'     "Surv(t, d == 1) ~ x1 + x2",
+#'     "Surv(t, d == 2) ~ x1 + x2"
+#'   ),
+#'   method = c("", "", "norm", "norm")
 #' )
 #'
 #' plot(imps)
@@ -48,13 +48,14 @@
 plot.smcfcs <- function(x,
                         include = "all",
                         ...) {
-
-  if (!inherits(x, "smcfcs"))
+  if (!inherits(x, "smcfcs")) {
     stop("'x' must be a 'smcfcs' object")
+  }
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package ggplot2 needed for this function to work. Please install it.",
-         call. = FALSE)
+      call. = FALSE
+    )
   }
 
   # Prepare data
@@ -62,30 +63,32 @@ plot.smcfcs <- function(x,
 
   # Choose plots to include
   if (length(include) >= 1 & include[1] != "all") {
-
-    coef_names = unique(df_plot$covar)
+    coef_names <- unique(df_plot$covar)
     if (any(!(include %in% coef_names))) {
-
       mssg <- paste0(
         "include should be character vector containing any combination of: '",
         paste0(coef_names, collapse = "','"),
         "'; or simply 'all'"
       )
       stop(mssg)
-    } else df_plot <- df_plot[df_plot$covar %in% include, ]
+    } else {
+      df_plot <- df_plot[df_plot$covar %in% include, ]
+    }
   }
 
   # Make plot
   p <- ggplot2::ggplot(
     data = df_plot,
-    ggplot2::aes(x = .data$iters,
-                 y = .data$value,
-                 col = factor(.data$imp))
+    ggplot2::aes(
+      x = .data$iters,
+      y = .data$value,
+      col = factor(.data$imp)
+    )
   ) +
     ggplot2::geom_line() +
     ggplot2::theme(legend.position = "none") +
     ggplot2::labs(x = "Iterations", y = "Coefficient") +
-    ggplot2::facet_wrap(~ covar, ...)
+    ggplot2::facet_wrap(~covar, ...)
 
   return(p)
 }
@@ -93,7 +96,6 @@ plot.smcfcs <- function(x,
 
 # Prepare data for plotting
 prep_iters <- function(x) {
-
   # Extract meta data
   M <- dim(x$smCoefIter)[1]
   smtype <- x$smInfo$smtype
@@ -101,12 +103,12 @@ prep_iters <- function(x) {
   dat <- x$impDatasets[[1]] # for names in model matrix
   numit <- dim(x$smCoefIter)[3]
 
-  if (numit < 2)
+  if (numit < 2) {
     stop("Re-run smcfcs() with numit >= 2 in order to assess convergence")
+  }
 
   # Check if competing risks
   coef_names <- if (smtype == "compet") {
-
     K <- length(smformula)
     cause_coef_names <- lapply(X = seq_len(K), FUN = function(k) {
       names_mod <- get_coef_names(smformula[k], dat, intercept = FALSE)
@@ -114,10 +116,9 @@ prep_iters <- function(x) {
     })
 
     unlist(cause_coef_names)
-
   } else if (smtype %in% c("weibull", "coxph", "casecohort", "nestedcc")) {
     get_coef_names(smformula, dat, intercept = FALSE)
-  } else if (smtype == "dtsam"){
+  } else if (smtype == "dtsam") {
     get_dtsam_names(smformula, dat, x$extraArgs$timeEffects)
   } else {
     get_coef_names(smformula, dat, intercept = TRUE)
@@ -125,8 +126,7 @@ prep_iters <- function(x) {
 
   # Prepare df for plotting
   ests_list <- lapply(X = seq_len(M), function(m) {
-
-    coef_dat <- as.data.frame(t(x$smCoefIter[m, ,]))
+    coef_dat <- as.data.frame(t(x$smCoefIter[m, , ]))
     coef_dat$iters <- seq_len(numit)
     coef_dat$imp <- m
 
@@ -153,7 +153,6 @@ prep_iters <- function(x) {
 get_dtsam_names <- function(smformula,
                             dat,
                             timeEffects) {
-
   # Get sides of formula
   rhs <- gsub(x = smformula, pattern = ".*~", replacement = "")
   lhs <- gsub(x = smformula, pattern = "~.*", replacement = "")
@@ -169,7 +168,9 @@ get_dtsam_names <- function(smformula,
     paste0("~ -1 + factor(tstart) + ", rhs)
   } else if (timeEffects == "linear") {
     paste0("~ tstart + ", rhs)
-  } else paste0("~ tstart + I(tstart^2) + ", rhs)
+  } else {
+    paste0("~ tstart + I(tstart^2) + ", rhs)
+  }
 
   # Make matrix
   model_mat <- stats::model.matrix(
@@ -185,7 +186,6 @@ get_dtsam_names <- function(smformula,
 get_coef_names <- function(smformula,
                            dat,
                            intercept) {
-
   rhs <- gsub(x = smformula, pattern = ".*~", replacement = "")
   smformula_matrix <- as.formula(paste0("~ +", rhs))
 
