@@ -30,7 +30,8 @@ Suggests:
     knitr,
     rmarkdown,
     mitools,
-    ggplot2
+    ggplot2,
+    kmi
 VignetteBuilder: knitr
 RoxygenNote: 7.2.3
 Encoding: UTF-8

@@ -200,7 +200,46 @@ x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
 ex_dtsam <- data.frame(x1 = x1, x2 = x2, failtime = t, d = d)
 usethis::use_data(ex_dtsam, overwrite = TRUE)
 
-# #covariate measurement error
+
+# Fine-Gray example data --------------------------------------------------
+
+
+n <- 1000
+
+# Covariates the same as ex_compet
+x1 <- rbinom(n = n, size = 1, prob = 0.5)
+x2 <- rnorm(n = n, mean = x1)
+
+# p = proportion cause 1 failures when x1 and x2 are zero
+p <- 0.15
+xb1 <- 0.75 * x1 - 0.5 * x2 # Fine-Gray linear predictor
+xb2 <- -x1 + 0.5 * x2 # Linear predictor for hazard conditional on cause 2
+
+# Generate competing event indicator
+d_tilde <- 1 + rbinom(n = n, size = 1, prob = (1 - p)^exp(xb1))
+cause1_ind <- d_tilde == 1
+
+# Generate event times conditional on the indicator
+U <- runif(n = n)
+t_tilde <- numeric(length = n)
+num <- 1 - (1 - U[cause1_ind] * (1 - (1 - p)^xb1[cause1_ind]))^(1 / xb1[cause1_ind])
+t_tilde[cause1_ind] <- -log(1 - num / p)
+t_tilde[!cause1_ind] <- -log(U[!cause1_ind]) / exp(xb2[!cause1_ind])
+cens <- -log(runif(n = n)) / 0.1
+times <- pmin(cens, t_tilde)
+d <- ifelse(cens < t_tilde, 0, d_tilde)
+
+# Same MCAR missingness as ex_compet
+x1[runif(n) > 0.5] <- NA
+x2[runif(n) > 0.5] <- NA
+
+ex_finegray <- data.frame(times, d, x1, x2)
+usethis::use_data(ex_finegray, overwrite = TRUE)
+
+
+# Covariate measurement error ---------------------------------------------
+
+
 # n <- 10000
 # x <- rnorm(n)
 # xb <- x
