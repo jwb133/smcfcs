@@ -36,7 +36,8 @@ or a custom expression which defines a passively imputed variable, e.g.
 normal variable which is measured with error. If this is specified for a variable,
 the \code{"errorProneMatrix"} argument should also be used.}
 
-\item{cause}{Numeric, designating the competing event of interest.}
+\item{cause}{Numeric, designating the competing event of interest (default is
+`cause = 1`).}
 
 \item{m}{The number of imputed datasets to generate. The default is 5.}
 
@@ -53,7 +54,7 @@ increase the \code{rjlimit} until the warning does not appear.}
 \item{kmi_args}{List, containing arguments to be passed on to \link[kmi]{kmi}.
 The "formula" element is a formula where the right-hand side specifies the
 covariates used for multiply imputing the potential censoring times for
-individual's failing from competing events. The default is formula = ~ 1,
+individual's failing from competing events. The default is `formula = ~ 1`,
 which uses marginal Kaplan-Meier estimator of the censoring distribution.}
 
 \item{...}{Additional arguments to pass on to \link[smcfcs]{smcfcs}}
@@ -63,13 +64,44 @@ An object of type "smcfcs", as would usually be returned from
 \link[smcfcs]{smcfcs}.
 }
 \description{
-Substantive model compatible fully conditional specification imputation of
-covariates for a Fine-Gray model
+Multiply imputes missing covariate values using substantive model compatible
+fully conditional specification for competing risks outcomes, when the
+substantive model is a Fine-Gray model for the subdistribution hazard of one event.
+}
+\details{
+In the presence of random right censoring, the function first multiply imputes
+the potential censoring times for those failing from competing events using
+\link[kmi]{kmi}, and thereafter uses \link[smcfcs]{smcfcs} to impute the missing
+covariates. See Bonneville \emph{et al.} 2024 for further details on the methodology.
 }
 \examples{
 \dontrun{
-#...
+library(survival)
+library(kmi)
+
+imps <- smcfcs.finegray(
+  originaldata = ex_finegray,
+  smformula = "Surv(times, d) ~ x1 + x2",
+  method = c("", "", "logreg", "norm"),
+  cause = 1,
+  kmi_args = list("formula" = ~ 1)
+)
+
+if (requireNamespace("mitools", quietly = TRUE)) {
+  library(mitools)
+  impobj <- imputationList(imps$impDatasets)
+  # Important: use Surv(newtimes, newevent) ~ ... when pooling
+  # (respectively: subdistribution time and indicator for cause of interest)
+  models <- with(impobj, coxph(Surv(newtimes, newevent) ~ x1 + x2))
+  summary(MIcombine(models))
 }
+}
+
+}
+\references{
+Bonneville EF, Beyersmann J, Keogh RH, Bartlett JW, Morris TP,
+Polverelli N, de Wreede LC, Putter H. Multiple imputation of missing covariates
+when using the Fine--Gray model. 2024. Submitted.
 }
 \author{
 Edouard F. Bonneville \email{e.f.bonneville@lumc.nl}
