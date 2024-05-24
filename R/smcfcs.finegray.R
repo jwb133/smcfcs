@@ -10,11 +10,14 @@
 #' \link[kmi]{kmi}, and thereafter uses \link[smcfcs]{smcfcs} to impute the missing
 #' covariates. See Bonneville \emph{et al.} 2024 for further details on the methodology.
 #'
+#' The function does not (yet) support parallel computation.
+#'
 #' @author Edouard F. Bonneville \email{e.f.bonneville@@lumc.nl}
 #'
-#' @param smformula A formula of the form "Surv(t, d) ~ x1 + x2", where t
-#' is a vector of competing event times, and d is a (numeric) competing event
-#' indicator, where 0 must designate a censored observation.
+#' @param smformula The formula of the substantive model, given as a string. Needs to
+#' be of the form "Surv(t, d) ~ x1 + x2", where t is a vector of competing event
+#' times, and d is a (numeric) competing event indicator, where 0 must designate
+#' a censored observation.
 #' @param cause Numeric, designating the competing event of interest (default is
 #' `cause = 1`).
 #' @param kmi_args List, containing arguments to be passed on to \link[kmi]{kmi}.

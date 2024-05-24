@@ -3,6 +3,7 @@ library(survival)
 library(kmi)
 context("Fine-Gray model testing")
 
+# In style of test_coxph.r, probably need to re-write with mini simulations
 test_that("Fine-Gray imputation is approximately unbiased", {
   skip_on_cran()
   expect_equal(

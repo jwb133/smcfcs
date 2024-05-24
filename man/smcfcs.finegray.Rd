@@ -20,9 +20,10 @@ smcfcs.finegray(
 \arguments{
 \item{originaldata}{The original data frame with missing values.}
 
-\item{smformula}{A formula of the form "Surv(t, d) ~ x1 + x2", where t
-is a vector of competing event times, and d is a (numeric) competing event
-indicator, where 0 must designate a censored observation.}
+\item{smformula}{The formula of the substantive model, given as a string. Needs to
+be of the form "Surv(t, d) ~ x1 + x2", where t is a vector of competing event
+times, and d is a (numeric) competing event indicator, where 0 must designate
+a censored observation.}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
@@ -73,6 +74,8 @@ In the presence of random right censoring, the function first multiply imputes
 the potential censoring times for those failing from competing events using
 \link[kmi]{kmi}, and thereafter uses \link[smcfcs]{smcfcs} to impute the missing
 covariates. See Bonneville \emph{et al.} 2024 for further details on the methodology.
+
+The function does not (yet) support parallel computation.
 }
 \examples{
 \dontrun{
