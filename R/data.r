@@ -1,4 +1,3 @@
-
 #' Simulated example data with continuous outcome and quadratic covariate effects
 #'
 #' A dataset containing simulated data where the outcome depends quadratically
@@ -92,6 +91,24 @@
 #' }
 #'
 "ex_compet"
+
+#' Simulated example data with competing risks outcome and partially observed covariates
+#'
+#' A dataset containing simulated competing risks data. There are two competing risks, and
+#' some times are also censored. Proportionality holds on the subdistribution hazard scale for
+#' cause 2, where for dataset `ex_compet` it instead holds on the cause-specific
+#' hazard scale.
+#'
+#' @format A data frame with 1000 rows and 4 variables:
+#' \describe{
+#'   \item{times}{Time to event or censoring}
+#'   \item{d}{Indicator of whether event 1 occurred (d=1), event 2 occurred (d=2) or individual was censored (d=0)}
+#'   \item{x1}{Partially observed binary covariate, with linear effects on log subdistribution hazard of cause 1}
+#'   \item{x2}{Partially observed normally distributed (conditional on x1) covariate, with linear effects
+#'   on log subdistribution hazard of cause 1}
+#' }
+#'
+"ex_finegray"
 
 #' Simulated case cohort data
 #'
