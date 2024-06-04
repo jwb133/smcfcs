@@ -123,11 +123,11 @@ Like standard chained equations or FCS imputation, the SMC-FCS algorithm must be
 ```{r, fig.width = 6, fig.height = 4}
 # impute once with a larger number of iterations than the default 10
 imps <- smcfcs(ex_linquad, smtype = "lm", smformula = "y~z+x+xsq", method = c("", "", "norm", "x^2", ""), predictorMatrix = predMatrix, m = 1, numit = 100)
-# plot estimates of the fourth parameter of the substantive model against iteration number
-plot(imps$smCoefIter[1, 4, ])
+# plot estimates of the parameters of the substantive model against iteration number
+plot(imps)
 ```
 
-The plot shows that the process appears to converge rapidly, such that the default choice of `numit=10` is probably fine here. Of course we should also examine the corresponding plots for the other parameters of the substantive model, since convergence may require more than 10 iterations for some of these.
+The plot shows that the process appears to converge rapidly, such that the default choice of `numit=10` is probably fine here.
 
 <h2 id="references">References</h3>
 
