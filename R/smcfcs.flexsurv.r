@@ -11,6 +11,13 @@
 #' flexibility of the model can be changed by modifying the k argument, which
 #' specifies the number of knots.
 #'
+#' If desired, \code{smcfcs.flexsurv} can be used to impute event times for individuals
+#' who are originally censored, by specifying \code{imputeTimes=TRUE}. In the resulting
+#' imputed datasets every individual will have an event time and the event indicator will
+#' be one for all. Alternatively, you can impute censored times, but setting a larger
+#' potential censoring time, which is either a common value used for all or a vector of times,
+#' by using the \code{censtime} argument.
+#'
 #' \code{\link[flexsurv]{flexsurvspline}} sometimes fails during model fitting.
 #' If/when this occurs, \code{smcfcs.flexsurv} uses takes a posterior draw based
 #' on the model fit from the preceding iteration, and a warning is printed at
@@ -20,11 +27,19 @@
 #'
 #' @param smformula A formula of the form "Surv(t,d)~x+z"
 #' @param k Number of knots to use in the flexible parametric survival model
+#' @param imputeTimes If set to TRUE, \code{smcfcs.flexsurv} will impute
+#' censored survival times, as well as any missing covariates
+#' @param censtime Value(s) to use for censoring of imputed event times. If
+#' a vector, it should be of length equal to the number of original censored
+#' individuals
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/flexsurv_example.r
 #' @export
-smcfcs.flexsurv <- function(originaldata, smformula, k=2, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL) {
+smcfcs.flexsurv <- function(originaldata, smformula, k=2, imputeTimes=FALSE,
+                    censtime = NULL,
+                    method, predictorMatrix = NULL, m = 5, numit = 10,
+                    rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL) {
   smcfcs.core(originaldata=originaldata,
               smtype = "flexsurv",
               smformula = smformula,
@@ -35,5 +50,7 @@ smcfcs.flexsurv <- function(originaldata, smformula, k=2, method, predictorMatri
               rjlimit = rjlimit,
               noisy = noisy,
               errorProneMatrix = errorProneMatrix,
-              k=k)
+              k=k,
+              imputeTimes=imputeTimes,
+              censtime=censtime)
 }

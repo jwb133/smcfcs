@@ -378,7 +378,10 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
   partialVars <- which((method == "norm") | (method == "latnorm") | (method == "logreg") | (method == "poisson") |
     (method == "podds") | (method == "mlogit") | (method == "brlogreg"))
 
-  if (length(partialVars) == 0) stop("You have not specified any valid imputation methods in the method argument.")
+  if (length(partialVars) == 0) {
+    if (((smtype=="flexsurv") & (extraArgs$imputeTimes==TRUE)) == FALSE)
+      stop("You have not specified any valid imputation methods in the method argument.")
+  }
 
   # check that methods are given for each partially observed column, and not given for fully observed columns
   for (colnum in 1:ncol(originaldata)) {
@@ -466,24 +469,26 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     print(paste("Imputation ", imp))
 
     # initial imputation of each partially observed variable based on observed values
-    for (var in 1:length(partialVars)) {
-      targetCol <- partialVars[var]
-      if (method[targetCol] == "latnorm") {
-        # first impute any missing replicate error-prone measurements of this variable by a randomly chosen observed value
-        errorProneCols <- which(errorProneMatrix[targetCol, ] == 1)
-        for (measure in 1:length(errorProneCols)) {
-          if (sum(r[, errorProneCols[measure]]) < n) {
-            imputations[[imp]][r[, errorProneCols[measure]] == 0, errorProneCols[measure]] <- sample(imputations[[imp]][
-              r[, errorProneCols[measure]] == 1,
-              errorProneCols[measure]
-            ], size = sum(r[, errorProneCols[measure]] == 0), replace = TRUE)
+    if (length(partialVars)>0) {
+      for (var in 1:length(partialVars)) {
+        targetCol <- partialVars[var]
+        if (method[targetCol] == "latnorm") {
+          # first impute any missing replicate error-prone measurements of this variable by a randomly chosen observed value
+          errorProneCols <- which(errorProneMatrix[targetCol, ] == 1)
+          for (measure in 1:length(errorProneCols)) {
+            if (sum(r[, errorProneCols[measure]]) < n) {
+              imputations[[imp]][r[, errorProneCols[measure]] == 0, errorProneCols[measure]] <- sample(imputations[[imp]][
+                r[, errorProneCols[measure]] == 1,
+                errorProneCols[measure]
+              ], size = sum(r[, errorProneCols[measure]] == 0), replace = TRUE)
+            }
           }
-        }
 
-        # initialize latent predictors with mean of their error-prone measurements
-        imputations[[imp]][, targetCol] <- apply(imputations[[imp]][, errorProneCols], 1, mean)
-      } else {
-        imputations[[imp]][r[, targetCol] == 0, targetCol] <- sample(imputations[[imp]][r[, targetCol] == 1, targetCol], size = sum(r[, targetCol] == 0), replace = TRUE)
+          # initialize latent predictors with mean of their error-prone measurements
+          imputations[[imp]][, targetCol] <- apply(imputations[[imp]][, errorProneCols], 1, mean)
+        } else {
+          imputations[[imp]][r[, targetCol] == 0, targetCol] <- sample(imputations[[imp]][r[, targetCol] == 1, targetCol], size = sum(r[, targetCol] == 0), replace = TRUE)
+        }
       }
     }
 
@@ -537,7 +542,8 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
       # update passive variable(s)
       imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
 
-      for (var in 1:length(partialVars)) {
+      if (length(partialVars)>0) {
+        for (var in 1:length(partialVars)) {
         targetCol <- partialVars[var]
         if (is.null(predictorMatrix)) {
           predictorCols <- c(partialVars[!partialVars %in% targetCol], fullObsVars)
@@ -1132,6 +1138,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
         }
       }
+      }
 
       # imputations of missing outcomes, if present (using proper imputation), for regression and logistic
       # substantive models
@@ -1164,6 +1171,61 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             imputations[[imp]][imputationNeeded, outcomeCol] <- rbinom(length(imputationNeeded), 1, prob)
           }
         }
+      } else if ((smtype == "flexsurv") & (extraArgs$imputeTimes==TRUE)) {
+        # impute censored times
+        if (cyclenum==1) {
+          tryCatch({
+            ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                             k=extraArgs$k, scale="hazard")
+          },error = function(e) {
+            # Silently increment the failure counter
+            flexsurvFailCount <<- flexsurvFailCount + 1
+          })
+        } else {
+          # use previous estimates as initial values, to try and prevent non-convergence
+          tryCatch(
+            {
+              # first attempt to fit model
+              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                               k=extraArgs$k, scale="hazard",
+                                               inits=flexsurvEsts)
+            },
+            error = function(e) {
+              # Silently increment the failure counter
+              flexsurvFailCount <<- flexsurvFailCount + 1
+            }
+          )
+        }
+        flexsurvEsts <- ymod$res.t[,1]
+        outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
+
+        if (exists("smCoefIter")==FALSE) {
+          smCoefIter <- array(0, dim = c(m, length(outcomeModBeta), numit))
+        }
+        smCoefIter[imp, , cyclenum] <- outcomeModBeta
+
+        # overwrite model estimates in fitted model object
+        ymod$res.t[,1] <- outcomeModBeta
+        if (noisy == TRUE) {
+          print(ymod)
+        }
+
+        # impute censored times
+        if (is.null(extraArgs$censtime)) {
+          # impute all censored times
+          timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
+                            start=originaldata[d==0,timeCol])
+          imputations[[imp]][d==0,timeCol] <- timeImp$time_1
+          imputations[[imp]][,dCol] <- 1
+        } else {
+          # impute but still impose censoring at specified value(s)
+          timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
+                              start=originaldata[d==0,timeCol],
+                              censtime=extraArgs$censtime)
+          imputations[[imp]][d==0,timeCol] <- timeImp$time_1
+          imputations[[imp]][d==0,dCol] <- timeImp$event_1
+        }
+
       }
     }
   }

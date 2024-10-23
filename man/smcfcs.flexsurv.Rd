@@ -9,6 +9,8 @@ smcfcs.flexsurv(
   originaldata,
   smformula,
   k = 2,
+  imputeTimes = FALSE,
+  censtime = NULL,
   method,
   predictorMatrix = NULL,
   m = 5,
@@ -24,6 +26,13 @@ smcfcs.flexsurv(
 \item{smformula}{A formula of the form "Surv(t,d)~x+z"}
 
 \item{k}{Number of knots to use in the flexible parametric survival model}
+
+\item{imputeTimes}{If set to TRUE, \code{smcfcs.flexsurv} will impute
+censored survival times, as well as any missing covariates}
+
+\item{censtime}{Value(s) to use for censoring of imputed event times. If
+a vector, it should be of length equal to the number of original censored
+individuals}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
@@ -82,6 +91,13 @@ fitted using the \code{\link[flexsurv]{flexsurvspline}} function in the
 flexibility of the model can be changed by modifying the k argument, which
 specifies the number of knots.
 
+If desired, \code{smcfcs.flexsurv} can be used to impute event times for individuals
+who are originally censored, by specifying \code{imputeTimes=TRUE}. In the resulting
+imputed datasets every individual will have an event time and the event indicator will
+be one for all. Alternatively, you can impute censored times, but setting a larger
+potential censoring time, which is either a common value used for all or a vector of times,
+by using the \code{censtime} argument.
+
 \code{\link[flexsurv]{flexsurvspline}} sometimes fails during model fitting.
 If/when this occurs, \code{smcfcs.flexsurv} uses takes a posterior draw based
 on the model fit from the preceding iteration, and a warning is printed at
@@ -101,6 +117,23 @@ the end of the \code{smcfcs.flexsurv} run detailing how many times it occurred.
   impobj <- imputationList(imps$impDatasets)
   models <- with(impobj, flexsurvspline(Surv(t,d)~x+z, k=2))
   summary(MIcombine(models))
+
+  # now impute event times as well as missing covariates
+  imps <- smcfcs.flexsurv(ex_flexsurv,
+                          k=2,
+                          smformula="Surv(t,d)~x+z",
+                          method=c("","","logreg",""),
+                          imputeTimes=TRUE)
+
+  # now impute event times as well as missing covariates,
+  # but setting max observed event time to 2
+  imps <- smcfcs.flexsurv(ex_flexsurv,
+                          k=2,
+                          smformula="Surv(t,d)~x+z",
+                          method=c("","","logreg",""),
+                          imputeTimes=TRUE,
+                          censtime=2)
+
 }
 }
 \author{

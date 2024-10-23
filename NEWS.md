@@ -1,3 +1,5 @@
+Version 1.9.0 - new functionality for flexible parametric survival models
+
 Version 1.8.0 - new functionality for Fine-Gray models for competing risks outcomes
 
 Version 1.7.1 - Allowing parallel runs without seed being specified, and fixing survival data error trap
