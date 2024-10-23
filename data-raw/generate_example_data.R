@@ -253,3 +253,20 @@ usethis::use_data(ex_finegray, overwrite = TRUE)
 # ex_coverr <- data.frame(y,x=NA,w1,w2)
 #
 # usethis::use_data(ex_coverr, overwrite=TRUE)
+
+# Flexsurv example data --------------------------------------------------
+
+set.seed(123)
+n <- 1000
+myshape <- 1.5
+myscale <- 3
+z <- rnorm(n)
+x <- 1*(runif(n)<expit(z))
+t <- rweibull(n=n,shape=myshape,scale=exp(x+z)^(-1/myshape))
+c <- rexp(n)
+d <- 1*(t<c)
+t[d==0] <- c[d==0]
+x[runif(n)<0.5] <- NA
+
+ex_flexsurv <- data.frame(t=t,d=d,x=x,z=z)
+usethis::use_data(ex_flexsurv, overwrite = TRUE)

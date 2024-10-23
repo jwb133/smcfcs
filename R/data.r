@@ -158,3 +158,18 @@
 #' }
 #'
 "ex_dtsam"
+
+#' Simulated example data with time-to-event Weibull outcome and two covariates
+#'
+#' A dataset containing simulated data where the time-to-event outcome is Weibull
+#' distributed with two covariates, one of which is partially observed.
+#'
+#' @format A data frame with 1000 rows and 4 variables:
+#' \describe{
+#'   \item{t}{Time to event (d=1) or censoring (d=0)}
+#'   \item{d}{Event indicator}
+#'   \item{x}{Partially observed binary covariate}
+#'   \item{z}{Fully observed continuous covariate}
+#' }
+#'
+"ex_flexsurv"

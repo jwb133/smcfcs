@@ -224,13 +224,21 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
 
   if ((smtype %in% c(
     "lm", "logistic", "brlogistic", "poisson", "coxph", "compet", "casecohort", "nestedcc",
-    "weibull", "dtsam"
+    "weibull", "dtsam", "flexsurv"
   )) == FALSE) {
     stop(paste("Substantive model type ", smtype, " not recognised.", sep = ""))
   }
 
   # find column numbers of partially observed, fully observed variables, and outcome
-  if (smtype == "coxph") {
+  if (smtype == "flexsurv") {
+    timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
+    dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
+    outcomeCol <- c(timeCol, dCol)
+    d <- originaldata[, dCol]
+    if (!(all(sort(unique(d)) == c(0, 1))) & !(all(unique(d) == 1))) {
+      stop("Event indicator for flexsurv must be coded 0/1 for censoring/event.")
+    }
+  } else if (smtype == "coxph") {
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
     outcomeCol <- c(timeCol, dCol)
@@ -452,6 +460,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
   }
 
   rjFailCount <- 0
+  flexsurvFailCount <- 0
 
   for (imp in 1:m) {
     print(paste("Imputation ", imp))
@@ -727,6 +736,39 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           if (noisy == TRUE) {
             print(summary(ymod))
           }
+        } else if (smtype == "flexsurv") {
+          if (cyclenum==1) {
+            tryCatch({
+              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                    k=extraArgs$k, scale="hazard")
+            },error = function(e) {
+              # Silently increment the failure counter
+              flexsurvFailCount <<- flexsurvFailCount + 1
+            })
+          } else {
+            # use previous estimates as initial values, to try and prevent non-convergence
+            tryCatch(
+              {
+                # first attempt to fit model
+                ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                                 k=extraArgs$k, scale="hazard",
+                                                 inits=flexsurvEsts)
+              },
+              error = function(e) {
+                # Silently increment the failure counter
+                flexsurvFailCount <<- flexsurvFailCount + 1
+              }
+              )
+          }
+          # save parameter estimates to use as initial values in subsequent iterations
+          # to help prevent convergence problems
+          flexsurvEsts <- ymod$res.t[,1]
+          outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
+          # overwrite model estimates in fitted model object
+          ymod$res.t[,1] <- outcomeModBeta
+          if (noisy == TRUE) {
+            print(ymod)
+          }
         } else if (smtype == "weibull") {
           ymod <- survival::survreg(as.formula(smformula), data = imputations[[imp]], dist = "weibull")
           outcomeModBeta <- c(coef(ymod), log(ymod$scale)) +
@@ -866,6 +908,16 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
               outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
               outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded])) * (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
+            } else if (smtype == "flexsurv") {
+              survEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="survival",
+                                 ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
+                                 cross=FALSE, tidy=TRUE)
+              survEst <- as.matrix(survEst)[,"est"]
+              hazEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="hazard",
+                                ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
+                                cross=FALSE, tidy=TRUE)
+              hazEst <- as.matrix(hazEst)[,"est"]
+              outcomeDens <- survEst*(hazEst^d[imputationNeeded])
             } else if (smtype == "nestedcc") {
               outmodxb <- model.matrix(as.formula(smformula2), imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
@@ -947,6 +999,21 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
               prob <- exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))) * H0[imputationNeeded]
               prob <- d[imputationNeeded] * prob + (1 - d[imputationNeeded]) * s_t
               reject <- 1 * (uDraw > prob)
+            } else if (smtype == "flexsurv") {
+              survEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="survival",
+                                 ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
+                                 cross=FALSE, tidy=TRUE)
+              survEst <- as.matrix(survEst)[,"est"]
+              hazEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="hazard",
+                                ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
+                                cross=FALSE, tidy=TRUE)
+              hazEst <- as.matrix(hazEst)[,"est"]
+              cumhazEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="cumhaz",
+                                ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
+                                cross=FALSE, tidy=TRUE)
+              cumhazEst <- as.matrix(cumhazEst)[,"est"]
+              prob <- d[imputationNeeded] * (survEst*exp(1)*cumhazEst) + (1 - d[imputationNeeded]) * survEst
+              reject <- 1 * (uDraw > prob)
             } else if (smtype == "nestedcc") {
               outmodxb <- model.matrix(as.formula(smformula2), imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
@@ -1024,6 +1091,21 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
               prob <- exp(1 + outmodxb - (H0[i] * exp(outmodxb))) * H0[i]
               prob <- d[i] * prob + (1 - d[i]) * s_t
               reject <- 1 * (uDraw > prob)
+            } else if (smtype == "flexsurv") {
+              survEst <- summary(ymod, newdata=tempData, type="survival",
+                                 ci=FALSE, t=tempData[,timeCol],
+                                 cross=FALSE, tidy=TRUE)
+              survEst <- as.matrix(survEst)[,"est"]
+              hazEst <- summary(ymod, newdata=tempData, type="hazard",
+                                ci=FALSE, t=tempData[,timeCol],
+                                cross=FALSE, tidy=TRUE)
+              hazEst <- as.matrix(hazEst)[,"est"]
+              cumhazEst <- summary(ymod, newdata=tempData, type="cumhaz",
+                                   ci=FALSE, t=tempData[,timeCol],
+                                   cross=FALSE, tidy=TRUE)
+              cumhazEst <- as.matrix(cumhazEst)[,"est"]
+              prob <- d[i] * (survEst*exp(1)*cumhazEst) + (1 - d[i]) * survEst
+              reject <- 1 * (uDraw > prob)
             } else if (smtype == "nestedcc") {
               outmodxb <- model.matrix(as.formula(smformula2), tempData)
               outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
@@ -1088,6 +1170,9 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
 
   if (rjFailCount > 0) {
     warning(paste("Rejection sampling failed ", rjFailCount, " times (across all variables, iterations, and imputations). You may want to increase the rejection sampling limit.", sep = ""))
+  }
+  if (flexsurvFailCount > 0) {
+    warning(paste("Flexsurv fit failed ", flexsurvFailCount, " times (across all variables, iterations, and imputations). See documentation for more details.", sep = ""))
   }
 
   # Added smformula and smtype to metadata, and make "smcfcs class"
