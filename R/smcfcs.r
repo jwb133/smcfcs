@@ -923,7 +923,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
                                 ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
                                 cross=FALSE, tidy=TRUE)
               hazEst <- as.matrix(hazEst)[,"est"]
-              outcomeDens <- survEst*(hazEst^d[imputationNeeded])
+              outcomeDens <- survEst*(hazEst^imputations[[imp]][imputationNeeded,dCol])
             } else if (smtype == "nestedcc") {
               outmodxb <- model.matrix(as.formula(smformula2), imputations[[imp]])
               outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
@@ -1018,7 +1018,8 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
                                 ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
                                 cross=FALSE, tidy=TRUE)
               cumhazEst <- as.matrix(cumhazEst)[,"est"]
-              prob <- d[imputationNeeded] * (survEst*exp(1)*cumhazEst) + (1 - d[imputationNeeded]) * survEst
+              prob <- imputations[[imp]][imputationNeeded,dCol] * (survEst*exp(1)*cumhazEst) +
+                (1 - imputations[[imp]][imputationNeeded,dCol]) * survEst
               reject <- 1 * (uDraw > prob)
             } else if (smtype == "nestedcc") {
               outmodxb <- model.matrix(as.formula(smformula2), imputations[[imp]])
@@ -1110,7 +1111,8 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
                                    ci=FALSE, t=tempData[,timeCol],
                                    cross=FALSE, tidy=TRUE)
               cumhazEst <- as.matrix(cumhazEst)[,"est"]
-              prob <- d[i] * (survEst*exp(1)*cumhazEst) + (1 - d[i]) * survEst
+              prob <- imputations[[imp]][i,dCol] * (survEst*exp(1)*cumhazEst) +
+                (1 - imputations[[imp]][i,dCol]) * survEst
               reject <- 1 * (uDraw > prob)
             } else if (smtype == "nestedcc") {
               outmodxb <- model.matrix(as.formula(smformula2), tempData)
