@@ -11,6 +11,7 @@ smcfcs.flexsurv(
   k = 2,
   imputeTimes = FALSE,
   censtime = NULL,
+  originalKnots = TRUE,
   method,
   predictorMatrix = NULL,
   m = 5,
@@ -33,6 +34,13 @@ censored survival times, as well as any missing covariates}
 \item{censtime}{Value(s) to use for censoring of imputed event times. If
 a vector, it should be of length equal to the number of original censored
 individuals}
+
+\item{originalKnots}{If imputing censored event times, setting
+\code{originalKnots=TRUE} means the automatically chosen knot locations
+from the model fitted to the observed times are used throughout. If \code{FALSE},
+knots are chosen automatically at each iteration by \code{flexsurvspline}
+based on the current observed+imputed event times, according to the chosen
+value of \code{k}.}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
