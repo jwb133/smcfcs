@@ -2,10 +2,11 @@
 #' event times using flexible parametric survival models
 #'
 #' Multiply imputes missing covariate values and event times using substantive model compatible
-#' fully conditional specification with flexible parametric survival models.
+#' fully conditional specification with a Royston-Parmar flexible parametric survival model.
 #'
 #' This version of \code{smcfcs} is for time-to-event outcomes which are modelled
-#' using a flexible parametric proportional hazards survival model. The model is
+#' using a flexible parametric proportional hazards survival model, as proposed
+#' by \href{https://doi.org/10.1002/sim.1203}{Royston and Parmar (2002)}. The model is
 #' fitted using the \code{\link[flexsurv]{flexsurvspline}} function in the
 #' \pkg{flexsurv} package. Specifically it fits models using the hazard scale. The
 #' flexibility of the model can be changed by modifying the k argument, which
