@@ -1180,67 +1180,68 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             imputations[[imp]][imputationNeeded, outcomeCol] <- rbinom(length(imputationNeeded), 1, prob)
           }
         }
-      } else if ((smtype == "flexsurv") & (extraArgs$imputeTimes==TRUE)) {
-        # impute censored times
-        if (cyclenum==1) {
-          tryCatch({
-            ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                             k=extraArgs$k, scale="hazard")
-          },error = function(e) {
-            # Silently increment the failure counter
-            flexsurvFailCount <<- flexsurvFailCount + 1
-          })
-        } else {
-          # use previous estimates as initial values, to try and prevent non-convergence
-          tryCatch(
-            {
-              if (extraArgs$originalKnots==FALSE) {
-                ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                               k=extraArgs$k, scale="hazard",
-                                               inits=flexsurvEsts)
-              } else {
-                # use knots based on fit to original dataset where censored times had not been imputed
-                ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                 scale="hazard",
-                                                 knots=ymod$knots[2:(length(ymod$knots)-1)],
-                                                 inits=flexsurvEsts)
-              }
-            },
-            error = function(e) {
+      } else if (smtype == "flexsurv") {
+        if (extraArgs$imputeTimes==TRUE) {
+          # impute censored times
+          if (cyclenum==1) {
+            tryCatch({
+              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                               k=extraArgs$k, scale="hazard")
+            },error = function(e) {
+              # Silently increment the failure counter
               flexsurvFailCount <<- flexsurvFailCount + 1
-            }
-          )
-        }
-        flexsurvEsts <- ymod$res.t[,1]
-        outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
+            })
+          } else {
+            # use previous estimates as initial values, to try and prevent non-convergence
+            tryCatch(
+              {
+                if (extraArgs$originalKnots==FALSE) {
+                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                                 k=extraArgs$k, scale="hazard",
+                                                 inits=flexsurvEsts)
+                } else {
+                  # use knots based on fit to original dataset where censored times had not been imputed
+                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                                   scale="hazard",
+                                                   knots=ymod$knots[2:(length(ymod$knots)-1)],
+                                                   inits=flexsurvEsts)
+                }
+              },
+              error = function(e) {
+                flexsurvFailCount <<- flexsurvFailCount + 1
+              }
+            )
+          }
+          flexsurvEsts <- ymod$res.t[,1]
+          outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
 
-        if (exists("smCoefIter")==FALSE) {
-          smCoefIter <- array(0, dim = c(m, length(outcomeModBeta), numit))
-        }
-        smCoefIter[imp, , cyclenum] <- outcomeModBeta
+          if (exists("smCoefIter")==FALSE) {
+            smCoefIter <- array(0, dim = c(m, length(outcomeModBeta), numit))
+          }
+          smCoefIter[imp, , cyclenum] <- outcomeModBeta
 
-        # overwrite model estimates in fitted model object
-        ymod$res.t[,1] <- outcomeModBeta
-        if (noisy == TRUE) {
-          print(ymod)
-        }
+          # overwrite model estimates in fitted model object
+          ymod$res.t[,1] <- outcomeModBeta
+          if (noisy == TRUE) {
+            print(ymod)
+          }
 
-        # impute censored times
-        if (is.null(extraArgs$censtime)) {
-          # impute all censored times
-          timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
-                            start=originaldata[d==0,timeCol])
-          imputations[[imp]][d==0,timeCol] <- timeImp$time_1
-          imputations[[imp]][,dCol] <- 1
-        } else {
-          # impute but still impose censoring at specified value(s)
-          timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
-                              start=originaldata[d==0,timeCol],
-                              censtime=extraArgs$censtime)
-          imputations[[imp]][d==0,timeCol] <- timeImp$time_1
-          imputations[[imp]][d==0,dCol] <- timeImp$event_1
+          # impute censored times
+          if (is.null(extraArgs$censtime)) {
+            # impute all censored times
+            timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
+                              start=originaldata[d==0,timeCol])
+            imputations[[imp]][d==0,timeCol] <- timeImp$time_1
+            imputations[[imp]][,dCol] <- 1
+          } else {
+            # impute but still impose censoring at specified value(s)
+            timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
+                                start=originaldata[d==0,timeCol],
+                                censtime=extraArgs$censtime)
+            imputations[[imp]][d==0,timeCol] <- timeImp$time_1
+            imputations[[imp]][d==0,dCol] <- timeImp$event_1
+          }
         }
-
       }
     }
   }

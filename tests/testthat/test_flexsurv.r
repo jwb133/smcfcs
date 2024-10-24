@@ -25,7 +25,9 @@ test_that("Flexsurv imputation of missing normal covariate is approximately unbi
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
       models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
-      abs(summary(MIcombine(models))[5, 1] - 1) < 0.1
+      MIcombineRes <- summary(MIcombine(models))
+      # 95% CI includes true value
+      (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
     },
     TRUE
   )
@@ -56,7 +58,9 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
       models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
-      abs(summary(MIcombine(models))[5, 1] - 1) < 0.1
+      MIcombineRes <- summary(MIcombine(models))
+      # 95% CI includes true value
+      (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
     },
     TRUE
   )
@@ -124,7 +128,9 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
       # on the obs+imputed event times in the imputed datasets, rather than in the
       # original obs times (which is what smcfcs.flexsurv has done above)
       models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
-      abs(summary(MIcombine(models))[5, 1] - 1) < 0.1
+      MIcombineRes <- summary(MIcombine(models))
+      # 95% CI includes true value
+      (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
     },
     TRUE
   )
@@ -256,7 +262,9 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
       models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
-      abs(summary(MIcombine(models))[5, 1] - 1) < 0.1
+      MIcombineRes <- summary(MIcombine(models))
+      # 95% CI includes true value
+      (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
     },
     TRUE
   )
