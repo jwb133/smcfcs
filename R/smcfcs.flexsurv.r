@@ -32,12 +32,19 @@
 #' @param censtime Value(s) to use for censoring of imputed event times. If
 #' a vector, it should be of length equal to the number of original censored
 #' individuals
+#' @param originalKnots If imputing censored event times, setting
+#' \code{originalKnots=TRUE} means the automatically chosen knot locations
+#' from the model fitted to the observed times are used throughout. If \code{FALSE},
+#' knots are chosen automatically at each iteration by \code{flexsurvspline}
+#' based on the current observed+imputed event times, according to the chosen
+#' value of \code{k}.
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/flexsurv_example.r
 #' @export
 smcfcs.flexsurv <- function(originaldata, smformula, k=2, imputeTimes=FALSE,
                     censtime = NULL,
+                    originalKnots = TRUE,
                     method, predictorMatrix = NULL, m = 5, numit = 10,
                     rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL) {
   smcfcs.core(originaldata=originaldata,
@@ -52,5 +59,6 @@ smcfcs.flexsurv <- function(originaldata, smformula, k=2, imputeTimes=FALSE,
               errorProneMatrix = errorProneMatrix,
               k=k,
               imputeTimes=imputeTimes,
-              censtime=censtime)
+              censtime=censtime,
+              originalKnots=originalKnots)
 }

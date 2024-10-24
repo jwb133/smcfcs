@@ -120,6 +120,9 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
       )
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
+      # note that in the following fits flexsurvspline will choose knots based
+      # on the obs+imputed event times in the imputed datasets, rather than in the
+      # original obs times (which is what smcfcs.flexsurv has done above)
       models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
       abs(summary(MIcombine(models))[5, 1] - 1) < 0.1
     },
@@ -226,4 +229,36 @@ test_that("Flexsurv imputation, imputing censored times only. Check it runs.", {
   )
 })
 
+test_that("Flexsurv imputation of missing binary covariate is approximately unbiased,
+          imputing covariate and censored times, originalKnots=FALSE", {
+  skip_on_cran()
+  expect_equal(
+    {
+      expit <- function(x) {exp(x)/(1+exp(x))}
+      set.seed(1234)
+      n <- 1000
+      z <- rnorm(n)
+      x <- 1*(runif(n)<expit(z))
+      t <- -log(runif(n)) / (1 * exp(x + z))
+      d <- 1 * (t < 10)
+      t[d == 0] <- 10
+      x[(runif(n) < 0.5)] <- NA
 
+      simData <- data.frame(t, d, x, z)
+
+      imps <- smcfcs.flexsurv(simData,
+                              smformula = "Surv(t, d)~x+z",
+                              method = c("", "", "logreg", ""),
+                              k=2,
+                              imputeTimes=TRUE,
+                              originalKnots=FALSE
+      )
+      library(mitools)
+      impobj <- imputationList(imps$impDatasets)
+      models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
+      abs(summary(MIcombine(models))[5, 1] - 1) < 0.1
+    },
+    TRUE
+  )
+
+})

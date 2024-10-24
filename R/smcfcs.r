@@ -756,9 +756,16 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             tryCatch(
               {
                 # first attempt to fit model
-                ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                 k=extraArgs$k, scale="hazard",
-                                                 inits=flexsurvEsts)
+                if (extraArgs$originalKnots==FALSE) {
+                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                                   k=extraArgs$k, scale="hazard",
+                                                   inits=flexsurvEsts)
+                } else {
+                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                                   scale="hazard",
+                                                   knots=ymod$knots[2:(length(ymod$knots)-1)],
+                                                   inits=flexsurvEsts)
+                }
               },
               error = function(e) {
                 # Silently increment the failure counter
@@ -1187,13 +1194,19 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           # use previous estimates as initial values, to try and prevent non-convergence
           tryCatch(
             {
-              # first attempt to fit model
-              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+              if (extraArgs$originalKnots==FALSE) {
+                ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
                                                k=extraArgs$k, scale="hazard",
                                                inits=flexsurvEsts)
+              } else {
+                # use knots based on fit to original dataset where censored times had not been imputed
+                ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                                 scale="hazard",
+                                                 knots=ymod$knots[2:(length(ymod$knots)-1)],
+                                                 inits=flexsurvEsts)
+              }
             },
             error = function(e) {
-              # Silently increment the failure counter
               flexsurvFailCount <<- flexsurvFailCount + 1
             }
           )
