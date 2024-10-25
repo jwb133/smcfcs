@@ -124,7 +124,7 @@ smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NU
 #' for details on how these should be specified.
 #'
 #' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
-#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
+#' @author Jonathan Bartlett \email{jonathan.bartlett1@@lshtm.ac.uk}
 #'
 #' @param originaldata The case-cohort data set (NOT a full cohort data set with a case-cohort substudy within it)
 #' @param smformula A formula of the form "Surv(entertime,t,d)~x", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
@@ -155,7 +155,7 @@ smcfcs.casecohort <- function(originaldata, smformula, sampfrac, in.subco, metho
 #' for details on how these should be specified.
 #'
 #' @author Ruth Keogh \email{ruth.keogh@@lshtm.ac.uk}
-#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
+#' @author Jonathan Bartlett \email{jonathan.bartlett1@@lshtm.ac.uk}
 #'
 #' @param originaldata The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)
 #' @param smformula A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term (see example).
@@ -188,7 +188,7 @@ smcfcs.nestedcc <- function(originaldata, smformula, set, event, nrisk, method, 
 #' a simpler parametric model for the effect of time. At the moment you can specify either a linear or quadratic
 #' effect of time (on the log odds scale).
 #'
-#' @author Jonathan Bartlett \email{j.w.bartlett@@bath.ac.uk}
+#' @author Jonathan Bartlett \email{jonathan.bartlett1@@lshtm.ac.uk}
 #'
 #' @param originaldata The data in wide form (i.e. one row per subject)
 #' @param smformula A formula of the form "Surv(t,d)~x1+x2+x3", where t is the discrete time variable, d is the binary event

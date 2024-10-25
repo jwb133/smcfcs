@@ -98,5 +98,5 @@ for details on how these should be specified.
 \author{
 Ruth Keogh \email{ruth.keogh@lshtm.ac.uk}
 
-Jonathan Bartlett \email{j.w.bartlett@bath.ac.uk}
+Jonathan Bartlett \email{jonathan.bartlett1@lshtm.ac.uk}
 }

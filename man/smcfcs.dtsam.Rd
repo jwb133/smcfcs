@@ -112,5 +112,5 @@ effect of time (on the log odds scale).
 }
 }
 \author{
-Jonathan Bartlett \email{j.w.bartlett@bath.ac.uk}
+Jonathan Bartlett \email{jonathan.bartlett1@lshtm.ac.uk}
 }
