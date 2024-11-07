@@ -238,6 +238,9 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     if (!(all(sort(unique(d)) == c(0, 1))) & !(all(unique(d) == 1))) {
       stop("Event indicator for flexsurv must be coded 0/1 for censoring/event.")
     }
+    if ((sum(is.na(d))+sum(is.na(originaldata[,timeCol])))>0) {
+      stop("Event indicator and time variables should not have NAs.")
+    }
   } else if (smtype == "coxph") {
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
@@ -245,6 +248,9 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     d <- originaldata[, dCol]
     if (!(all(sort(unique(d)) == c(0, 1))) & !(all(unique(d) == 1))) {
       stop("Event indicator for coxph must be coded 0/1 for censoring/event.")
+    }
+    if ((sum(is.na(d))+sum(is.na(originaldata[,timeCol])))>0) {
+      stop("Event indicator and time variables should not have NAs.")
     }
 
     nullMod <- survival::coxph(survival::Surv(originaldata[, timeCol], originaldata[, dCol]) ~ 1,

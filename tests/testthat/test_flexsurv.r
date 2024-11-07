@@ -24,7 +24,7 @@ test_that("Flexsurv imputation of missing normal covariate is approximately unbi
       )
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
-      models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
+      models <- with(impobj, flexsurv::flexsurvspline(Surv(t, d) ~ x + z, k=2))
       MIcombineRes <- summary(MIcombine(models))
       # 95% CI includes true value
       (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
@@ -57,7 +57,7 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
       )
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
-      models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
+      models <- with(impobj, flexsurv::flexsurvspline(Surv(t, d) ~ x + z, k=2))
       MIcombineRes <- summary(MIcombine(models))
       # 95% CI includes true value
       (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
@@ -127,7 +127,7 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
       # note that in the following fits flexsurvspline will choose knots based
       # on the obs+imputed event times in the imputed datasets, rather than in the
       # original obs times (which is what smcfcs.flexsurv has done above)
-      models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
+      models <- with(impobj, flexsurv::flexsurvspline(Surv(t, d) ~ x + z, k=2))
       MIcombineRes <- summary(MIcombine(models))
       # 95% CI includes true value
       (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
@@ -261,12 +261,70 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
       )
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
-      models <- with(impobj, flexsurvspline(Surv(t, d) ~ x + z, k=2))
+      models <- with(impobj, flexsurv::flexsurvspline(Surv(t, d) ~ x + z, k=2))
       MIcombineRes <- summary(MIcombine(models))
       # 95% CI includes true value
       (MIcombineRes$`(lower`[5] < 1) & (MIcombineRes$`upper)`[5]>1)
     },
     TRUE
+  )
+
+})
+
+test_that("Flexsurv imputation errors if NA in event time variable", {
+            skip_on_cran()
+            expect_error(
+              {
+                expit <- function(x) {exp(x)/(1+exp(x))}
+                set.seed(1234)
+                n <- 1000
+                z <- rnorm(n)
+                x <- 1*(runif(n)<expit(z))
+                t <- -log(runif(n)) / (1 * exp(x + z))
+                d <- 1 * (t < 10)
+                t[d == 0] <- 10
+                x[(runif(n) < 0.5)] <- NA
+                t[1] <- NA
+
+                simData <- data.frame(t, d, x, z)
+
+                imps <- smcfcs.flexsurv(simData,
+                                        smformula = "Surv(t, d)~x+z",
+                                        method = c("", "", "logreg", ""),
+                                        k=2,
+                                        imputeTimes=TRUE,
+                                        originalKnots=FALSE
+                )
+              }
+            )
+
+})
+
+test_that("Flexsurv imputation errors if NA in event indicator variable", {
+  skip_on_cran()
+  expect_error(
+    {
+      expit <- function(x) {exp(x)/(1+exp(x))}
+      set.seed(1234)
+      n <- 1000
+      z <- rnorm(n)
+      x <- 1*(runif(n)<expit(z))
+      t <- -log(runif(n)) / (1 * exp(x + z))
+      d <- 1 * (t < 10)
+      t[d == 0] <- 10
+      x[(runif(n) < 0.5)] <- NA
+      d[1] <- NA
+
+      simData <- data.frame(t, d, x, z)
+
+      imps <- smcfcs.flexsurv(simData,
+                              smformula = "Surv(t, d)~x+z",
+                              method = c("", "", "logreg", ""),
+                              k=2,
+                              imputeTimes=TRUE,
+                              originalKnots=FALSE
+      )
+    }
   )
 
 })

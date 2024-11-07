@@ -17,10 +17,12 @@
 #' imputed datasets every individual will have an event time and the event indicator will
 #' be one for all. Alternatively, you can impute censored times, but setting a larger
 #' potential censoring time, which is either a common value used for all or a vector of times,
-#' by using the \code{censtime} argument.
+#' by using the \code{censtime} argument. If some individuals have their time-to-event
+#' outcome completely missing and you want to impute this, they should have a time of zero
+#' and the event indicator set to zero.
 #'
 #' \code{\link[flexsurv]{flexsurvspline}} sometimes fails during model fitting.
-#' If/when this occurs, \code{smcfcs.flexsurv} uses takes a posterior draw based
+#' If/when this occurs, \code{smcfcs.flexsurv} takes a posterior draw based
 #' on the model fit from the preceding iteration, and a warning is printed at
 #' the end of the \code{smcfcs.flexsurv} run detailing how many times it occurred.
 #'
