@@ -6,7 +6,7 @@
 #'
 #' This version of \code{smcfcs} is for time-to-event outcomes which are modelled
 #' using a flexible parametric proportional hazards survival model, as proposed
-#' by \doi{doi:10.1002/sim.1203}{Royston and Parmar (2002)}. The model is
+#' by Royston and Parmar (2002). The model is
 #' fitted using the \code{\link[flexsurv]{flexsurvspline}} function in the
 #' \pkg{flexsurv} package. Specifically it fits models using the hazard scale. The
 #' flexibility of the model can be changed by modifying the k argument, which
@@ -44,6 +44,12 @@
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/flexsurv_example.r
+#'
+#' @references Royston P, Parmar MKB. Flexible parametric proportional-hazards
+#' and proportional-odds models for censored survival data, with application
+#' to prognostic modelling and estimation of treatment effects.
+#' Statistics in Medicine 2002; 21(15): 2175-2197. \doi{doi:10.1002/sim.1203}
+#'
 #' @export
 smcfcs.flexsurv <- function(originaldata, smformula, k=2, imputeTimes=FALSE,
                     censtime = NULL,
