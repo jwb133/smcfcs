@@ -739,7 +739,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           }
         } else if (smtype == "coxph") {
           ymod <- survival::coxph(as.formula(smformula), imputations[[imp]],
-            control = survival::coxph.control(timefix = FALSE)
+            control = survival::coxph.control(timefix = FALSE), model = TRUE
           )
           outcomeModBeta <- modPostDraw(ymod)
           ymod$coefficients <- outcomeModBeta
@@ -800,7 +800,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
         } else if (smtype == "compet") {
           for (cause in 1:numCauses) {
             ymod <- survival::coxph(as.formula(smformula[[cause]]), imputations[[imp]],
-              control = survival::coxph.control(timefix = FALSE)
+              control = survival::coxph.control(timefix = FALSE), model = TRUE
             )
             outcomeModBeta[[cause]] <- modPostDraw(ymod)
             ymod$coefficients <- outcomeModBeta[[cause]]
