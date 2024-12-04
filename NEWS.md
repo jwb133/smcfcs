@@ -1,4 +1,4 @@
-Version 1.9.1 - adding model=TRUE to coxph call to (hopefully) resolve an error some have experienced
+Version 1.9.1 - adding model=TRUE to coxph call to resolve an error some have experienced
 
 Version 1.9.0 - new functionality for flexible parametric survival models
 
