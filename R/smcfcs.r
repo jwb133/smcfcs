@@ -1306,34 +1306,32 @@ modPostDraw <- function(modobj) {
 dtsamOutcomeDens <- function(inputData, timeEffects, outcomeModBeta, nTimePoints, smformula, timeCol, dCol) {
   inputDataN <- dim(inputData)[1]
 
+  # calculate covariate effects
+  modelMatrix <- model.matrix(
+    as.formula(paste("~", strsplit(smformula, "~")[[1]][2], sep = "")),
+    inputData
+  )
+  # remove intercept column
+  modelMatrix <- modelMatrix[,2:ncol(modelMatrix)]
+
   if (timeEffects == "factor") {
     # first add in time effects on log odds scale
     outmodxb <- matrix(outcomeModBeta[1:nTimePoints], nrow = inputDataN, ncol = nTimePoints, byrow = TRUE)
-    # calculate covariate effects
-    covXbEffects <- model.matrix(
-      as.formula(paste("~-1+", strsplit(smformula, "~")[[1]][2], sep = "")),
-      inputData
-    ) %*% utils::tail(outcomeModBeta, length(outcomeModBeta) - nTimePoints)
+    covXbEffects <- modelMatrix %*% utils::tail(outcomeModBeta, length(outcomeModBeta) - nTimePoints)
   } else if (timeEffects == "linear") {
     # linear time
     # first add in time effects on log odds scale
     outmodxb <- outcomeModBeta[1] +
       matrix(outcomeModBeta[2] * ((1:nTimePoints) - 1), nrow = inputDataN, ncol = nTimePoints, byrow = TRUE)
     # calculate covariate effects
-    covXbEffects <- model.matrix(
-      as.formula(paste("~-1+", strsplit(smformula, "~")[[1]][2], sep = "")),
-      inputData
-    ) %*% utils::tail(outcomeModBeta, length(outcomeModBeta) - 2)
+    covXbEffects <- modelMatrix %*% utils::tail(outcomeModBeta, length(outcomeModBeta) - 2)
   } else {
     # quadratic time
     # first add in time effects on log odds scale
     outmodxb <- outcomeModBeta[1] +
       matrix(outcomeModBeta[2] * ((1:nTimePoints) - 1) + outcomeModBeta[3] * (((1:nTimePoints) - 1)^2), nrow = inputDataN, ncol = nTimePoints, byrow = TRUE)
     # calculate covariate effects
-    covXbEffects <- model.matrix(
-      as.formula(paste("~-1+", strsplit(smformula, "~")[[1]][2], sep = "")),
-      inputData
-    ) %*% utils::tail(outcomeModBeta, length(outcomeModBeta) - 3)
+    covXbEffects <- modelMatrix %*% utils::tail(outcomeModBeta, length(outcomeModBeta) - 3)
   }
 
   # add in covariate effects
