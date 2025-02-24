@@ -186,7 +186,7 @@ get_dtsam_names <- function(smformula,
 get_coef_names <- function(smformula,
                            dat,
                            intercept) {
-  rhs <- gsub(x = smformula, pattern = ".*~", replacement = "")
+  rhs <- gsub(x = smformula[3], pattern = ".*~", replacement = "")
   smformula_matrix <- as.formula(paste0("~ +", rhs))
 
   # Check if there is stratification - if so remove from model matrix
