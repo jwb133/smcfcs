@@ -109,7 +109,9 @@ by using the \code{censtime} argument. If some individuals have their time-to-ev
 outcome completely missing and you want to impute this, they should have a time of zero
 and the event indicator set to zero.
 
-\code{smcfcs.flexsurv} should NOT be used with time-varying covariate effects.
+\code{smcfcs.flexsurv} will not let you impute using norm, latnorm or poisson methods
+for variables that are allowed to have time-varying effects, because the usual
+rejection sampling bound used by smcfcs is not valid in this setting.
 
 \code{\link[flexsurv]{flexsurvspline}} sometimes fails during model fitting.
 If/when this occurs, \code{smcfcs.flexsurv} takes a posterior draw based
