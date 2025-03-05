@@ -241,6 +241,17 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     if ((sum(is.na(d))+sum(is.na(originaldata[,timeCol])))>0) {
       stop("Event indicator and time variables should not have NAs.")
     }
+    # stop if time-varying effects of a variable for which rejection
+    # sampling would be used has been specified, since bound is not correct
+    # in this case
+    if (grepl("gamma",smformula)==TRUE) {
+      timeVaryingVars <- extract_gamma_values(smformula)
+      for (i in 1:length(timeVaryingVars)) {
+        if ((method[which(colnames(originaldata)==timeVaryingVars[i])] %in% c("norm", "latnorm", "poisson"))==TRUE) {
+          stop("You cannot use method norm/latnorm/poisson for covariates with time-varying effects (yet).")
+        }
+      }
+    }
   } else if (smtype == "coxph") {
     timeCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[2]])]
     dCol <- (1:dim(originaldata)[2])[colnames(originaldata) %in% toString(as.formula(smformula)[[2]][[3]])]
@@ -1348,3 +1359,28 @@ dtsamOutcomeDens <- function(inputData, timeEffects, outcomeModBeta, nTimePoints
   # return vector of outcome density values
   exp(logSurvProbIndividual + inputData[, dCol] * log(prob[cbind(1:inputDataN, inputData[, timeCol])]))
 }
+
+# this helper function is used in a check for smcfcs.flexsurv
+# it is used to extract names of variables which are being modelled
+# using time-varying effects
+extract_gamma_values <- function(s) {
+  # Define the regex pattern: "gamma" followed by digits, then capture what's inside the parentheses.
+  pattern <- "gamma\\d+\\(([^)]+)\\)"
+
+  # Find all matches with capture groups enabled
+  m <- gregexpr(pattern, s, perl = TRUE)
+
+  # Get capture group positions and lengths
+  capture_starts <- attr(m[[1]], "capture.start")
+  capture_lengths <- attr(m[[1]], "capture.length")
+
+  # If no matches are found, return an empty character vector
+  if (capture_starts[1] == -1) {
+    return(character(0))
+  }
+
+  # Extract the captured text for each match
+  extracted <- substring(s, capture_starts, capture_starts + capture_lengths - 1)
+  return(unique(extracted))
+}
+

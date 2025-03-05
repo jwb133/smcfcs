@@ -109,6 +109,8 @@ by using the \code{censtime} argument. If some individuals have their time-to-ev
 outcome completely missing and you want to impute this, they should have a time of zero
 and the event indicator set to zero.
 
+\code{smcfcs.flexsurv} should NOT be used with time-varying covariate effects.
+
 \code{\link[flexsurv]{flexsurvspline}} sometimes fails during model fitting.
 If/when this occurs, \code{smcfcs.flexsurv} takes a posterior draw based
 on the model fit from the preceding iteration, and a warning is printed at

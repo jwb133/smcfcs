@@ -328,3 +328,84 @@ test_that("Flexsurv imputation errors if NA in event indicator variable", {
   )
 
 })
+
+
+test_that("Flexsurv imputation errors if time-varying effect used for fully obs cts cov", {
+  skip_on_cran()
+  expect_error(
+    {
+      expit <- function(x) {exp(x)/(1+exp(x))}
+      set.seed(1234)
+      n <- 1000
+      z <- rnorm(n)
+      x <- 1*(runif(n)<expit(z))
+      t <- -log(runif(n)) / (1 * exp(x + z))
+      d <- 1 * (t < 10)
+      t[d == 0] <- 10
+      z[(runif(n) < 0.5)] <- NA
+
+      simData <- data.frame(t, d, x, z)
+
+      imps <- smcfcs.flexsurv(simData,
+                              smformula = "Surv(t, d)~x+z+gamma1(z)",
+                              method = c("", "", "", "norm"),
+                              k=2
+      )
+    }
+    )
+
+})
+
+test_that("Flexsurv imputation doesn't error if time-varying effect used for fully obs cts cov", {
+  skip_on_cran()
+  expect_error(
+    {
+      expit <- function(x) {exp(x)/(1+exp(x))}
+      set.seed(1234)
+      n <- 1000
+      z <- rnorm(n)
+      x <- 1*(runif(n)<expit(z))
+      t <- -log(runif(n)) / (1 * exp(x + z))
+      d <- 1 * (t < 10)
+      t[d == 0] <- 10
+      x[(runif(n) < 0.5)] <- NA
+
+      simData <- data.frame(t, d, x, z)
+
+      imps <- smcfcs.flexsurv(simData,
+                              smformula = "Surv(t, d)~x+z+gamma1(z)",
+                              method = c("", "", "logreg", ""),
+                              k=2
+      )
+    }
+  , NA)
+
+})
+
+
+test_that("Flexsurv imputation doesn't error if time-varying effect used for partial binary cov", {
+  skip_on_cran()
+  expect_error(
+    {
+      expit <- function(x) {exp(x)/(1+exp(x))}
+      set.seed(1234)
+      n <- 1000
+      z <- rnorm(n)
+      x <- 1*(runif(n)<expit(z))
+      t <- -log(runif(n)) / (1 * exp(x + z))
+      d <- 1 * (t < 10)
+      t[d == 0] <- 10
+      x[(runif(n) < 0.5)] <- NA
+
+      simData <- data.frame(t, d, x, z)
+
+      imps <- smcfcs.flexsurv(simData,
+                              smformula = "Surv(t, d)~x+z+gamma1(x)",
+                              method = c("", "", "logreg", ""),
+                              k=2
+      )
+    }
+    , NA)
+
+})
+

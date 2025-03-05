@@ -21,6 +21,9 @@
 #' outcome completely missing and you want to impute this, they should have a time of zero
 #' and the event indicator set to zero.
 #'
+#' \code{smcfcs.flexsurv} should NOT be used to impute missing continuous covariates if
+#' these are allowed to have time-varying effects.
+#'
 #' \code{\link[flexsurv]{flexsurvspline}} sometimes fails during model fitting.
 #' If/when this occurs, \code{smcfcs.flexsurv} takes a posterior draw based
 #' on the model fit from the preceding iteration, and a warning is printed at
