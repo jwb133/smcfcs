@@ -99,7 +99,7 @@ prep_iters <- function(x) {
   # Extract meta data
   M <- dim(x$smCoefIter)[1]
   smtype <- x$smInfo$smtype
-  smformula <- x$smInfo$smformula
+  smformula <- if (inherits(x$smInfo$smformula, "formula")) deparse1(x$smInfo$smformula) else x$smInfo$smformula
   dat <- x$impDatasets[[1]] # for names in model matrix
   numit <- dim(x$smCoefIter)[3]
 
