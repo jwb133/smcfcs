@@ -89,13 +89,12 @@
 #' are measured with classical measurement error. If the i'th variable is measured with error
 #' by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
 #' remainder of entries 0. The i'th element of the method argument should then be specified
-#' as \code{"latnorm"}. See the \link[vignette:smcfcs-coverror-vignette]{measurement error vignette} for more details.
+#' as \code{"latnorm"}. See the \code{vignette("coverror", package = "smcfcs")} for more details.
 #' @param restrictions Optional string which specifies restrictions for handling
 #' coarsened factor level covariates. This is where for a factor variable for
 #' some individuals we do not their value of the variable but we do know
 #' it belongs to some subset of the sample space. For further details
-#' on how to specify this argument, see the
-#' \link[vignette:coarsening]{coarsening vignette}.
+#' on how to specify this argument, see \code{vignette("coarsening", package = "smcfcs")}.
 #'
 #' @return A list containing:
 #'

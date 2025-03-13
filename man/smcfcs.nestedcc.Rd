@@ -5,31 +5,12 @@
 \title{Substantive model compatible fully conditional specification imputation of covariates for nested case control
 studies}
 \usage{
-smcfcs.nestedcc(
-  originaldata,
-  smformula,
-  set,
-  event,
-  nrisk,
-  method,
-  predictorMatrix = NULL,
-  m = 5,
-  numit = 10,
-  rjlimit = 1000,
-  noisy = FALSE,
-  errorProneMatrix = NULL
-)
+smcfcs.nestedcc(originaldata, smformula, method, set, event, nrisk, ...)
 }
 \arguments{
 \item{originaldata}{The nested case-control data set (NOT a full cohort data set with a case-cohort substudy within it)}
 
 \item{smformula}{A formula of the form "Surv(t,case)~x+strata(set)", where case is case-control indicator, t is the event or censoring time. Note that t could be set to the case's event time for the matched controls in a given set. The right hand side should include the case control set as a strata term (see example).}
-
-\item{set}{variable identifying matched sets in nested case-control study}
-
-\item{event}{variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.}
-
-\item{nrisk}{variable which is the number at risk (in the underlying full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).}
 
 \item{method}{A required vector of strings specifying for each variable either
 that it does not need to be imputed (""), the type of regression model to be
@@ -43,38 +24,11 @@ or a custom expression which defines a passively imputed variable, e.g.
 normal variable which is measured with error. If this is specified for a variable,
 the \code{"errorProneMatrix"} argument should also be used.}
 
-\item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
-covariates will be used as predictors in the imputation models
-(the outcome must not be included). The i'th row of the matrix should consist of
-0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
-as a covariate when imputing the i'th variable. If not specified, when
-imputing a given variable, the imputation model covariates are the other
-covariates of the substantive model which are partially observed
-(but which are not passively imputed) and any fully observed covariates (if present)
-in the substantive model. Note that the outcome variable is implicitly conditioned
-on by smcfcs, and should not be specified as a predictor
-in the predictor matrix.}
+\item{set}{variable identifying matched sets in nested case-control study}
 
-\item{m}{The number of imputed datasets to generate. The default is 5.}
+\item{event}{variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.}
 
-\item{numit}{The number of iterations to run when generating each imputation.
-In a (limited) range of simulations good performance was obtained with the
-default of 10 iterations. However, particularly when the proportion of missingness
-is large, more iterations may be required for convergence to stationarity.}
-
-\item{rjlimit}{Specifies the maximum number of attempts which should be made
-when using rejection sampling to draw from imputation models. If the limit is reached
-when running a warning will be issued. In this case it is probably advisable to
-increase the \code{rjlimit} until the warning does not appear.}
-
-\item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
-be useful for debugging or checking that models being used are as desired.}
-
-\item{errorProneMatrix}{An optional matrix which if specified indicates that some variables
-are measured with classical measurement error. If the i'th variable is measured with error
-by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
-remainder of entries 0. The i'th element of the method argument should then be specified
-as \code{"latnorm"}. See the \link[vignette:smcfcs-coverror-vignette]{measurement error vignette} for more details.}
+\item{nrisk}{variable which is the number at risk (in the underlying full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible

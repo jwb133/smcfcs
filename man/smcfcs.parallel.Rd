@@ -40,8 +40,7 @@ File path must be formulated as "path/to/filename.txt".}
 \item{...}{Additional arguments to pass on to \link[smcfcs]{smcfcs},
 \link[smcfcs]{smcfcs.casecohort},
 \link[smcfcs]{smcfcs.dtsam}, or
-\link[smcfcs]{smcfcs.nestedcc}, or
-\link[smcfcs]{smcfcs.flexsurv}.}
+\link[smcfcs]{smcfcs.nestedcc}.}
 }
 \value{
 An object of type "smcfcs", as would usually be returned from
