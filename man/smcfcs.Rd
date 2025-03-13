@@ -14,7 +14,8 @@ smcfcs(
   numit = 10,
   rjlimit = 1000,
   noisy = FALSE,
-  errorProneMatrix = NULL
+  errorProneMatrix = NULL,
+  restrictions = NULL
 )
 }
 \arguments{
@@ -50,7 +51,7 @@ imputing a given variable, the imputation model covariates are the other
 covariates of the substantive model which are partially observed
 (but which are not passively imputed) and any fully observed covariates (if present)
 in the substantive model. Note that the outcome variable is implicitly conditioned
-on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
+on by smcfcs, and should not be specified as a predictor
 in the predictor matrix.}
 
 \item{m}{The number of imputed datasets to generate. The default is 5.}
@@ -72,7 +73,14 @@ be useful for debugging or checking that models being used are as desired.}
 are measured with classical measurement error. If the i'th variable is measured with error
 by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
 remainder of entries 0. The i'th element of the method argument should then be specified
-as \code{"latnorm"}. See the measurement error vignette for more details.}
+as \code{"latnorm"}. See the \link[vignette:smcfcs-coverror-vignette]{measurement error vignette} for more details.}
+
+\item{restrictions}{Optional string which specifies restrictions for handling
+coarsened factor level covariates. This is where for a factor variable for
+some individuals we do not their value of the variable but we do know
+it belongs to some subset of the sample space. For further details
+on how to specify this argument, see the
+\link[vignette:coarsening]{coarsening vignette}.}
 }
 \value{
 A list containing:

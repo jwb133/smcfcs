@@ -72,7 +72,7 @@
 #' covariates of the substantive model which are partially observed
 #' (but which are not passively imputed) and any fully observed covariates (if present)
 #' in the substantive model. Note that the outcome variable is implicitly conditioned
-#' on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
+#' on by smcfcs, and should not be specified as a predictor
 #' in the predictor matrix.
 #' @param m The number of imputed datasets to generate. The default is 5.
 #' @param numit The number of iterations to run when generating each imputation.
@@ -89,7 +89,13 @@
 #' are measured with classical measurement error. If the i'th variable is measured with error
 #' by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
 #' remainder of entries 0. The i'th element of the method argument should then be specified
-#' as \code{"latnorm"}. See the measurement error vignette for more details.
+#' as \code{"latnorm"}. See the \link[vignette:smcfcs-coverror-vignette]{measurement error vignette} for more details.
+#' @param restrictions Optional string which specifies restrictions for handling
+#' coarsened factor level covariates. This is where for a factor variable for
+#' some individuals we do not their value of the variable but we do know
+#' it belongs to some subset of the sample space. For further details
+#' on how to specify this argument, see the
+#' \link[vignette:coarsening]{coarsening vignette}.
 #'
 #' @return A list containing:
 #'
@@ -108,9 +114,9 @@
 #' @import stats
 #' @importFrom survival Surv
 #' @export
-smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL) {
+smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL, restrictions = NULL) {
   # call core  smcfcs function, passing through arguments
-  smcfcs.core(originaldata, smtype, smformula, method, predictorMatrix, m, numit, rjlimit, noisy, errorProneMatrix = errorProneMatrix)
+  smcfcs.core(originaldata, smtype, smformula, method, predictorMatrix, m, numit, rjlimit, noisy, errorProneMatrix = errorProneMatrix, restrictions = restrictions)
 }
 
 #' Substantive model compatible fully conditional specification imputation of covariates for case cohort studies
@@ -136,12 +142,14 @@ smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NU
 #' @example data-raw/cc_example.r
 #'
 #' @export
-smcfcs.casecohort <- function(originaldata, smformula, sampfrac, in.subco, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE,
-                              errorProneMatrix = NULL) {
-  smcfcs.core(originaldata,
-    smtype = "casecohort", smformula, method, predictorMatrix, m, numit, rjlimit, noisy, sampfrac = sampfrac, in.subco = in.subco,
-    errorProneMatrix = errorProneMatrix
-  )
+smcfcs.casecohort <- function(originaldata, smformula, method, sampfrac, in.subco, ...) {
+  smcfcs.core(originaldata=originaldata,
+              smformula=smformula,
+              method=method,
+              smtype = "casecohort",
+              sampfrac = sampfrac,
+              in.subco = in.subco,
+              ...)
 }
 
 #' Substantive model compatible fully conditional specification imputation of covariates for nested case control
@@ -166,11 +174,15 @@ smcfcs.casecohort <- function(originaldata, smformula, sampfrac, in.subco, metho
 #' @inheritParams smcfcs
 #' @example data-raw/ncc_example.r
 #' @export
-smcfcs.nestedcc <- function(originaldata, smformula, set, event, nrisk, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL) {
-  smcfcs.core(originaldata,
-    smtype = "nestedcc", smformula, method, predictorMatrix, m, numit, rjlimit, noisy, set = set, event = event, nrisk = nrisk,
-    errorProneMatrix = errorProneMatrix
-  )
+smcfcs.nestedcc <- function(originaldata, smformula, method, set, event, nrisk, ...) {
+  smcfcs.core(originaldata=originaldata,
+              smformula=smformula,
+              method=method,
+              smtype = "nestedcc",
+              set = set,
+              event = event,
+              nrisk = nrisk,
+              ...)
 }
 
 #' Substantive model compatible fully conditional specification imputation of covariates for
@@ -201,15 +213,17 @@ smcfcs.nestedcc <- function(originaldata, smformula, set, event, nrisk, method, 
 #' @inheritParams smcfcs
 #' @example data-raw/dtsam_example.r
 #' @export
-smcfcs.dtsam <- function(originaldata, smformula, timeEffects = "factor", method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL) {
-  smcfcs.core(originaldata,
-    smtype = "dtsam", smformula, method, predictorMatrix, m, numit, rjlimit, noisy, timeEffects = timeEffects,
-    errorProneMatrix = errorProneMatrix
-  )
+smcfcs.dtsam <- function(originaldata, smformula, method, timeEffects = "factor",...) {
+  smcfcs.core(originaldata=originaldata,
+              smformula=smformula,
+              method=method,
+              smtype = "dtsam",
+              timeEffects = timeEffects,
+              ...)
 }
 
 # this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
-smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL,
+smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL,restrictions = NULL,
                         ...) {
   # get extra arguments passed in ...
   extraArgs <- list(...)
@@ -482,6 +496,35 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
   rjFailCount <- 0
   flexsurvFailCount <- 0
 
+  if(!is.null(restrictions)){
+    if (!requireNamespace("stringr", quietly = TRUE)) {
+      stop("The package 'stringr' is required if using restrictions. Please install it.", call. = FALSE)
+    }
+
+    index_restrictions = restrictions_index = which(unlist(lapply(restrictions, function(sub){TRUE %in% (sub != "")}))); len_restrictions = restrictions_len = length(restrictions_index)
+
+    if(restrictions_len == 0){
+      stop("No additional information is supplied")
+    }
+
+    restrictions_work = restrictions_work_conds = rep(list(NULL), length(restrictions))
+    for(i in restrictions_index){
+      for(j in 1:length(restrictions[[i]])){
+        restrictions_work[[i]][[j]] = as.list(stringr::str_trim(unlist(strsplit(restrictions[[i]][[j]], "[=~]+")), side = "both"))
+
+        if(length(restrictions_work[[i]][[j]]) == 2){
+          restrictions_work[[i]][[j]] = append(restrictions_work[[i]][[j]], stringr::str_extract_all(restrictions_work[[i]][[j]][[2]], "[0-9A-Za-z/]+"))
+        } else if(length(restrictions_work[[i]][[j]]) == 3){
+          restrictions_work[[i]][[j]][[3]] = unlist(stringr::str_extract_all(restrictions_work[[i]][[j]][[3]], "[0-9A-Za-z/]+"))
+        }
+      }
+    }
+
+    for (var in 1:length(partialVars)){
+      restrictions_work_conds[[var]] = unlist(lapply(restrictions_work[[var]], function(sub_rest){sub_rest[[2]]}))
+    }
+  }
+
   for (imp in 1:m) {
     print(paste("Imputation ", imp))
 
@@ -504,7 +547,62 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           # initialize latent predictors with mean of their error-prone measurements
           imputations[[imp]][, targetCol] <- apply(imputations[[imp]][, errorProneCols], 1, mean)
         } else {
-          imputations[[imp]][r[, targetCol] == 0, targetCol] <- sample(imputations[[imp]][r[, targetCol] == 1, targetCol], size = sum(r[, targetCol] == 0), replace = TRUE)
+          if(length(imputations[[imp]][r[,targetCol]==1,targetCol]) != 0){
+            imputations[[imp]][r[, targetCol] == 0, targetCol] <- sample(imputations[[imp]][r[, targetCol] == 1, targetCol], size = sum(r[, targetCol] == 0), replace = TRUE)
+          }
+
+          if(!is.null(restrictions) && var %in% index_restrictions){
+            len_restrictions = length(restrictions_work[[var]])
+
+            for(i in 1:len_restrictions){
+              restrictions_work_vari = restrictions_work[[var]][[i]]
+              res_var = restrictions_work_vari[[1]]; res_cond = restrictions_work_vari[[2]]; res_opts = restrictions_work_vari[[3]]
+
+              ## To determine which NAs must be re-sampled in this run
+              replace_index = which(is.na(originaldata[, targetCol]) & originaldata[, res_var] == res_cond); len_replace_index = length(replace_index)
+
+              if(method[var] == "mlogit"){
+
+                ## Index on the individuals that match the individuals we want to re-sample
+                observed_index = originaldata[r[, targetCol] == 1, targetCol] %in% res_opts
+
+                if(sum(observed_index) != 0){
+                  sub_rest_i = originaldata[r[, targetCol] == 1, targetCol][observed_index]
+                } else {
+                  sub_rest_i = res_opts
+                }
+
+                ## Re-sample for the individuals that match the supplied restrictions (e.g., those that are present for C)
+                imputations[[imp]][replace_index, targetCol] = sample(x = sub_rest_i, size = len_replace_index, replace = TRUE)
+
+
+              } else if(method[var] == "norm"){
+
+                res_opts = as.numeric(res_opts)
+
+                observed_index = (originaldata[r[, targetCol] == 1, targetCol] > res_opts[1] & originaldata[r[, targetCol] == 1, targetCol] <= res_opts[2])
+
+                if(sum(observed_index) != 0){
+                  sub_rest_i = originaldata[r[, targetCol] == 1, targetCol][observed_index]
+
+                  ## Re-sample for the individuals that match the supplied restrictions (e.g., those that are present for C)
+                  imputations[[imp]][replace_index, targetCol] = sample(x = sub_rest_i, size = len_replace_index, replace = TRUE)
+
+                } else {
+
+                  ## Sample from uniform distribution for coarsened observations
+                  imputations[[imp]][replace_index, targetCol] = runif(len_replace_index, min = min(res_opts), max = max(res_opts))
+
+                }
+              }
+            }
+
+            if(length(imputations[[imp]][r[, targetCol] == 1, targetCol]) == 0 && method[var] == "norm"){
+              ## Sample missing observations from previously imputed coarsened observations if there are no fully observed observations
+              index_fully_missing = is.na(imputations[[imp]][, targetCol])
+              imputations[[imp]][index_fully_missing, targetCol] = sample(imputations[[imp]][!index_fully_missing, targetCol], size = sum(index_fully_missing), replace = TRUE)
+            }
+          }
         }
       }
     }
@@ -678,7 +776,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           cumprobs <- cbind(1 / (1 + exp(linpreds)), rep(1, nrow(linpreds)))
           xfitted <- cbind(cumprobs[, 1], cumprobs[, 2:ncol(cumprobs)] - cumprobs[, 1:(ncol(cumprobs) - 1)])
         } else if (method[targetCol] == "mlogit") {
-          if (is.factor(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method modds must be stored as factors.")
+          if (is.factor(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method mlogit must be stored as factors.")
           xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel = 1), data = xmoddata)
           xmod.dummy <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel = 1), data = imputations[[imp]])
           newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu = rep(0, ncol(VGAM::vcov(xmod))), Sigma = VGAM::vcov(xmod))
@@ -962,6 +1060,20 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             }
             outcomeDensCovDens[, xMisVal] <- outcomeDens * fittedMean[imputationNeeded, xMisVal]
           }
+
+          if(!is.null(restrictions) && var %in% index_restrictions){
+            len_restrictions = length(restrictions_work[[var]])
+
+            ## For each information source, a separate step is run
+            for(i in 1:len_restrictions){
+              restrictions_work_vari = restrictions_work[[var]][[i]]
+              res_var = restrictions_work_vari[[1]]; res_cond = restrictions_work_vari[[2]]; res_opts = restrictions_work_vari[[3]]
+
+              ## If a column is not compatible with the restricting information, the probability for that column is set to 0
+              outcomeDensCovDens[which(originaldata[imputationNeeded, res_var] == res_cond), !(levels(imputations[[imp]][, targetCol]) %in% res_opts)] = 0
+            }
+          }
+
           directImpProbs <- outcomeDensCovDens / rowSums(outcomeDensCovDens)
 
           if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {

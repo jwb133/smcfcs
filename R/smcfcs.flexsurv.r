@@ -45,6 +45,7 @@
 #' knots are chosen automatically at each iteration by \code{flexsurvspline}
 #' based on the current observed+imputed event times, according to the chosen
 #' value of \code{k}.
+#' @param ... Additional arguments to pass on to \link[smcfcs]{smcfcs}
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/flexsurv_example.r
@@ -55,23 +56,21 @@
 #' Statistics in Medicine 2002; 21(15): 2175-2197. \doi{doi:10.1002/sim.1203}
 #'
 #' @export
-smcfcs.flexsurv <- function(originaldata, smformula, k=2, imputeTimes=FALSE,
+smcfcs.flexsurv <- function(originaldata, smformula, method, k=2, imputeTimes=FALSE,
                     censtime = NULL,
                     originalKnots = TRUE,
-                    method, predictorMatrix = NULL, m = 5, numit = 10,
-                    rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL) {
+                    ...) {
+
+  if (!requireNamespace("flexsurv", quietly = TRUE)) {
+    stop("The package 'flexsurv' is required for this function. Please install it.", call. = FALSE)
+  }
+
   smcfcs.core(originaldata=originaldata,
               smtype = "flexsurv",
               smformula = smformula,
-              method = method,
-              predictorMatrix = predictorMatrix,
-              m = m,
-              numit = numit,
-              rjlimit = rjlimit,
-              noisy = noisy,
-              errorProneMatrix = errorProneMatrix,
               k=k,
               imputeTimes=imputeTimes,
               censtime=censtime,
-              originalKnots=originalKnots)
+              originalKnots=originalKnots,
+              ...)
 }

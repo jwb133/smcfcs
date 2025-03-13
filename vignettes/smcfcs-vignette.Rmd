@@ -1,7 +1,6 @@
 ---
 title: "smcfcs"
 author: "Jonathan Bartlett"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{smcfcs}

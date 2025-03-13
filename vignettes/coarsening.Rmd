@@ -1,0 +1,65 @@
+---
+title: "smcfcs for coarsened factor covariates"
+author: "Jonathan Bartlett and Lars van der Burg"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{coarsening}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+`smcfcs` was originally created to create multiple imputations of missing values of covariates in regression models. As of 2025, it has functionality to impute unobserved values of factor variables which are 'coarsened', based on the developments in [van ber Burg et al (2025)](https://doi.org/10.1002/sim.70032). Bo coarsened, we mean that for some of the missing values, some partial information about the value is known - we know that the value belongs to some subset of the possible values. In this vignette we demonstrate the functionality of `smcfcs` for imputing such variables.
+
+To demonstrate how to do this, we illustrate using the dataset `ex_coarsening` that is in the `smcfcs` package:
+
+```{r setup}
+library(smcfcs)
+summary(ex_coarsening)
+head(ex_coarsening)
+```
+
+The variable `x` is a factor variable which has `r sum(is.na(ex_coarsening$x))` missing values. The variable `xobs` gives the known information about (some of) the missing values:
+
+```{r}
+table(ex_coarsening$x,ex_coarsening$xobs,useNA = "ifany")
+```
+From this we can see that among the `r sum(is.na(ex_coarsening$x))` missing values in `x`, for `r sum(ex_coarsening$xobs=="a/c")` individuals we know that their value for `x` was either a or c, as indicated by the string 'a/c', `r sum(ex_coarsening$xobs=="b/c")` individuals we know that their value for `x` was either b or c, as indicated by the string 'b/c', while for the remainder we have no further information, indicated by the character string "NA".
+
+*Note: the variable `xobs` is a character variable, and for rows where `x` is (plain) missing, `xobs` takes the character value "NA", rather than R's missing value indicator NA. This is important, since if we used the missing value indicator NA, `smcfcs` would refused to run as we have not told it how to impute the missing values in `xobs`.*
+
+In order to impute the missing values in `x` using `smcfcs` we have to define a value for the `restrictions` argument. For this we must pass a list of length equal to the number of variables in the data frame. For the element in this list corresponding to `x` we must give a vector of formula typ expressions to specify the possible values for `x` when `xobs` equals a/c or b/c. To achieve this we use:
+```{r}
+restrictionsX = c("xobs = a/c ~ a + c",
+                  "xobs = b/c ~ b + c")
+restrictions = append(list(restrictionsX), as.list(c("", "", "", "")))
+```
+
+We can then impute the missing values accounting for the partial information with:
+```{r, results=FALSE, warning=FALSE}
+set.seed(68204812)
+imps <- smcfcs(originaldata=ex_coarsening,
+               smtype="lm",
+               smformula = "y~z+x",
+               method = c("mlogit","", "", ""),
+               restrictions = restrictions
+)
+```
+
+To check that `smcfcs` has correctly used the partial information about the missing values in `x`, first we check the first few rows in the first imputed dataset:
+```{r}
+head(imps$impDatasets[[1]])
+```
+This looks fine - when `xobs=a/c` we have imputed values either of a or c, whereas when `xobs=b/c` we have imputed values of b or c. To check properly, we can repeat the earlier cross-tabulation:
+```{r}
+table(imps$impDatasets[[1]]$x,imps$impDatasets[[1]]$xobs,useNA = "ifany")
+```
+This shows that (at least in the first imputed dataset) the imputed values respect the partial information contained in `xobs`, as desired.
+
+The `restrictions` argument can also be used for ordered factor variables in the same way.

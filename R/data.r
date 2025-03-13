@@ -173,3 +173,20 @@
 #' }
 #'
 "ex_flexsurv"
+
+#' Simulated example data with a coarsened factor covariate
+#'
+#' A simulated dataset with a factor level covariate subject to coarsening.
+#'
+#' @format A data frame with 100 rows and 4 variables:
+#' \describe{
+#'   \item{x}{Factor variable with 3 levels (a,b,c) and some missing values}
+#'   \item{xobs}{Variable which contains coarsening information for x}
+#'   \item{z}{Fully observed continuous covariate}
+#'   \item{z}{Fully observed continuous outcome}
+#' }
+#'
+"ex_coarsening"
+
+
+

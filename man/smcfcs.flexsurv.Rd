@@ -8,23 +8,30 @@ event times using flexible parametric survival models}
 smcfcs.flexsurv(
   originaldata,
   smformula,
+  method,
   k = 2,
   imputeTimes = FALSE,
   censtime = NULL,
   originalKnots = TRUE,
-  method,
-  predictorMatrix = NULL,
-  m = 5,
-  numit = 10,
-  rjlimit = 1000,
-  noisy = FALSE,
-  errorProneMatrix = NULL
+  ...
 )
 }
 \arguments{
 \item{originaldata}{The original data frame with missing values.}
 
 \item{smformula}{A formula of the form "Surv(t,d)~x+z"}
+
+\item{method}{A required vector of strings specifying for each variable either
+that it does not need to be imputed (""), the type of regression model to be
+be used to impute. Possible values are \code{"norm"} (normal linear regression),
+\code{"logreg"} (logistic regression), \code{"brlogreg"} (bias reduced logistic regression),
+\code{"poisson"} (Poisson regression),
+\code{"podds"} (proportional odds regression for ordered categorical variables),
+\code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
+or a custom expression which defines a passively imputed variable, e.g.
+\code{"x^2"} or \code{"x1*x2"}. \code{"latnorm"} indicates the variable is a latent
+normal variable which is measured with error. If this is specified for a variable,
+the \code{"errorProneMatrix"} argument should also be used.}
 
 \item{k}{Number of knots to use in the flexible parametric survival model}
 
@@ -42,50 +49,7 @@ knots are chosen automatically at each iteration by \code{flexsurvspline}
 based on the current observed+imputed event times, according to the chosen
 value of \code{k}.}
 
-\item{method}{A required vector of strings specifying for each variable either
-that it does not need to be imputed (""), the type of regression model to be
-be used to impute. Possible values are \code{"norm"} (normal linear regression),
-\code{"logreg"} (logistic regression), \code{"brlogreg"} (bias reduced logistic regression),
-\code{"poisson"} (Poisson regression),
-\code{"podds"} (proportional odds regression for ordered categorical variables),
-\code{"mlogit"} (multinomial logistic regression for unordered categorical variables),
-or a custom expression which defines a passively imputed variable, e.g.
-\code{"x^2"} or \code{"x1*x2"}. \code{"latnorm"} indicates the variable is a latent
-normal variable which is measured with error. If this is specified for a variable,
-the \code{"errorProneMatrix"} argument should also be used.}
-
-\item{predictorMatrix}{An optional predictor matrix. If specified, the matrix defines which
-covariates will be used as predictors in the imputation models
-(the outcome must not be included). The i'th row of the matrix should consist of
-0s and 1s, with a 1 in the j'th column indicating the j'th variable be used
-as a covariate when imputing the i'th variable. If not specified, when
-imputing a given variable, the imputation model covariates are the other
-covariates of the substantive model which are partially observed
-(but which are not passively imputed) and any fully observed covariates (if present)
-in the substantive model. Note that the outcome variable is implicitly conditioned
-on by the rejection sampling scheme used by smcfcs, and should not be specified as a predictor
-in the predictor matrix.}
-
-\item{m}{The number of imputed datasets to generate. The default is 5.}
-
-\item{numit}{The number of iterations to run when generating each imputation.
-In a (limited) range of simulations good performance was obtained with the
-default of 10 iterations. However, particularly when the proportion of missingness
-is large, more iterations may be required for convergence to stationarity.}
-
-\item{rjlimit}{Specifies the maximum number of attempts which should be made
-when using rejection sampling to draw from imputation models. If the limit is reached
-when running a warning will be issued. In this case it is probably advisable to
-increase the \code{rjlimit} until the warning does not appear.}
-
-\item{noisy}{logical value (default FALSE) indicating whether output should be noisy, which can
-be useful for debugging or checking that models being used are as desired.}
-
-\item{errorProneMatrix}{An optional matrix which if specified indicates that some variables
-are measured with classical measurement error. If the i'th variable is measured with error
-by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
-remainder of entries 0. The i'th element of the method argument should then be specified
-as \code{"latnorm"}. See the measurement error vignette for more details.}
+\item{...}{Additional arguments to pass on to \link[smcfcs]{smcfcs}}
 }
 \description{
 Multiply imputes missing covariate values and event times using substantive model compatible

@@ -270,3 +270,40 @@ x[runif(n)<0.5] <- NA
 
 ex_flexsurv <- data.frame(t=t,d=d,x=x,z=z)
 usethis::use_data(ex_flexsurv, overwrite = TRUE)
+
+
+# Restrictions example data --------------------------------------------------
+
+set.seed(723423)
+n <- 100
+z <- rnorm(n)
+
+p1 <- 1/(1+exp(0+z)+exp(1+z))
+p2 <- exp(0+z)/(1+exp(0+z)+exp(1+z))
+p3 <- 1-p1-p2
+u <- runif(n)
+x <- rep("a",n)
+x[(u>p1) & (u<(p1+p2))] <- "b"
+x[(u>(p1+p2))] <- "c"
+
+y <- z+(x=="b")+2*(x=="c")+rnorm(n)
+
+# generate coarsening variable, where 0 indicates no coarsening
+# 1 indicates missing
+# 2 indicates coarsened variable=a if x=a or b/c if x=b or x=c
+# 3 indicates coarsened variable=b if x=b or a/c if x=a or x=c
+c <- sample(c(0, 1, 2, 3), size = n, replace = TRUE, prob = rep(0.25,4))
+xobs <- x
+xobs[c==1] <- "NA"
+xobs[(c==2) & ((x=="b") | (x=="c"))] <- "b/c"
+xobs[(c==3) & ((x=="a") | (x=="c"))] <- "a/c"
+table(xobs, useNA = "always")
+
+# set x to NA when not exactly observed
+x[c==1] <- NA
+x[(c==2) & ((x=="b") | (x=="c"))] <- NA
+x[(c==3) & ((x=="a") | (x=="c"))] <- NA
+
+ex_coarsening <- data.frame(x=factor(x),xobs=xobs,z=z,y=y)
+usethis::use_data(ex_coarsening, overwrite = TRUE)
+
