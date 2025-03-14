@@ -24,7 +24,7 @@ test_that("podds using polr runs", {
 
       imps <- smcfcs(originaldata=simData,
         smtype="lm",
-        smformula = "y~z+x",
+        smformula = "y~z+I(x=='b')+I(x=='c')+I(x=='d')",
         method = c("podds","", ""),
       )
     },
@@ -57,13 +57,13 @@ test_that("podds using polr is unbiased", {
 
       imps <- smcfcs(originaldata=simData,
                      smtype="lm",
-                     smformula = "y~z+x",
+                     smformula = "y~z+I(x=='b')+I(x=='c')+I(x=='d')",
                      method = c("podds","", ""),
       )
 
       library(mitools)
       impobj <- imputationList(imps$impDatasets)
-      models <- with(impobj, lm(y ~ z+I(x=="b")+I(x=="c")+I(x=="d")))
+      models <- with(impobj, lm(y ~ z+I(x=='b')+I(x=='c')+I(x=='d')))
       MIcombineRes <- summary(MIcombine(models))
       # 95% CI includes true value
       (MIcombineRes$`(lower`[5] < 2) & (MIcombineRes$`upper)`[5]>2)
