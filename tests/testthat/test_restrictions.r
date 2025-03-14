@@ -130,11 +130,11 @@ test_that("Restrictions runs respecting restrictions with coarsened ordered fact
       n <- 100
 
       z <- rnorm(n)
-      xtilde <- 1+2*z + rlogis(n)
+      xtilde <- 2*z + rlogis(n)
 
       x <- rep("a",n)
-      x[(ytilde>(-1)) & (ytilde<1)] <- "b"
-      x[(ytilde>(1)) ] <- "c"
+      x[(xtilde>(-1)) & (xtilde<1)] <- "b"
+      x[(xtilde>(1)) ] <- "c"
       table(x)
 
       y <- z+(x=="b")+2*(x=="c")+rnorm(n)
@@ -193,11 +193,11 @@ test_that("Restrictions is unbiased with coarsened ordered factor covariate", {
       n <- 100000
 
       z <- rnorm(n)
-      xtilde <- 1+2*z + rlogis(n)
+      xtilde <- 2*z + rlogis(n)
 
       x <- rep("a",n)
-      x[(ytilde>(-1)) & (ytilde<1)] <- "b"
-      x[(ytilde>(1)) ] <- "c"
+      x[(xtilde>(-1)) & (xtilde<1)] <- "b"
+      x[(xtilde>(1)) ] <- "c"
       table(x)
 
       y <- z+(x=="b")+2*(x=="c")+rnorm(n)

@@ -409,8 +409,13 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     (method == "podds") | (method == "mlogit") | (method == "brlogreg"))
 
   if (length(partialVars) == 0) {
-    if (((smtype=="flexsurv") & (extraArgs$imputeTimes==TRUE)) == FALSE)
+    if (smtype!="flexsurv") {
       stop("You have not specified any valid imputation methods in the method argument.")
+    } else {
+      if (extraArgs$imputeTimes==FALSE) {
+        stop("You have not specified any valid imputation methods in the method argument.")
+      }
+    }
   }
 
   # check that methods are given for each partially observed column, and not given for fully observed columns
@@ -768,12 +773,24 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           }
         } else if (method[targetCol] == "podds") {
           if (is.ordered(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method podds must be stored as ordered factors.")
-          xmod <- VGAM::vglm(xmodformula, VGAM::propodds, data = xmoddata)
-          xmod.dummy <- VGAM::vglm(xmodformula, VGAM::propodds, data = imputations[[imp]])
-          newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu = rep(0, ncol(VGAM::vcov(xmod))), Sigma = VGAM::vcov(xmod))
-          linpreds <- matrix((VGAM::model.matrix(xmod.dummy)) %*% newbeta, byrow = TRUE, ncol = (nlevels(imputations[[imp]][, targetCol]) - 1))
-          cumprobs <- cbind(1 / (1 + exp(linpreds)), rep(1, nrow(linpreds)))
-          xfitted <- cbind(cumprobs[, 1], cumprobs[, 2:ncol(cumprobs)] - cumprobs[, 1:(ncol(cumprobs) - 1)])
+          xmod <- MASS::polr(xmodformula, data = xmoddata, Hess=TRUE)
+          xmod.dummy <- MASS::polr(xmodformula, data = imputations[[imp]], Hess=TRUE)
+          polr_cutpts <- xmod$zeta
+          # Thanks to Ed Bonneville: polr does maximization using first cutpoint and then log differences
+          # in the cut-points. So we extract estimates use this transformation, and then apply a MVN draw
+          polr_theta <- c(xmod$coefficients, polr_cutpts[1], log(diff(polr_cutpts)))
+          newtheta <- polr_theta + MASS::mvrnorm(1, mu = rep(0, length(polr_theta)), Sigma = MASS::ginv(xmod$Hessian))
+          # extract new 'coefficients'
+          newbeta <- newtheta[length(xmod$coefficients)]
+          # transform back to cutpoints
+          newcutpoints <- cumsum(c(newtheta[length(xmod$coefficients)+1], exp(newtheta[-(1:(length(xmod$coefficients)+1))])))
+          # calculate fitted probabilities
+          polr_cumlogitprob <- array(0, dim=c(dim(imputations[[imp]])[1],length(newcutpoints)))
+          for (j in 1:length(newcutpoints)) {
+            polr_cumlogitprob[,j] <- model.matrix(xmod) %*% c(-newcutpoints[j],newbeta)
+          }
+          polr_cumprobs <- cbind(rep(1,dim(imputations[[imp]])[1]),expit(polr_cumlogitprob))
+          xfitted <- cbind(-t(apply(polr_cumprobs, MARGIN=1, FUN=diff)), polr_cumprobs[,dim(polr_cumprobs)[2]])
         } else if (method[targetCol] == "mlogit") {
           if (is.factor(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method mlogit must be stored as factors.")
           xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel = 1), data = xmoddata)
