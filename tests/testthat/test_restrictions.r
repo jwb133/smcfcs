@@ -187,6 +187,7 @@ test_that("Restrictions runs respecting restrictions with coarsened ordered fact
 
 
 test_that("Restrictions is unbiased with coarsened ordered factor covariate", {
+  skip_on_cran()
   expect_equal(
     {
       set.seed(79968)

@@ -781,7 +781,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           polr_theta <- c(xmod$coefficients, polr_cutpts[1], log(diff(polr_cutpts)))
           newtheta <- polr_theta + MASS::mvrnorm(1, mu = rep(0, length(polr_theta)), Sigma = MASS::ginv(xmod$Hessian))
           # extract new 'coefficients'
-          newbeta <- newtheta[length(xmod$coefficients)]
+          newbeta <- newtheta[seq_along(xmod$coefficients)]
           # transform back to cutpoints
           newcutpoints <- cumsum(c(newtheta[length(xmod$coefficients)+1], exp(newtheta[-(1:(length(xmod$coefficients)+1))])))
           # calculate fitted probabilities
