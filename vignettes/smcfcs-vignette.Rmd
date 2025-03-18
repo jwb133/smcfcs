@@ -76,7 +76,7 @@ Here the data were simulated such that the coefficients of `z`, `x` and `I(x^2)`
 imps <- smcfcs(ex_linquad, smtype = "lm", smformula = "y~z+x", method = c("", "", "norm", ""))
 ```
 
-`smcfcs` has issued some warnings about rejection sampling. We discuss this later in this vignette, but here we will continue and proceed to fit a model for `y` which includes both `x` and `xsq` (plus `z`) as covariates:
+We now proceed to fit a model for `y` which includes both `x` and `I(x^2)` (plus `z`) as covariates:
 
 ```{r}
 # fit substantive model
