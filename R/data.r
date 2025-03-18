@@ -32,12 +32,11 @@
 #' A dataset containing simulated data where the binary outcome depends quadratically
 #' on a partially observed covariate.
 #'
-#' @format A data frame with 1000 rows and 5 variables:
+#' @format A data frame with 1000 rows and 4 variables:
 #' \describe{
 #'   \item{y}{Binary outcome}
 #'   \item{z}{Fully observed covariate, with linear effect on outcome (on log odds scale)}
 #'   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome (on log odds scale)}
-#'   \item{xsq}{The square of x, which thus has missing values also}
 #'   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
 #' }
 #'
@@ -63,13 +62,12 @@
 #' A dataset containing simulated data where a time to event outcome depends quadratically
 #' on a partially observed covariate.
 #'
-#' @format A data frame with 1000 rows and 6 variables:
+#' @format A data frame with 1000 rows and 5 variables:
 #' \describe{
 #'   \item{t}{Time to event or censoring}
 #'   \item{d}{Binary indicator of whether event occurred or individual was censored}
 #'   \item{z}{Fully observed covariate, with linear effect on outcome (on log hazard scale)}
 #'   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome (on log hazard scale)}
-#'   \item{xsq}{The square of x, which thus has missing values also}
 #'   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
 #' }
 #'

@@ -5,12 +5,11 @@
 \alias{ex_linquad}
 \title{Simulated example data with continuous outcome and quadratic covariate effects}
 \format{
-A data frame with 1000 rows and 5 variables:
+A data frame with 1000 rows and 4 variables:
 \describe{
   \item{y}{Continuous outcome}
   \item{z}{Fully observed covariate, with linear effect on outcome}
   \item{x}{Partially observed normally distributed covariate, with quadratic effect on outcome}
-  \item{xsq}{The square of x, which thus has missing values also}
   \item{v}{An auxiliary variable (i.e. not contained in the substantive model)}
 }
 }

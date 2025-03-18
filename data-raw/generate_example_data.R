@@ -46,7 +46,7 @@ xobsxb <- (z - mean(z)) / sd(z)
 xobspr <- exp(xobsxb) / (1 + exp(xobsxb))
 x[runif(n) > xobspr] <- NA
 
-ex_logisticquad <- data.frame(y, z, x, xsq = x^2, v)
+ex_logisticquad <- data.frame(y, z, x, v)
 
 usethis::use_data(ex_logisticquad, overwrite = TRUE)
 
@@ -67,7 +67,7 @@ xobsxb <- (t - mean(t)) / sd(t)
 xobspr <- exp(xobsxb) / (1 + exp(xobsxb))
 x[runif(n) > xobspr] <- NA
 
-ex_coxquad <- data.frame(t, d, z, x, xsq = x^2, v)
+ex_coxquad <- data.frame(t, d, z, x, v)
 
 usethis::use_data(ex_coxquad, overwrite = TRUE)
 
@@ -140,7 +140,7 @@ fullcohortdata <- data.frame(t, d, x, z)
 fullcohortdata$id <- 1:n
 
 # Compute number at risk at each event time using the full cohort data
-nrisk.fit <- survfit(Surv(t, d) ~ 1, data = fullcohortdata)
+nrisk.fit <- survival::survfit(Surv(t, d) ~ 1, data = fullcohortdata)
 ord.t.d1 <- order(fullcohortdata$t[fullcohortdata$d == 1])
 
 m <- 1 # 1 control per case

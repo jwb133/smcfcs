@@ -34,8 +34,8 @@ if (requireNamespace("mitools", quietly = TRUE)) {
                  method=c("","norm","logreg"))
 
   #logistic regression substantive model, with quadratic covariate effects
-  imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+xsq",
-                 method=c("","","norm","x^2",""))
+  imps <- smcfcs(ex_logisticquad, smtype="logistic", smformula="y~z+x+I(x^2)",
+                 method=c("","","norm",""))
 
   #Poisson regression substantive model
   imps <- smcfcs(ex_poisson, smtype="poisson", smformula="y~x+z",
@@ -49,8 +49,8 @@ if (requireNamespace("mitools", quietly = TRUE)) {
 
   #Cox regression substantive model, with only main covariate effects
   if (requireNamespace("survival", quietly = TRUE)) {
-    imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+xsq",
-                   method=c("","","","norm","x^2",""))
+    imps <- smcfcs(ex_coxquad, smtype="coxph", smformula="Surv(t,d)~z+x+I(x^2)",
+                   method=c("","","","norm",""))
 
     #competing risks substantive model, with only main covariate effects
     imps <- smcfcs(ex_compet, smtype="compet",
