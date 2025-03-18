@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-`smcfcs` was originally created to create multiple imputations of missing values of covariates in regression models. As of 2025, it has functionality to impute unobserved values of factor variables which are 'coarsened', based on the developments in [van ber Burg et al (2025)](https://doi.org/10.1002/sim.70032). By coarsened, we mean that for some of the missing values, some partial information about the value is known - we know that the value belongs to some subset of the possible values. In this vignette we demonstrate the functionality of `smcfcs` for imputing such variables.
+`smcfcs` was originally created to create multiple imputations of missing values of covariates in regression models. As of 2025, it has functionality to impute unobserved values of factor variables which are 'coarsened', based on the developments in [van der Burg et al (2025)](https://doi.org/10.1002/sim.70032). By coarsened, we mean that for some of the missing values, some partial information about the value is known - we know that the value belongs to some subset of the possible values. In this vignette we demonstrate the functionality of `smcfcs` for imputing such variables.
 
 To demonstrate how to do this, we illustrate using the dataset `ex_coarsening` that is in the `smcfcs` package:
 
@@ -38,7 +38,7 @@ In order to impute the missing values in `x` using `smcfcs` we have to define a 
 ```{r}
 restrictionsX = c("xobs = a/c ~ a + c",
                   "xobs = b/c ~ b + c")
-restrictions = append(list(restrictionsX), as.list(c("", "", "", "")))
+restrictions = append(list(restrictionsX), as.list(c("", "", "")))
 ```
 
 We can then impute the missing values accounting for the partial information with:

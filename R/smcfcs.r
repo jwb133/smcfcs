@@ -510,6 +510,9 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     if(restrictions_len == 0){
       stop("No additional information is supplied")
     }
+    if(length(restrictions) != ncol(originaldata)) {
+      stop("Restrictions should be a list with length equal to the number of columns/variables.")
+    }
 
     restrictions_work = restrictions_work_conds = rep(list(NULL), length(restrictions))
     for(i in restrictions_index){
