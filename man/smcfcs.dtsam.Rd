@@ -29,6 +29,8 @@ the \code{"errorProneMatrix"} argument should also be used.}
 \item{timeEffects}{Specifies how the effect of time is modelled. \code{timeEffects="factor"} (the default) models time as a
 factor variable. \code{timeEffects="linear"} and \code{timeEffects="quad"} specify that time be modelled as a continuous
 linear or quadratic effect on the log odds scale respectively.}
+
+\item{...}{Additional arguments to pass on to \link[smcfcs]{smcfcs}}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible

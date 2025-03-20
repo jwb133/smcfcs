@@ -73,6 +73,10 @@ smcfcs.parallel <- function(smcfcs_func = "smcfcs",
   # Check smcfcs arguments
   args <- list(...)
   args_smcfcs <- names(formals(eval(smcfcs_func_expr)))
+  # if ... is allowed by smcfcs subfunction, include main smcfcs argument as well
+  if ("..." %in% args_smcfcs) {
+    args_smcfcs <- unique(c(args_smcfcs, names(formals(smcfcs::smcfcs))))
+  }
   check_args <- !(names(args) %in% args_smcfcs)
 
   if (any(check_args)) {

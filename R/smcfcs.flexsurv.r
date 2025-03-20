@@ -68,6 +68,7 @@ smcfcs.flexsurv <- function(originaldata, smformula, method, k=2, imputeTimes=FA
   smcfcs.core(originaldata=originaldata,
               smtype = "flexsurv",
               smformula = smformula,
+              method = method,
               k=k,
               imputeTimes=imputeTimes,
               censtime=censtime,

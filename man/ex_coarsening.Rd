@@ -10,7 +10,7 @@ A data frame with 100 rows and 4 variables:
   \item{x}{Factor variable with 3 levels (a,b,c) and some missing values}
   \item{xobs}{Variable which contains coarsening information for x}
   \item{z}{Fully observed continuous covariate}
-  \item{z}{Fully observed continuous outcome}
+  \item{y}{Fully observed continuous outcome}
 }
 }
 \usage{

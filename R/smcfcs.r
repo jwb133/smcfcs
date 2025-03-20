@@ -135,6 +135,7 @@ smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NU
 #' @param smformula A formula of the form "Surv(entertime,t,d)~x", where d is the event (d=1) or censoring (d=0) indicator, t is the event or censoring time and entertime is equal to the time origin (typically 0) for individuals in the subcohort and is equal to (t-0.001) for cases outside the subcohort [this sets cases outside the subcohort to enter follow-up just before their event time. The value 0.001 may need to be modified depending on the time scale.]
 #' @param in.subco The name of a column in the dataset with 0/1s that indicates whether the subject is in the subcohort
 #' @param sampfrac The proportion of individuals from the underlying full cohort who are in the subcohort
+#' @param ... Additional arguments to pass on to \link[smcfcs]{smcfcs}
 #'
 #' @inheritParams smcfcs
 #'
@@ -169,6 +170,7 @@ smcfcs.casecohort <- function(originaldata, smformula, method, sampfrac, in.subc
 #' @param set variable identifying matched sets in nested case-control study
 #' @param event variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.
 #' @param nrisk variable which is the number at risk (in the underlying full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).
+#' @param ... Additional arguments to pass on to \link[smcfcs]{smcfcs}
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/ncc_example.r
@@ -208,6 +210,7 @@ smcfcs.nestedcc <- function(originaldata, smformula, method, set, event, nrisk, 
 #' @param timeEffects Specifies how the effect of time is modelled. \code{timeEffects="factor"} (the default) models time as a
 #' factor variable. \code{timeEffects="linear"} and \code{timeEffects="quad"} specify that time be modelled as a continuous
 #' linear or quadratic effect on the log odds scale respectively.
+#' @param ... Additional arguments to pass on to \link[smcfcs]{smcfcs}
 #'
 #' @inheritParams smcfcs
 #' @example data-raw/dtsam_example.r

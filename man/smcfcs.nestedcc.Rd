@@ -29,6 +29,8 @@ the \code{"errorProneMatrix"} argument should also be used.}
 \item{event}{variable which indicates who is a case/control in the nested case-control sample. Note that this is distinct from d.}
 
 \item{nrisk}{variable which is the number at risk (in the underlying full cohort) at the event time for the case in each matched set (i.e. nrisk is the same for all individuals in a matched set).}
+
+\item{...}{Additional arguments to pass on to \link[smcfcs]{smcfcs}}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible

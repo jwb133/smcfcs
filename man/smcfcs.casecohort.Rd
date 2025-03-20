@@ -26,6 +26,8 @@ the \code{"errorProneMatrix"} argument should also be used.}
 \item{sampfrac}{The proportion of individuals from the underlying full cohort who are in the subcohort}
 
 \item{in.subco}{The name of a column in the dataset with 0/1s that indicates whether the subject is in the subcohort}
+
+\item{...}{Additional arguments to pass on to \link[smcfcs]{smcfcs}}
 }
 \description{
 Multiply imputes missing covariate values using substantive model compatible
