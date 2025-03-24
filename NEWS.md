@@ -1,3 +1,6 @@
+Version 2.0.0 - adding new restrictions argument for imputation with coarsening, and
+ordered factors now imputed using MASS::polr.
+
 Version 1.9.2 - fixing dtsam imputation for factor covariates
 
 Version 1.9.1 - adding model=TRUE to coxph call to resolve an error some have experienced
