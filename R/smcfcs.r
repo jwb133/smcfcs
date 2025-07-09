@@ -648,7 +648,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           beta <- ymod$coef
           imputations[[imp]][imputationNeeded, outcomeCol] <- 0
           outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% beta
-          prob <- expit(outmodxb[imputationNeeded])
+          prob <- plogis(outmodxb[imputationNeeded])
           imputations[[imp]][imputationNeeded, outcomeCol] <- rbinom(length(imputationNeeded), 1, prob)
         } else if (smtype == "poisson") {
           ymod <- glm(as.formula(smformula), family = "poisson", imputations[[imp]])
@@ -757,17 +757,17 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           xmod <- glm(xmodformula, family = "binomial", data = xmoddata)
           newbeta <- modPostDraw(xmod)
           if ((smtype == "casecohort") | (smtype == "nestedcc")) {
-            xfitted <- expit(model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta)
+            xfitted <- plogis(model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta)
           } else {
-            xfitted <- expit(model.matrix(xmod) %*% newbeta)
+            xfitted <- plogis(model.matrix(xmod) %*% newbeta)
           }
         } else if (method[targetCol] == "brlogreg") {
           xmod <- glm(xmodformula, family = "binomial", data = xmoddata, method = brglm2::brglmFit)
           newbeta <- modPostDraw(xmod)
           if ((smtype == "casecohort") | (smtype == "nestedcc")) {
-            xfitted <- expit(model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta)
+            xfitted <- plogis(model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta)
           } else {
-            xfitted <- expit(model.matrix(xmod) %*% newbeta)
+            xfitted <- plogis(model.matrix(xmod) %*% newbeta)
           }
         } else if (method[targetCol] == "poisson") {
           xmod <- glm(xmodformula, family = "poisson", data = xmoddata)
@@ -795,7 +795,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           for (j in 1:length(newcutpoints)) {
             polr_cumlogitprob[,j] <- model.matrix(xmod) %*% c(-newcutpoints[j],newbeta)
           }
-          polr_cumprobs <- cbind(rep(1,dim(imputations[[imp]])[1]),expit(polr_cumlogitprob))
+          polr_cumprobs <- cbind(rep(1,dim(imputations[[imp]])[1]),plogis(polr_cumlogitprob))
           xfitted <- cbind(-t(apply(polr_cumprobs, MARGIN=1, FUN=diff)), polr_cumprobs[,dim(polr_cumprobs)[2]])
         } else if (method[targetCol] == "mlogit") {
           if (is.factor(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method mlogit must be stored as factors.")
@@ -1039,7 +1039,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
               outcomeDens <- dnorm(deviation, mean = 0, sd = outcomeModResVar^0.5)
             } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
               outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              prob <- expit(outmodxb[imputationNeeded])
+              prob <- plogis(outmodxb[imputationNeeded])
               outcomeDens <- prob * imputations[[imp]][imputationNeeded, outcomeCol] + (1 - prob) * (1 - imputations[[imp]][imputationNeeded, outcomeCol])
             } else if (smtype == "dtsam") {
               outcomeDens <- dtsamOutcomeDens(
@@ -1137,7 +1137,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
               reject <- 1 * (log(uDraw) > -(deviation^2) / (2 * array(outcomeModResVar, dim = c(length(imputationNeeded), 1))))
             } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
               outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              prob <- expit(outmodxb[imputationNeeded])
+              prob <- plogis(outmodxb[imputationNeeded])
               prob <- prob * imputations[[imp]][imputationNeeded, outcomeCol] + (1 - prob) * (1 - imputations[[imp]][imputationNeeded, outcomeCol])
               reject <- 1 * (uDraw > prob)
             } else if (smtype == "dtsam") {
@@ -1225,7 +1225,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
               reject <- 1 * (log(uDraw) > -(deviation^2) / (2 * array(outcomeModResVar, dim = c(rjlimit, 1))))
             } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
               outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
-              prob <- expit(outmodxb)
+              prob <- plogis(outmodxb)
               prob <- prob * tempData[, outcomeCol] + (1 - prob) * (1 - tempData[, outcomeCol])
               reject <- 1 * (uDraw > prob)
             } else if (smtype == "dtsam") {
@@ -1327,7 +1327,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             }
             outcomeModBeta <- modPostDraw(ymod)
             outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-            prob <- expit(outmodxb[imputationNeeded])
+            prob <- plogis(outmodxb[imputationNeeded])
             imputations[[imp]][imputationNeeded, outcomeCol] <- rbinom(length(imputationNeeded), 1, prob)
           }
         }
@@ -1421,10 +1421,6 @@ updatePassiveVars <- function(data, method, passivecols) {
     data[, i] <- with(data, eval(parse(text = method[i])))
   }
   data
-}
-
-expit <- function(x) {
-  exp(x) / (1 + exp(x))
 }
 
 sumna <- function(x) {
