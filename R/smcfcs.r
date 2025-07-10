@@ -800,11 +800,9 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
         } else if (method[targetCol] == "mlogit") {
           if (is.factor(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method mlogit must be stored as factors.")
           xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel = 1), data = xmoddata)
-          xmod.dummy <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel = 1), data = imputations[[imp]])
           newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu = rep(0, ncol(VGAM::vcov(xmod))), Sigma = VGAM::vcov(xmod))
-          linpreds <- matrix((VGAM::model.matrix(xmod.dummy)) %*% newbeta, byrow = TRUE, ncol = (nlevels(imputations[[imp]][, targetCol]) - 1))
-          denom <- 1 + rowSums(exp(linpreds))
-          xfitted <- cbind(1 / denom, exp(linpreds) / denom)
+          xmod@coefficients <- newbeta
+          xfitted <- VGAM::predictvglm(xmod, newdata = imputations[[imp]], type = "response")
         }
         if (noisy == TRUE) {
           print(summary(xmod))
