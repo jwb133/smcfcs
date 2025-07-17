@@ -15,7 +15,7 @@ test_that("Basic setup runs (CRAN check)", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -27,7 +27,7 @@ test_that("Basic setup runs (CRAN check)", {
       simData <- data.frame(x1 = x1, x2 = x2, failtime = failtime, d = d)
       table(simData$failtime, simData$d)
 
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
       # impute using smcfcs.dtsam
       M <- 5
@@ -51,7 +51,7 @@ test_that("Errors if times are not integers", {
     beta <- c(1, -1)
     yMat <- array(0, dim = c(n, T))
     for (i in 1:T) {
-      yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+      yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
     }
     failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
     # event indicator
@@ -63,7 +63,7 @@ test_that("Errors if times are not integers", {
     simData <- data.frame(x1 = x1, x2 = x2, failtime = failtime, d = d)
     simData$failtime <- simData$failtime / 2
 
-    simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+    simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
     # impute using smcfcs.dtsam
     M <- 5
@@ -85,7 +85,7 @@ test_that("Errors if times not all positive", {
     beta <- c(1, -1)
     yMat <- array(0, dim = c(n, T))
     for (i in 1:T) {
-      yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+      yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
     }
     failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
     # event indicator
@@ -97,7 +97,7 @@ test_that("Errors if times not all positive", {
     simData <- data.frame(x1 = x1, x2 = x2, failtime = failtime, d = d)
     simData$failtime <- simData$failtime - 1
 
-    simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+    simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
     # impute using smcfcs.dtsam
     M <- 5
@@ -119,7 +119,7 @@ test_that("Errors if factor time model but some times with no events", {
     beta <- c(1, -1)
     yMat <- array(0, dim = c(n, T))
     for (i in 1:T) {
-      yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+      yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
     }
     failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
     # event indicator
@@ -131,7 +131,7 @@ test_that("Errors if factor time model but some times with no events", {
     simData <- data.frame(x1 = x1, x2 = x2, failtime = failtime, d = d)
     simData$d[simData$failtime == 5] <- 0
 
-    simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+    simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
     # impute using smcfcs.dtsam
     M <- 5
@@ -154,7 +154,7 @@ test_that("Still runs with some times with no events if linear time effects used
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -166,7 +166,7 @@ test_that("Still runs with some times with no events if linear time effects used
       simData <- data.frame(x1 = x1, x2 = x2, failtime = failtime, d = d)
       simData$d[simData$failtime == 5] <- 0
 
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
       # impute using smcfcs.dtsam
       M <- 5
@@ -194,7 +194,7 @@ test_that("Full data dtsam is unbiased", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -233,7 +233,7 @@ test_that("MAR is unbiased, binary covariate missing", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -250,7 +250,7 @@ test_that("MAR is unbiased, binary covariate missing", {
       mod <- glm(d ~ factor(tstart) + x1 + x2, family = "binomial", data = longData)
       summary(mod)
 
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
       # impute using smcfcs.dtsam
       M <- 5
@@ -297,7 +297,7 @@ test_that("MCAR is unbiased, cts covariate missing", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -314,7 +314,7 @@ test_that("MCAR is unbiased, cts covariate missing", {
       mod <- glm(d ~ factor(tstart) + x1 + x2, family = "binomial", data = longData)
       summary(mod)
 
-      # simData$x2[runif(n)<expit((x1-mean(x1)/sd(x1)))] <- NA
+      # simData$x2[runif(n)<plogis((x1-mean(x1)/sd(x1)))] <- NA
       simData$x2[runif(n) < 0.5] <- NA
 
       # impute using smcfcs.dtsam
@@ -362,7 +362,7 @@ test_that("MAR is unbiased, binary covariate missing, linear time effect", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[1] + alpha[2] * (i - 1) + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[1] + alpha[2] * (i - 1) + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -378,7 +378,7 @@ test_that("MAR is unbiased, binary covariate missing, linear time effect", {
       mod <- glm(d ~ tstart + x1 + x2, family = "binomial", data = longData)
       summary(mod)
 
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
       # simData$x2[runif(n)<0.25] <- NA
 
       # impute using smcfcs.dtsam
@@ -427,7 +427,7 @@ test_that("MAR is unbiased, binary covariate missing, quadratic time effect", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[1] + alpha[2] * (i - 1) + alpha[3] * (i - 1)^2 + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[1] + alpha[2] * (i - 1) + alpha[3] * (i - 1)^2 + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -443,7 +443,7 @@ test_that("MAR is unbiased, binary covariate missing, quadratic time effect", {
       mod <- glm(d ~ tstart + I(tstart^2) + x1 + x2, family = "binomial", data = longData)
       summary(mod)
 
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
       # simData$x2[runif(n)<0.25] <- NA
 
       # impute using smcfcs.dtsam
@@ -492,7 +492,7 @@ test_that("Binary covariate as factor runs and matches when numeric", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[1] + alpha[2] * (i - 1) + alpha[3] * (i - 1)^2 + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[1] + alpha[2] * (i - 1) + alpha[3] * (i - 1)^2 + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -502,7 +502,7 @@ test_that("Binary covariate as factor runs and matches when numeric", {
       mean(d)
 
       simData <- data.frame(x1 = x1, x2 = x2, failtime = failtime, d = d)
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
       # impute using smcfcs.dtsam
       M <- 5
@@ -542,7 +542,7 @@ test_that("MAR is unbiased, categorical covariate missing, linear time effect", 
       beta <- c(1, -1, 0.5)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[1] + alpha[2] * (i - 1)
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[1] + alpha[2] * (i - 1)
                                            + beta[1] * 1*(x1==1)
                                            + beta[2] * 1*(x1==2)
                                            + beta[3] * x2))
@@ -561,7 +561,7 @@ test_that("MAR is unbiased, categorical covariate missing, linear time effect", 
       mod <- glm(d ~ tstart + x1 + x2, family = "binomial", data = longData)
       summary(mod)
 
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
       # impute using smcfcs.dtsam
       M <- 5

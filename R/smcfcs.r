@@ -1476,7 +1476,7 @@ dtsamOutcomeDens <- function(inputData, timeEffects, outcomeModBeta, nTimePoints
   # add in covariate effects
   outmodxb <- outmodxb + matrix(covXbEffects, nrow = inputDataN, ncol = nTimePoints)
   # prob is matrix of conditional probabilities/hazard of event in each period
-  prob <- expit(outmodxb)
+  prob <- plogis(outmodxb)
   logSurvProb <- log(1 - prob)
   logSurvProbCumSum <- cbind(rep(0, inputDataN), t(apply(logSurvProb, 1, cumsum)))
 

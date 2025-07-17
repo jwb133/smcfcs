@@ -1,3 +1,7 @@
+Version 2.0.1 - numerical instability fixes - replacing expit with plogis and replacing
+manual calculation of fitted values in mlogit imputation with predictvglm from VGAM
+package.
+
 Version 2.0.0 - adding new restrictions argument for imputation with coarsening, and
 ordered factors now imputed using MASS::polr.
 

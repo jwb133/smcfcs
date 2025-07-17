@@ -179,7 +179,7 @@ alpha <- seq(-1, -0.1, 0.1)
 beta <- c(1, -1)
 yMat <- array(0, dim = c(n, T))
 for (i in 1:T) {
-  yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+  yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
 }
 failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
 # event indicator
@@ -195,7 +195,7 @@ d[cTime < failtime] <- 0
 mean(d)
 
 # make some data missing in x1
-x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
 ex_dtsam <- data.frame(x1 = x1, x2 = x2, failtime = t, d = d)
 usethis::use_data(ex_dtsam, overwrite = TRUE)
@@ -261,7 +261,7 @@ n <- 1000
 myshape <- 1.5
 myscale <- 3
 z <- rnorm(n)
-x <- 1*(runif(n)<expit(z))
+x <- 1*(runif(n)<plogis(z))
 t <- rweibull(n=n,shape=myshape,scale=exp(x+z)^(-1/myshape))
 c <- rexp(n)
 d <- 1*(t<c)

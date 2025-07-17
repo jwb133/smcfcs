@@ -38,11 +38,10 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
   skip_on_cran()
   expect_equal(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10
@@ -72,11 +71,10 @@ test_that("Flexsurv imputation of censored times checks", {
   skip_on_cran()
   expect_equal(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10
@@ -104,11 +102,10 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
   skip_on_cran()
   expect_equal(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10
@@ -144,11 +141,10 @@ test_that("Flexsurv imputation, imputing covariate and censored times,
   skip_on_cran()
   expect_equal(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       c <- rexp(n)
       d <- 1 * (t < c)
@@ -176,11 +172,10 @@ test_that("Flexsurv imputation, imputing covariate and censored times,
   skip_on_cran()
   expect_equal(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       c <- rexp(n)
       d <- 1 * (t < c)
@@ -208,11 +203,10 @@ test_that("Flexsurv imputation, imputing censored times only. Check it runs.", {
   skip_on_cran()
   expect_equal(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       c <- rexp(n)
       d <- 1 * (t < c)
@@ -240,11 +234,10 @@ test_that("Flexsurv imputation of missing binary covariate is approximately unbi
   skip_on_cran()
   expect_equal(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10
@@ -275,11 +268,10 @@ test_that("Flexsurv imputation errors if NA in event time variable", {
             skip_on_cran()
             expect_error(
               {
-                expit <- function(x) {exp(x)/(1+exp(x))}
                 set.seed(1234)
                 n <- 1000
                 z <- rnorm(n)
-                x <- 1*(runif(n)<expit(z))
+                x <- 1*(runif(n)<plogis(z))
                 t <- -log(runif(n)) / (1 * exp(x + z))
                 d <- 1 * (t < 10)
                 t[d == 0] <- 10
@@ -304,11 +296,10 @@ test_that("Flexsurv imputation errors if NA in event indicator variable", {
   skip_on_cran()
   expect_error(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10
@@ -334,11 +325,10 @@ test_that("Flexsurv imputation errors if time-varying effect used for fully obs 
   skip_on_cran()
   expect_error(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10
@@ -360,11 +350,10 @@ test_that("Flexsurv imputation doesn't error if time-varying effect used for ful
   skip_on_cran()
   expect_error(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10
@@ -387,11 +376,10 @@ test_that("Flexsurv imputation doesn't error if time-varying effect used for par
   skip_on_cran()
   expect_error(
     {
-      expit <- function(x) {exp(x)/(1+exp(x))}
       set.seed(1234)
       n <- 1000
       z <- rnorm(n)
-      x <- 1*(runif(n)<expit(z))
+      x <- 1*(runif(n)<plogis(z))
       t <- -log(runif(n)) / (1 * exp(x + z))
       d <- 1 * (t < 10)
       t[d == 0] <- 10

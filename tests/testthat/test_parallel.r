@@ -254,7 +254,7 @@ test_that("DTSAM imputation runs", {
       beta <- c(1, -1)
       yMat <- array(0, dim = c(n, T))
       for (i in 1:T) {
-        yMat[, i] <- 1 * (runif(n) < expit(alpha[i] + beta[1] * x1 + beta[2] * x2))
+        yMat[, i] <- 1 * (runif(n) < plogis(alpha[i] + beta[1] * x1 + beta[2] * x2))
       }
       failtime <- apply(yMat, 1, function(x) which(x == 1)[1])
       # event indicator
@@ -266,7 +266,7 @@ test_that("DTSAM imputation runs", {
       simData <- data.frame(x1 = x1, x2 = x2, failtime = failtime, d = d)
       table(simData$failtime, simData$d)
 
-      simData$x1[runif(n) < expit((x2 - mean(x2) / sd(x2)))] <- NA
+      simData$x1[runif(n) < plogis((x2 - mean(x2) / sd(x2)))] <- NA
 
       # impute using smcfcs.dtsam
       M <- 5
