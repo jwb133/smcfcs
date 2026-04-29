@@ -1060,11 +1060,11 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
               survEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="survival",
                                  ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
                                  cross=FALSE, tidy=TRUE)
-              survEst <- as.matrix(survEst)[,"est"]
+              survEst <- as.numeric(as.matrix(survEst)[,"est"])
               hazEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="hazard",
                                 ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
                                 cross=FALSE, tidy=TRUE)
-              hazEst <- as.matrix(hazEst)[,"est"]
+              hazEst <- as.numeric(as.matrix(hazEst)[,"est"])
               outcomeDens <- survEst*(hazEst^imputations[[imp]][imputationNeeded,dCol])
             } else if (smtype == "nestedcc") {
               outmodxb <- model.matrix(as.formula(smformula2), imputations[[imp]])

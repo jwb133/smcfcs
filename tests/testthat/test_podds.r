@@ -146,3 +146,71 @@ test_that("podds using polr with two covariates is unbiased", {
     TRUE
   )
 })
+
+
+test_that("podds using polr runs with flexsurv, one covariate in polr model", {
+  expect_error(
+    {
+      set.seed(1234)
+      n <- 100
+
+      z <- rnorm(n)
+      xtilde <- 2*z + rlogis(n)
+
+      x <- rep("a",n)
+      x[(xtilde>(-1.5)) & (xtilde<0.25)] <- "b"
+      x[(xtilde>(0.25)) & (xtilde<0.75)] <- "c"
+      x[(xtilde>(0.75)) ] <- "d"
+      table(x)
+
+      t <- rexp(n)
+      d <- 1*(t<0.5)
+      t[d==0] <- 0.5
+
+      x[1*runif(n)<(exp(z)/(1+exp(z)))] <- NA
+
+      simData <- data.frame(x=as.ordered(x),z=z,t=t,d=d)
+
+      imps <- smcfcs.flexsurv(originaldata=simData,
+                     smformula = "Surv(t,d)~z+I(x=='b')+I(x=='c')+I(x=='d')",
+                     method = c("podds","", "", "")
+      )
+    },
+    NA
+  )
+
+})
+
+
+test_that("podds using polr runs with flexsurv, not included with I()", {
+  expect_error(
+    {
+      set.seed(1234)
+      n <- 100
+
+      z <- rnorm(n)
+      xtilde <- 2*z + rlogis(n)
+
+      x <- rep("a",n)
+      x[(xtilde>(-1.5)) & (xtilde<0.25)] <- "b"
+      x[(xtilde>(0.25)) & (xtilde<0.75)] <- "c"
+      x[(xtilde>(0.75)) ] <- "d"
+      table(x)
+
+      t <- rexp(n)
+      d <- 1*(t<0.5)
+      t[d==0] <- 0.5
+
+      x[1*runif(n)<(exp(z)/(1+exp(z)))] <- NA
+
+      simData <- data.frame(x=as.ordered(x),z=z,t=t,d=d)
+
+      imps <- smcfcs.flexsurv(originaldata=simData,
+                              smformula = "Surv(t,d)~z+x",
+                              method = c("podds","", "", ""),
+      )
+    },
+    NA
+  )
+
+})
