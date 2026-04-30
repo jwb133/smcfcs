@@ -1,3 +1,6 @@
+Version 2.0.2 - fix to flexsurv imputation to overcome error sometimes occurring with
+factor covariates.
+
 Version 2.0.1 - numerical instability fixes - replacing expit with plogis and replacing
 manual calculation of fitted values in mlogit imputation with predictvglm from VGAM
 package.
