@@ -38,3 +38,4 @@ Suggests:
 VignetteBuilder: knitr
 RoxygenNote: 7.3.3
 Encoding: UTF-8
+BugReports: https://github.com/jwb133/smcfcs/issues
