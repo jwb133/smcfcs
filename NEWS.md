@@ -1,3 +1,5 @@
+Version 2.0.3 - fix to imputation of missing Poisson outcomes (spotted by Stef van Buuren).
+
 Version 2.0.2 - fix to flexsurv imputation to overcome error sometimes occurring with
 factor covariates.
 

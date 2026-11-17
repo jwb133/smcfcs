@@ -1298,9 +1298,9 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
       }
       }
 
-      # imputations of missing outcomes, if present (using proper imputation), for regression and logistic
-      # substantive models
-      if ((smtype == "lm") | (smtype == "logistic") | (smtype == "brlogistic")) {
+      # imputations of missing outcomes, if present (using proper imputation), for regression, logistic
+      # and Poisson substantive models
+      if ((smtype == "lm") | (smtype == "logistic") | (smtype == "brlogistic") | (smtype == "poisson")) {
         if (sum(r[, outcomeCol]) < n) {
           imputationNeeded <- (1:n)[r[, outcomeCol] == 0]
           # estimate parameters of substantive model using those with outcomes observed
@@ -1327,6 +1327,11 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
             prob <- plogis(outmodxb[imputationNeeded])
             imputations[[imp]][imputationNeeded, outcomeCol] <- rbinom(length(imputationNeeded), 1, prob)
+          } else if (smtype == "poisson") {
+            ymod <- glm(as.formula(smformula), family = "poisson", imputations[[imp]][r[, outcomeCol] == 1, ])
+            outcomeModBeta <- modPostDraw(ymod)
+            outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
+            imputations[[imp]][imputationNeeded, outcomeCol] <- rpois(length(imputationNeeded), exp(outmodxb[imputationNeeded]))
           }
         }
       } else if (smtype == "flexsurv") {
