@@ -74,11 +74,16 @@ name (section 4.1).
 ### 3.1 `smcfcs.cycle()` (exported)
 
 ```r
-smcfcs.cycle(data, r, smtype, smformula, method,
-             predictorMatrix = NULL, rjlimit = 1000, noisy = FALSE,
-             errorProneMatrix = NULL, restrictions = NULL,
-             verbose = FALSE, cycleState = NULL, ...)
+smcfcs.cycle(data, r,                                         # what to update
+             smtype, smformula, method, predictorMatrix = NULL,
+             errorProneMatrix = NULL, restrictions = NULL,    # the model
+             rjlimit = 1000, noisy = FALSE, verbose = FALSE,  # control
+             cycleState = NULL, ...)                          # state
 ```
+
+The help page will say plainly that this is a low-level function for package
+developers, and that most users want `smcfcs()`. The name and argument order
+are discussed in open question 5.
 
 - `data` is the current completed data frame. The partially observed
   variables and the outcome contain current imputations, with no `NA`s.
@@ -344,7 +349,29 @@ In mice:
 
    Passive columns would still work for users who want them. Do you agree
    with recommending the formula form?
-5. **Naming and argument order** of `smcfcs.cycle()`: any preferences?
+5. **Name and argument order of `smcfcs.cycle()`.** Our proposals:
+   - **Name: `smcfcs.cycle()`.** It matches the existing family
+     (`smcfcs.casecohort()`, `smcfcs.flexsurv()`, ...), so it is easy to
+     find. Because it could be mistaken for another way to impute, its help
+     page will make clear it is a low-level building block. It will not be
+     added to the functions accepted by `smcfcs.parallel()`. We considered
+     `smcfcs_cycle()` and `smcfcs.step()`. The first would be the only
+     exported snake_case name, and the second has no real advantage.
+   - **Order: grouped by purpose** (section 3.1). First comes what to update
+     (`data`, `r`), then the model (`smtype`, `smformula`, `method`,
+     `predictorMatrix`, `errorProneMatrix`, `restrictions`), then the
+     controls (`rjlimit`, `noisy`, `verbose`), and last the state
+     (`cycleState`). The alternative is to copy the order of `smcfcs()` and
+     add `r` at the end. That would put a required argument after optional
+     ones, only to match positions in a function that callers use with named
+     arguments. Neither choice changes any existing function.
+   - **`data`, not `originaldata`**, because the input is the completed data.
+     The return value is `list(data, cycleState)`.
+   - **`verbose` next to `noisy`.** `noisy` keeps its meaning (model
+     summaries), and `verbose` controls the status messages. They will be
+     documented side by side.
+
+   Any preferences, given how you name things in smcfcs?
 
 ## 7. Timeline
 
