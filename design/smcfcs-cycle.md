@@ -167,11 +167,26 @@ the bookkeeping draws any. A regression test (section 5) checks this exactly.
 ### 3.5 Messages
 
 The descriptive `print()` calls (lines 493–496, 539, 624 and 682–684) become
-`message()` calls controlled by `verbose`. `smcfcs()` keeps
-`verbose = TRUE` by default, so existing users still see the messages, but on
-stderr instead of stdout. If that change of stream matters, we can keep
-`print()` for `smcfcs()` and use `message()` only in `smcfcs.cycle()` (open
-question 2).
+`message()` calls controlled by `verbose`. This applies to every caller,
+including `smcfcs()`, which keeps `verbose = TRUE` by default. The `noisy`
+model summaries stay as `print()`, because they are printed results rather
+than status messages.
+
+What changes for users:
+
+- The lines appear without the `[1]` prefix and the quotes.
+- `suppressMessages(smcfcs(...))` silences them. Today that takes
+  `invisible(capture.output(...))`.
+- In R Markdown and Quarto, the chunk option `message = FALSE` hides them.
+- They go to stderr instead of stdout. So `capture.output()` and `sink()` no
+  longer capture them, and a shell redirect needs `2>`.
+
+Wrappers such as `smcfcs.finegray()` (see the comment at its line 185) and
+mice can then silence the messages cleanly or log them. The PR updates the
+test that relies on `expect_output()` ("Checking outcome model check for
+logistic models", `test_errorchecks.R`) to use `expect_message()`, and adds a
+NEWS entry. Keeping `print()` for `smcfcs()` only would leave those wrappers
+with the current problem, so we recommend the switch for all callers.
 
 ## 4. Proposed changes to mice
 
@@ -266,7 +281,9 @@ In smcfcs:
    - cells with `r == 1` are never changed;
    - a logical `r` and a 0/1 `r` give identical results;
    - `verbose = FALSE` produces no output.
-3. The existing test suite passes unchanged.
+3. The existing test suite passes, with one deliberate change: the
+   `expect_output()` in `test_errorchecks.R` becomes `expect_message()`
+   (section 3.5).
 
 In mice:
 
@@ -285,8 +302,10 @@ In mice:
    1312. Is that intended? If not, fixing it changes results, so it should
    land before the regression references are generated, or in its own
    commit.
-2. **`print()` → `message()`** for `smcfcs()` users: is the change of output
-   stream acceptable (section 3.5)?
+2. **`print()` → `message()` for all callers** (section 3.5). We recommend
+   it: the change is cosmetic, and it gives users the standard way to silence
+   smcfcs. Are you happy with it, including the NEWS entry and the updated
+   `expect_output()` test?
 3. **Caching the setup in `cycleState`**: is that acceptable, or would you
    rather `smcfcs.cycle()` accepted a precomputed `setup` argument?
 4. **Transformations: `I(x^2)` in `smformula` or a passive column?** The
