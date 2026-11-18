@@ -220,15 +220,15 @@ imp <- mice(data, blocks = blocks, method = meth,
 ```
 
 - The block holds the outcome and the incomplete covariates in the
-  substantive model. Transformations and interactions can be written inside
-  `smformula` (e.g. `I(x1^2)`, `x1:x2`), as in the smcfcs vignette. smcfcs
-  re-evaluates `model.matrix(smformula, data)` for each candidate value.
-  Alternatively, a passive column can be added to the block, with a smcfcs
-  passive expression (no `~`) such as `smmethod = c(x1sq = "x1^2")`. Then it
-  is updated within the cycle. A mice passive method (`"~I(x1^2)"`) outside
-  the block would be stale inside the cycle. Variables outside the block are
-  imputed by ordinary mice methods. Inside a cycle they are treated as fixed
-  at their current values.
+  substantive model. Variables outside the block are imputed by ordinary
+  mice methods. Inside a cycle they are treated as fixed at their current
+  values.
+- Squares and interactions are written in `smformula`, e.g. `I(x1^2)` or
+  `x1:x2`, as in the smcfcs vignette. This is the recommended form (open
+  question 4). A passive column is also possible. It must then be in the
+  block, with a smcfcs-style expression without `~`, e.g.
+  `smmethod = c(x1sq = "x1^2")`. A mice passive method (`"~I(x1^2)"`) is not
+  suitable here, because smcfcs would not update it within a cycle.
 - The argument names follow smcfcs (`smtype`, `smformula`, `rjlimit`,
   `predictorMatrix`) and are passed straight through. The per-variable
   smcfcs methods go in `smmethod`, because `method` already means something
@@ -326,13 +326,24 @@ In mice:
    arguments triggers a fresh preparation. This keeps a single exported
    function, and the stored preparation stays internal, so you remain free
    to change it. Does that work for you?
-4. **Transformations: `I(x^2)` in `smformula` or a passive column?** The
-   vignette uses `I(x^2)` inside `smformula`. `smcovnames` matches term
-   labels against column names, so a term like `I(z^2)` in a fully observed
-   `z` does not make `z` a fully observed SM covariate unless `z` also
-   appears on its own. And a transformed term never enters the covariate
-   models of other partially observed variables. Do you recommend
-   `I()` terms, or passive columns, for the mice interface?
+4. **Squares and interactions: write them in the formula.** A model with
+   `x^2` can be specified in two ways in smcfcs. One is directly in the
+   formula, `smformula = "y ~ x + I(x^2)"`, as in the vignette. The other is
+   a separate column `xsq` with the passive method `"x^2"`. Both give the
+   same substantive model. For the mice interface we recommend the formula
+   form, for three reasons:
+   - The user writes the same formula for imputation and for the analysis
+     (`with(imp, lm(y ~ x + I(x^2)))`), with no extra column to create.
+   - A passive column brings no extra benefit. By default it doesn't enter
+     the imputation models of other incomplete covariates either.
+   - In smcfcs's default predictor choice, a fully observed `z` that appears
+     only inside a term like `I(z^2)` is not used as a predictor of the
+     incomplete covariates. In mice this doesn't arise, because the wrapper
+     takes the predictors from mice's `predictorMatrix` (section 4.1), and
+     there `z` is included by default.
+
+   Passive columns would still work for users who want them. Do you agree
+   with recommending the formula form?
 5. **Naming and argument order** of `smcfcs.cycle()`: any preferences?
 
 ## 7. Timeline
