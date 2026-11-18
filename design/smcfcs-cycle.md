@@ -181,19 +181,24 @@ Working name: `mice.impute.smc()`. The name is open; it must not be `smcfcs`
 (section 2c). smcfcs goes in Suggests.
 
 ```r
-blocks <- make.blocks(list(smc = c("y", "x1", "x2", "x1sq"), "aux1", "aux2"))
+blocks <- make.blocks(list(smc = c("y", "x1", "x2"), "aux1", "aux2"))
 meth   <- make.method(data, blocks); meth["smc"] <- "smc"
 imp <- mice(data, blocks = blocks, method = meth,
             blots = list(smc = list(smtype = "lm",
-                                    smformula = "y ~ x1 + x2 + x1sq",
-                                    smmethod = c(x1 = "norm", x2 = "logreg",
-                                                 x1sq = "x1^2"))))
+                                    smformula = "y ~ x1 + I(x1^2) + x2",
+                                    smmethod = c(x1 = "norm", x2 = "logreg"))))
 ```
 
-- The block holds the outcome, the incomplete covariates in the substantive
-  model, and any passive variables those covariates feed. Variables outside
-  the block are imputed by ordinary mice methods. Inside a cycle they are
-  treated as fixed at their current values.
+- The block holds the outcome and the incomplete covariates in the
+  substantive model. Transformations and interactions can be written inside
+  `smformula` (e.g. `I(x1^2)`, `x1:x2`), as in the smcfcs vignette. smcfcs
+  re-evaluates `model.matrix(smformula, data)` for each candidate value.
+  Alternatively, a passive column can be added to the block, with a smcfcs
+  passive expression (no `~`) such as `smmethod = c(x1sq = "x1^2")`. Then it
+  is updated within the cycle. A mice passive method (`"~I(x1^2)"`) outside
+  the block would be stale inside the cycle. Variables outside the block are
+  imputed by ordinary mice methods. Inside a cycle they are treated as fixed
+  at their current values.
 - The argument names follow smcfcs (`smtype`, `smformula`, `rjlimit`,
   `predictorMatrix`) and are passed straight through. The per-variable
   smcfcs methods go in `smmethod`, because `method` already means something
@@ -284,9 +289,13 @@ In mice:
    stream acceptable (section 3.5)?
 3. **Caching the setup in `cycleState`**: is that acceptable, or would you
    rather `smcfcs.cycle()` accepted a precomputed `setup` argument?
-4. **Terms like `I(x^2)` or `x:z` in `smformula`.** `smcovnames` is built from
-   term labels and matched against column names, so we recommend explicit
-   passive variables. Is that what you'd advise users?
+4. **Transformations: `I(x^2)` in `smformula` or a passive column?** The
+   vignette uses `I(x^2)` inside `smformula`. `smcovnames` matches term
+   labels against column names, so a term like `I(z^2)` in a fully observed
+   `z` does not make `z` a fully observed SM covariate unless `z` also
+   appears on its own. And a transformed term never enters the covariate
+   models of other partially observed variables. Do you recommend
+   `I()` terms, or passive columns, for the mice interface?
 5. **Naming and argument order** of `smcfcs.cycle()`: any preferences?
 
 ## 7. Timeline
