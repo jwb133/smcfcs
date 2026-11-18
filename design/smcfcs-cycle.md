@@ -372,11 +372,3 @@ In mice:
      documented side by side.
 
    Any preferences, given how you name things in smcfcs?
-
-## 7. Timeline
-
-- Draft branch for review (this fork, branch `smcfcs-cycle`): by 30 November
-  2026.
-- Pull request to `jwb133/smcfcs`, with tests: by 7 December 2026.
-- mice changes, on a mice branch: in parallel. They depend on the CRAN
-  release of the new smcfcs.
