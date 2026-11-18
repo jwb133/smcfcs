@@ -17,61 +17,9 @@ mice runs its own Gibbs loop and calls a block method once per iteration with
 the current completed data. To fit in, mice needs a function that runs exactly
 one SMC-FCS cycle on a given dataset.
 
-## 2. Lessons from `miceadds::mice.impute.smcfcs()`
+## 2. Proposed changes to smcfcs
 
-miceadds (3.20.10) already has a `mice.impute.smcfcs()`. It does not call
-smcfcs. It is a separate implementation with these features:
-
-- It is univariate. Each incomplete variable gets method `"smcfcs"`, and the
-  substantive model is passed through mice's `...` as `sm`.
-- Each call runs 20 Metropolis–Hastings steps with a proposal width that
-  adapts across iterations. smcfcs uses direct sampling or rejection sampling.
-- Parameter uncertainty comes from a bootstrap of the rows where the target
-  variable is observed.
-- The substantive model can be normal, logistic, Box-Cox, Yeo-Johnson or
-  lognormal. There is no Cox, Poisson or competing-risks model.
-- It finds its state by searching parent frames for the sampler's local
-  variables (`newstate`, `yname`, `data`, `blocks`). It keeps its tuning
-  factor across iterations by calling `assign()` into mice's frame.
-
-Three lessons for this design.
-
-**(a) Fit the models on all rows.** miceadds fits both the covariate model and
-the substantive model only on rows where the covariate is observed. In the
-simulation below, x is missing at random depending on y (47% missing). The
-estimates are biased towards complete-case analysis. Changing that one line
-so it bootstraps all rows removes most of the bias. Each entry is the mean
-over 10 datasets (n = 1000, m = 5, 10 iterations).
-
-Model: `y = 0.5 z + x + x^2 + e`, with `P(x missing) = plogis(-1 + y)`.
-
-| Method                                | z    | x    | x²   |
-|---------------------------------------|------|------|------|
-| Truth                                 | 0.50 | 1.00 | 1.00 |
-| Complete cases                        | 0.42 | 0.85 | 0.82 |
-| `miceadds::mice.impute.smcfcs`        | 0.48 | 0.86 | 0.88 |
-| miceadds, bootstrap over all rows     | 0.51 | 0.96 | 1.03 |
-| `smcfcs::smcfcs` 2.0.3                | 0.52 | 1.06 | 1.06 |
-
-In the smcfcs runs, rejection sampling failed 50–150 times per call with
-`rjlimit = 1000`. A failed draw keeps the previous value. Counts like these
-must reach the mice user, which is why section 3.3 returns them in
-`cycleState`.
-
-**(b) Keep state in a supported place.** State that persists across
-iterations should be passed in and returned. It should not be stored by
-reaching into the caller's frame.
-
-**(c) Avoid a name clash.** mice looks up `mice.impute.<method>` from inside
-its own namespace, so a function of that name in mice always wins over the
-one in miceadds. If mice exported `mice.impute.smcfcs()`, every existing
-miceadds user with `method = "smcfcs"` would silently get the new function,
-which takes different arguments. The mice method therefore needs a different
-name (section 4.1).
-
-## 3. Proposed changes to smcfcs
-
-### 3.1 `smcfcs.cycle()` (exported)
+### 2.1 `smcfcs.cycle()` (exported)
 
 ```r
 smcfcs.cycle(data, r,                                         # what to update
@@ -96,7 +44,7 @@ are discussed in open question 5.
 - `verbose` controls the descriptive messages (outcome, passive variables,
   "Imputing: x using ..."). `noisy` still controls the model summaries.
 - `cycleState` is `NULL` on the first call, and otherwise the value returned
-  by the previous call (section 3.3).
+  by the previous call (section 2.3).
 
 The function returns `list(data = <updated data>, cycleState = <state>)`.
 
@@ -115,7 +63,7 @@ available through `smcfcs()`. They can be opened to mice later, once their
 extra requirements are handled: subcohort and risk-set data, flexsurv warm
 starts across mice iterations, and error-prone replicate measurements.
 
-### 3.2 Shared internal setup: `smcfcs.setup()`
+### 2.2 Shared internal setup: `smcfcs.setup()`
 
 Before imputing anything, `smcfcs.core()` does some preparation (lines
 233–536):
@@ -148,7 +96,7 @@ The contents of the stored preparation stay internal. If needed later, an
 optional `setup` argument can be added without breaking existing code. With
 it, a caller could prepare once and share the result across mice's m chains.
 
-### 3.3 Explicit state
+### 2.3 Explicit state
 
 These quantities carry over between cycles today:
 
@@ -158,13 +106,13 @@ These quantities carry over between cycles today:
 | `flexsurvFailCount`    | counter, updated with `<<-`           | `cycleState$flexsurvFailCount`                                 |
 | `flexsurvEsts`         | warm start when `cyclenum > 1`        | `cycleState$flexsurvEsts`; `NULL` means first cycle            |
 | `outcomeModBeta` at end of cycle | written to `smCoefIter[imp, , cyclenum]` | `cycleState$smCoef`; `smcfcs.core()` fills `smCoefIter` |
-| preparation (setup)    | done once per `smcfcs()` call         | `cycleState$setup`, redone if the arguments change (3.2)       |
+| preparation (setup)    | done once per `smcfcs()` call         | `cycleState$setup`, redone if the arguments change (2.2)       |
 
 `smcfcs.cycle()` does not issue warnings. The caller does: `smcfcs.core()`
 issues the two existing warnings at the end, unchanged, and mice writes them
 to `loggedEvents`.
 
-### 3.4 What `smcfcs.core()` becomes
+### 2.4 What `smcfcs.core()` becomes
 
 ```r
 setup <- smcfcs.setup(...)
@@ -182,9 +130,9 @@ for (imp in 1:m) {
 ```
 
 Random numbers are drawn in the same order as now, because neither setup nor
-the bookkeeping draws any. A regression test (section 5) checks this exactly.
+the bookkeeping draws any. A regression test (section 4) checks this exactly.
 
-### 3.5 Messages
+### 2.5 Messages
 
 The descriptive `print()` calls (lines 493–496, 539, 624 and 682–684) become
 `message()` calls controlled by `verbose`. This applies to every caller,
@@ -208,12 +156,17 @@ logistic models", `test_errorchecks.R`) to use `expect_message()`, and adds a
 NEWS entry. Keeping `print()` for `smcfcs()` only would leave those wrappers
 with the current problem, so we recommend the switch for all callers.
 
-## 4. Proposed changes to mice
+## 3. Proposed changes to mice
 
-### 4.1 A block method, with a name that doesn't clash
+### 3.1 A block method, with a name that doesn't clash
 
-Working name: `mice.impute.smc()`. The name is open; it must not be `smcfcs`
-(section 2c). smcfcs goes in Suggests.
+Working name: `mice.impute.smc()`. The name is open, but it must not be
+`smcfcs`. miceadds already exports a `mice.impute.smcfcs()`, which is its own
+implementation, with different arguments. mice looks up
+`mice.impute.<method>` from inside its own namespace, so a mice function of
+that name would always win. Existing miceadds users with
+`method = "smcfcs"` would then silently get the new function. smcfcs goes in
+Suggests.
 
 ```r
 blocks <- make.blocks(list(smc = c("y", "x1", "x2"), "aux1", "aux2"))
@@ -255,7 +208,7 @@ imp <- mice(data, blocks = blocks, method = meth,
   error. In the first version it also requires `where == !r` within the
   block.
 
-### 4.2 Sampler: give block methods their current imputations
+### 3.2 Sampler: give block methods their current imputations
 
 Today [mice `sampler.R`] sets the block's missing cells to `NA` before
 calling a block method (`data[mis] <- NA`). SMC-FCS needs the current
@@ -272,7 +225,7 @@ proposal:
 - The sampler's local names (`newstate`, `yname`, `data`, `blocks`) stay
   unchanged, so that `miceadds` keeps working.
 
-### 4.3 Differences from calling `smcfcs()` directly
+### 3.3 Differences from calling `smcfcs()` directly
 
 - mice initialises the block with its own starting values (random draws from
   the observed values). smcfcs initialises a missing outcome with an improper
@@ -284,7 +237,7 @@ proposal:
   model on rows with an observed outcome only. The covariate updates fit on
   all rows. This is deliberate, and the mice documentation will say so.
 
-## 5. Tests
+## 4. Tests
 
 In smcfcs:
 
@@ -303,18 +256,19 @@ In smcfcs:
    - `verbose = FALSE` produces no output.
 3. The existing test suite passes, with one deliberate change: the
    `expect_output()` in `test_errorchecks.R` becomes `expect_message()`
-   (section 3.5).
+   (section 2.5).
 
 In mice:
 
-- The block method recovers the true coefficients in the simulation of
-  section 2, under the first-version `smtype`s.
+- The block method recovers the true coefficients in a simulation where a
+  covariate is missing at random depending on the outcome, under the
+  first-version `smtype`s.
 - Under the same seed, `mice()` with an SMC block plus `pmm` for auxiliary
   variables runs end-to-end through `with()` and `pool()`.
 - An unsupported `smtype` gives a clear error.
 - The `miceadds` example still runs.
 
-## 6. Open questions for Jonathan
+## 5. Open questions for Jonathan
 
 1. **Outcome imputation variance (lm).** At line 1316 a missing outcome is
    drawn with `sd = sigmasq^0.5`, the residual variance of the fitted model,
@@ -322,11 +276,11 @@ In mice:
    1312. Is that intended? If not, fixing it changes results, so it should
    land before the regression references are generated, or in its own
    commit.
-2. **`print()` → `message()` for all callers** (section 3.5). We recommend
+2. **`print()` → `message()` for all callers** (section 2.5). We recommend
    it: the change is cosmetic, and it gives users the standard way to silence
    smcfcs. Are you happy with it, including the NEWS entry and the updated
    `expect_output()` test?
-3. **Keeping the preparation in `cycleState`** (section 3.2). We propose that
+3. **Keeping the preparation in `cycleState`** (section 2.2). We propose that
    the first call prepares, later calls reuse the result, and a change of
    arguments triggers a fresh preparation. This keeps a single exported
    function, and the stored preparation stays internal, so you remain free
@@ -344,7 +298,7 @@ In mice:
    - In smcfcs's default predictor choice, a fully observed `z` that appears
      only inside a term like `I(z^2)` is not used as a predictor of the
      incomplete covariates. In mice this doesn't arise, because the wrapper
-     takes the predictors from mice's `predictorMatrix` (section 4.1), and
+     takes the predictors from mice's `predictorMatrix` (section 3.1), and
      there `z` is included by default.
 
    Passive columns would still work for users who want them. Do you agree
@@ -357,7 +311,7 @@ In mice:
      added to the functions accepted by `smcfcs.parallel()`. We considered
      `smcfcs_cycle()` and `smcfcs.step()`. The first would be the only
      exported snake_case name, and the second has no real advantage.
-   - **Order: grouped by purpose** (section 3.1). First comes what to update
+   - **Order: grouped by purpose** (section 2.1). First comes what to update
      (`data`, `r`), then the model (`smtype`, `smformula`, `method`,
      `predictorMatrix`, `errorProneMatrix`, `restrictions`), then the
      controls (`rjlimit`, `noisy`, `verbose`), and last the state
