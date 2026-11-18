@@ -112,21 +112,36 @@ starts across mice iterations, and error-prone replicate measurements.
 
 ### 3.2 Shared internal setup: `smcfcs.setup()`
 
-This is lines 233–536 of `smcfcs.core()`, moved into a function that returns
-a list. The list holds:
+Before imputing anything, `smcfcs.core()` does some preparation (lines
+233–536):
 
-- the column roles: `outcomeCol`, `timeCol`, `dCol`, `partialVars`,
-  `passiveVars`, `fullObsVars` and `smcovcols`;
-- the input checks;
-- the Cox and competing-risks null-model baseline hazard indices (`H0indices`)
-  and `linpred`;
-- the case-cohort and nested case-control quantities;
-- the parsed restrictions.
+- It works out the role of each column (outcome, incomplete covariate,
+  passive, fully observed).
+- It checks the inputs.
+- For Cox and competing-risks models, it fits a null model that fixes the
+  event times used for the baseline hazard.
 
-None of this consumes random numbers. Both `smcfcs.core()` and
-`smcfcs.cycle()` call it. `smcfcs.cycle()` caches the result in
-`cycleState$setup`, so that mice does not refit the Cox null model in every
-iteration.
+We move this preparation into an internal function, `smcfcs.setup()`, which
+both `smcfcs.core()` and `smcfcs.cycle()` use. It draws no random numbers, so
+results are unchanged.
+
+**Doing the preparation only once.** mice calls `smcfcs.cycle()` many times on
+the same data. Repeating the preparation each time is wasteful: for a Cox
+model it costs about a fifth of a cycle (2.8 ms against 13 ms at n = 1,000).
+So the first call does the preparation and keeps the result in `cycleState`.
+Later calls reuse it.
+
+**Guarding against a mismatch.** A caller could change, say, `smformula` and
+still pass in the old `cycleState`. To catch that, `cycleState` also records
+the arguments the preparation was based on. If they differ, the preparation
+is simply redone. The check costs almost nothing.
+
+**No change for `smcfcs()` users.** `smcfcs()` does the preparation once, as
+it does now. Results, seeds and arguments are unchanged.
+
+The contents of the stored preparation stay internal. If needed later, an
+optional `setup` argument can be added without breaking existing code. With
+it, a caller could prepare once and share the result across mice's m chains.
 
 ### 3.3 Explicit state
 
@@ -138,7 +153,7 @@ These quantities carry over between cycles today:
 | `flexsurvFailCount`    | counter, updated with `<<-`           | `cycleState$flexsurvFailCount`                                 |
 | `flexsurvEsts`         | warm start when `cyclenum > 1`        | `cycleState$flexsurvEsts`; `NULL` means first cycle            |
 | `outcomeModBeta` at end of cycle | written to `smCoefIter[imp, , cyclenum]` | `cycleState$smCoef`; `smcfcs.core()` fills `smCoefIter` |
-| setup                  | recomputed per call                   | `cycleState$setup`                                             |
+| preparation (setup)    | done once per `smcfcs()` call         | `cycleState$setup`, redone if the arguments change (3.2)       |
 
 `smcfcs.cycle()` does not issue warnings. The caller does: `smcfcs.core()`
 issues the two existing warnings at the end, unchanged, and mice writes them
@@ -306,8 +321,11 @@ In mice:
    it: the change is cosmetic, and it gives users the standard way to silence
    smcfcs. Are you happy with it, including the NEWS entry and the updated
    `expect_output()` test?
-3. **Caching the setup in `cycleState`**: is that acceptable, or would you
-   rather `smcfcs.cycle()` accepted a precomputed `setup` argument?
+3. **Keeping the preparation in `cycleState`** (section 3.2). We propose that
+   the first call prepares, later calls reuse the result, and a change of
+   arguments triggers a fresh preparation. This keeps a single exported
+   function, and the stored preparation stays internal, so you remain free
+   to change it. Does that work for you?
 4. **Transformations: `I(x^2)` in `smformula` or a passive column?** The
    vignette uses `I(x^2)` inside `smformula`. `smcovnames` matches term
    labels against column names, so a term like `I(z^2)` in a fully observed
