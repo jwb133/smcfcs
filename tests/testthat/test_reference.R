@@ -8,11 +8,19 @@
 # failed, when the environment differs from the one that made it. This is
 # also why the test is skipped on CRAN.
 
-ref_files <- list.files(test_path("reference"), pattern = "\\.rds$",
+blas_now <- blas_tag()
+ref_files <- list.files(test_path("reference", blas_now), pattern = "\\.rds$",
                         full.names = TRUE)
 
 test_that("reference files are present", {
   skip_on_cran()
+  sets <- list.dirs(test_path("reference"), full.names = FALSE, recursive = FALSE)
+  expect_gt(length(sets), 0)
+  if (length(ref_files) == 0) {
+    skip(paste0("no references for BLAS '", blas_now, "' (available: ",
+                paste(sets, collapse = ", "),
+                "); generate them with data-raw/make-references.R"))
+  }
   expect_gt(length(ref_files), 0)
 })
 
@@ -24,9 +32,17 @@ for (f in ref_files) {
     skip_on_cran()
     env_ref <- ref$environment
     for (what in c("R", "platform", "RNGkind", "BLAS", "LAPACK")) {
-      if (!identical(env_ref[[what]], env_now[[what]])) {
-        skip(paste0(what, " differs from the reference (",
-                    paste(env_ref[[what]], collapse = " "), ")"))
+      ref_val <- env_ref[[what]]
+      now_val <- env_now[[what]]
+      if (what == "BLAS") {
+        # the same library can be reported under a symlinked name
+        ref_val <- normalizePath(ref_val, mustWork = FALSE)
+        now_val <- normalizePath(now_val, mustWork = FALSE)
+      }
+      if (!identical(ref_val, now_val)) {
+        skip(paste0(what, " differs from the reference: reference ",
+                    paste(ref_val, collapse = " "), ", now ",
+                    paste(now_val, collapse = " ")))
       }
     }
     pk <- names(env_ref$packages)

@@ -15,7 +15,11 @@
 #
 # The script loads that source with pkgload::load_all(), so the installed
 # smcfcs is not used. It writes one .rds per case to
-# tests/testthat/reference/ in the current directory.
+# tests/testthat/reference/<blas>/ in the current directory, where <blas>
+# labels the BLAS library in use (see blas_tag()). Results differ between
+# BLAS libraries, so run the script once under each BLAS the test should
+# run with (e.g. R's reference BLAS from the terminal, and Apple's
+# Accelerate where an IDE uses it).
 #
 # Each .rds holds the case (function, arguments including the data, seed),
 # the result (impDatasets, smCoefIter, smInfo, warnings), and the
@@ -371,7 +375,7 @@ cases <- list(
 # Run and save
 # ---------------------------------------------------------------------------
 
-out_dir <- reference_dir(".")
+out_dir <- file.path(reference_dir("."), blas_tag())
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 env <- reference_environment()
 
@@ -382,7 +386,7 @@ for (cs in cases) {
   saveRDS(
     list(case = cs, result = res, baseline = baseline, environment = env),
     file.path(out_dir, paste0(cs$name, ".rds")),
-    version = 3
+    version = 2  # readable by R < 3.5.0; avoids raising the R dependency
   )
   cat(sprintf("%5.1fs  %d warning(s)\n", proc.time()[["elapsed"]] - t0,
               length(res$warnings)))
