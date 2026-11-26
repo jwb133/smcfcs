@@ -85,6 +85,10 @@
 #' increase the \code{rjlimit} until the warning does not appear.
 #' @param noisy logical value (default FALSE) indicating whether output should be noisy, which can
 #' be useful for debugging or checking that models being used are as desired.
+#' @param verbose logical value (default TRUE) indicating whether status messages should be shown:
+#' the roles of the variables, the imputation number, and the imputation model used for each
+#' variable. These are issued with \code{message()}, so they can also be silenced with
+#' \code{suppressMessages()}. \code{noisy} controls the model summaries separately.
 #' @param errorProneMatrix An optional matrix which if specified indicates that some variables
 #' are measured with classical measurement error. If the i'th variable is measured with error
 #' by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
@@ -113,9 +117,9 @@
 #' @import stats
 #' @importFrom survival Surv
 #' @export
-smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL, restrictions = NULL) {
+smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL, restrictions = NULL, verbose = TRUE) {
   # call core  smcfcs function, passing through arguments
-  smcfcs.core(originaldata, smtype, smformula, method, predictorMatrix, m, numit, rjlimit, noisy, errorProneMatrix = errorProneMatrix, restrictions = restrictions)
+  smcfcs.core(originaldata, smtype, smformula, method, predictorMatrix, m, numit, rjlimit, noisy, errorProneMatrix = errorProneMatrix, restrictions = restrictions, verbose = verbose)
 }
 
 #' Substantive model compatible fully conditional specification imputation of covariates for case cohort studies
@@ -226,7 +230,7 @@ smcfcs.dtsam <- function(originaldata, smformula, method, timeEffects = "factor"
 
 # this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
 smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL,restrictions = NULL,
-                        ...) {
+                        verbose = TRUE, ...) {
   # get extra arguments passed in ...
   extraArgs <- list(...)
 
@@ -490,10 +494,12 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
   passiveVars <- which((method != "") & (method != "norm") & (method != "logreg") & (method != "poisson") & (method != "podds") &
     (method != "mlogit") & (method != "latnorm") & (method != "brlogreg"))
 
-  print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol], collapse = ",")))
-  print(paste("Passive variables:", paste(colnames(originaldata)[passiveVars], collapse = ",")))
-  print(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars], collapse = ",")))
-  print(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars], collapse = ",")))
+  if (verbose) {
+    message(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol], collapse = ",")))
+    message(paste("Passive variables:", paste(colnames(originaldata)[passiveVars], collapse = ",")))
+    message(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars], collapse = ",")))
+    message(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars], collapse = ",")))
+  }
 
   imputations <- list()
   for (imp in 1:m) {
@@ -536,7 +542,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
   }
 
   for (imp in 1:m) {
-    print(paste("Imputation ", imp))
+    if (verbose) message(paste("Imputation ", imp))
 
     # initial imputation of each partially observed variable based on observed values
     if (length(partialVars)>0) {
@@ -620,8 +626,8 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     # initial imputations of missing outcomes, if present (using improper imputation)
     if ((smtype == "lm") | (smtype == "logistic") | (smtype == "brlogistic") | (smtype == "poisson")) {
       if (sum(r[, outcomeCol]) < n) {
-        if (imp == 1) {
-          print("Imputing missing outcomes using specified substantive model.")
+        if (verbose && (imp == 1)) {
+          message("Imputing missing outcomes using specified substantive model.")
         }
         # update passive variable(s)
         imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
@@ -662,7 +668,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
 
     for (cyclenum in 1:numit) {
       if (noisy == TRUE) {
-        print(paste("Iteration ", cyclenum))
+        message(paste("Iteration ", cyclenum))
       }
       # update passive variable(s)
       imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
@@ -677,11 +683,11 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
           # ensure that user has not included outcome variable(s) here
           predictorCols <- predictorCols[!predictorCols %in% outcomeCol]
         }
-        if ((imp == 1) & (cyclenum == 1)) {
+        if (verbose && (imp == 1) && (cyclenum == 1)) {
           if (method[targetCol] == "latnorm") {
-            print(paste("Imputing: ", colnames(imputations[[imp]])[targetCol], " using ", paste(colnames(imputations[[imp]])[c(predictorCols, which(errorProneMatrix[targetCol, ] == 1))], collapse = ","), " plus outcome", collapse = ","))
+            message(paste("Imputing: ", colnames(imputations[[imp]])[targetCol], " using ", paste(colnames(imputations[[imp]])[c(predictorCols, which(errorProneMatrix[targetCol, ] == 1))], collapse = ","), " plus outcome", collapse = ","))
           } else {
-            print(paste("Imputing: ", colnames(imputations[[imp]])[targetCol], " using ", paste(colnames(imputations[[imp]])[predictorCols], collapse = ","), " plus outcome", collapse = ","))
+            message(paste("Imputing: ", colnames(imputations[[imp]])[targetCol], " using ", paste(colnames(imputations[[imp]])[predictorCols], collapse = ","), " plus outcome", collapse = ","))
           }
         }
         if (length(predictorCols) > 0) {

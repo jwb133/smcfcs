@@ -1,3 +1,8 @@
+Development version - status messages (variable roles, imputation number, imputation
+models) are now issued with message() instead of print(), so they can be silenced with
+suppressMessages() or the new verbose argument (default TRUE). noisy = TRUE still prints
+the model summaries; its "Iteration" lines are now messages too.
+
 Version 2.0.3 - fix to imputation of missing Poisson outcomes (spotted by Stef van Buuren).
 
 Version 2.0.2 - fix to flexsurv imputation to overcome error sometimes occurring with
