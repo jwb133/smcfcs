@@ -506,8 +506,13 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     imputations[[imp]] <- originaldata
   }
 
+  # State carried from one cycle to the next (and across imputations):
+  # failure counters, the flexsurv estimates used as initial values for the
+  # next fit, and the array of substantive model coefficients per cycle
   rjFailCount <- 0
   flexsurvFailCount <- 0
+  flexsurvEsts <- NULL
+  smCoefIter <- NULL
 
   if(!is.null(restrictions)){
     if (!requireNamespace("stringr", quietly = TRUE)) {
@@ -884,35 +889,35 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             print(summary(ymod))
           }
         } else if (smtype == "flexsurv") {
+          # A fit that fails returns NULL: the failure is counted and ymod
+          # keeps its previous value
           if (cyclenum==1) {
-            tryCatch({
-              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                    k=extraArgs$k, scale="hazard")
-            },error = function(e) {
-              # Silently increment the failure counter
-              flexsurvFailCount <<- flexsurvFailCount + 1
-            })
+            fit <- tryCatch(
+              flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                       k=extraArgs$k, scale="hazard"),
+              error = function(e) NULL)
           } else {
             # use previous estimates as initial values, to try and prevent non-convergence
-            tryCatch(
+            fit <- tryCatch(
               {
                 # first attempt to fit model
                 if (extraArgs$originalKnots==FALSE) {
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                   k=extraArgs$k, scale="hazard",
-                                                   inits=flexsurvEsts)
+                  flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                           k=extraArgs$k, scale="hazard",
+                                           inits=flexsurvEsts)
                 } else {
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                   scale="hazard",
-                                                   knots=ymod$knots[2:(length(ymod$knots)-1)],
-                                                   inits=flexsurvEsts)
+                  flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                           scale="hazard",
+                                           knots=ymod$knots[2:(length(ymod$knots)-1)],
+                                           inits=flexsurvEsts)
                 }
               },
-              error = function(e) {
-                # Silently increment the failure counter
-                flexsurvFailCount <<- flexsurvFailCount + 1
-              }
-              )
+              error = function(e) NULL)
+          }
+          if (is.null(fit)) {
+            flexsurvFailCount <- flexsurvFailCount + 1
+          } else {
+            ymod <- fit
           }
           # save parameter estimates to use as initial values in subsequent iterations
           # to help prevent convergence problems
@@ -1343,39 +1348,40 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
       } else if (smtype == "flexsurv") {
         if (extraArgs$imputeTimes==TRUE) {
           # impute censored times
+          # A fit that fails returns NULL: the failure is counted and ymod
+          # keeps its previous value
           if (cyclenum==1) {
-            tryCatch({
-              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                               k=extraArgs$k, scale="hazard")
-            },error = function(e) {
-              # Silently increment the failure counter
-              flexsurvFailCount <<- flexsurvFailCount + 1
-            })
+            fit <- tryCatch(
+              flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                       k=extraArgs$k, scale="hazard"),
+              error = function(e) NULL)
           } else {
             # use previous estimates as initial values, to try and prevent non-convergence
-            tryCatch(
+            fit <- tryCatch(
               {
                 if (extraArgs$originalKnots==FALSE) {
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                 k=extraArgs$k, scale="hazard",
-                                                 inits=flexsurvEsts)
+                  flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                           k=extraArgs$k, scale="hazard",
+                                           inits=flexsurvEsts)
                 } else {
                   # use knots based on fit to original dataset where censored times had not been imputed
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                   scale="hazard",
-                                                   knots=ymod$knots[2:(length(ymod$knots)-1)],
-                                                   inits=flexsurvEsts)
+                  flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
+                                           scale="hazard",
+                                           knots=ymod$knots[2:(length(ymod$knots)-1)],
+                                           inits=flexsurvEsts)
                 }
               },
-              error = function(e) {
-                flexsurvFailCount <<- flexsurvFailCount + 1
-              }
-            )
+              error = function(e) NULL)
+          }
+          if (is.null(fit)) {
+            flexsurvFailCount <- flexsurvFailCount + 1
+          } else {
+            ymod <- fit
           }
           flexsurvEsts <- ymod$res.t[,1]
           outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
 
-          if (exists("smCoefIter")==FALSE) {
+          if (is.null(smCoefIter)) {
             smCoefIter <- array(0, dim = c(m, length(outcomeModBeta), numit))
           }
           smCoefIter[imp, , cyclenum] <- outcomeModBeta

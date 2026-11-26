@@ -1,7 +1,9 @@
 Development version - status messages (variable roles, imputation number, imputation
 models) are now issued with message() instead of print(), so they can be silenced with
 suppressMessages() or the new verbose argument (default TRUE). noisy = TRUE still prints
-the model summaries; its "Iteration" lines are now messages too.
+the model summaries; its "Iteration" lines are now messages too. Also fixes an error
+("incorrect number of subscripts") in smcfcs.flexsurv() with imputeTimes = TRUE and no
+missing covariates when the workspace contained an object named smCoefIter.
 
 Version 2.0.3 - fix to imputation of missing Poisson outcomes (spotted by Stef van Buuren).
 
