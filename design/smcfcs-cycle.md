@@ -2,7 +2,7 @@
 
 Stef van Buuren, draft of 26 November 2026
 
-Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3.
+Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3. Line numbers refer to `R/smcfcs.r` at `ae95ab3`. Steps 1–4 of the refactor are done on the branch `smcfcs-cycle`; section 6 lists the progress and section 2 describes the code as it now stands.
 
 ## 1. Goal
 
@@ -32,7 +32,11 @@ The help page will say plainly that this is a low-level function for package dev
 
 The function returns `list(data = <updated data>, cycleState = <state>)`.
 
-The body is the current `for (cyclenum in 1:numit)` loop, moved essentially unchanged: the update of passive variables, the loop over `partialVars`, and the outcome update for lm, logistic, brlogistic and poisson (and for flexsurv time imputation). Inside the body, `imputations[[imp]]` becomes `data`. Conditions on `imp == 1 & cyclenum == 1` become `verbose`.
+The body is the `for (cyclenum in 1:numit)` loop, moved essentially unchanged: the update of passive variables, the loop over `partialVars`, and the outcome update for lm, logistic, brlogistic and poisson (and for flexsurv time imputation). Inside the body, `imputations[[imp]]` becomes `data`. Conditions on `imp == 1 & cyclenum == 1` become `verbose`. The test `cyclenum == 1` for flexsurv becomes "no initial values from a previous cycle yet" (section 2.3).
+
+**The original data.** The body also needs the data as originally observed, not only `r`: for restrictions, for the case-cohort and nested case-control quantities, and for flexsurv time imputation, which starts from the censoring times. In the last case `data` and `r` are not enough, because the imputed times overwrite the censoring times in `data` while `r` still marks them as observed. So `smcfcs.setup()` (section 2.2) keeps `originaldata`, and the setup is stored in `cycleState`. On a first call without a setup, `smcfcs.cycle()` rebuilds `originaldata` from `data` by setting the cells with `r == 0` to `NA`. That is exact on a first call, because no times have been imputed yet. We checked it on the reference cases (section 4.2): the rebuilt data equal the original data, apart from 0/1 columns stored as integer, which come back as double with the same values.
+
+Implemented in step 4 as an internal function. It is exported, with a help page, in step 6.
 
 **Scope.** `smcfcs.core()` will call `smcfcs.cycle()` for every `smtype`, so the function will run all model types. The "first version" restriction to lm, logistic, brlogistic, poisson, coxph and compet applies to the mice interface, and to what we document and test as supported for direct use. Case-cohort, nested case-control, dtsam, weibull, flexsurv and latnorm stay available through `smcfcs()`. They can be opened to mice later, once their extra requirements are handled: subcohort and risk-set data, flexsurv warm starts across mice iterations, and error-prone replicate measurements.
 
@@ -54,38 +58,56 @@ We move this preparation into an internal function, `smcfcs.setup()`, which both
 
 The contents of the stored preparation stay internal. If needed later, an optional `setup` argument can be added without breaking existing code. With it, a caller could prepare once and share the result across mice's m chains.
 
+**As implemented (step 3).** `smcfcs.setup(originaldata, smtype, smformula, method, errorProneMatrix, restrictions, verbose, ...)` contains the preparation code unchanged, including the messages about the variables' roles. It returns a named list of the 35 quantities the imputation needs, among them `n`, `r`, the column numbers, `partialVars`, the null-model quantities, the parsed restrictions and `originaldata`. Quantities that do not apply to the substantive model, such as `numCauses` for anything but `compet`, are `NULL`. `smcfcs.core()` and `smcfcs.cycle()` put the list into their own environment with `list2env()`, so the code that uses the quantities is unchanged. Unpacking is needed in any case for one of them: `smformula2` for case-cohort contains `cluster(smcfcsid)`, so `smcfcsid` has to exist where the formula is evaluated, although the code never refers to it by name. `codetools::findGlobals()` confirms that every variable the two functions read without defining it comes from the setup list. So none of them can fall back to an object of the same name in the user's workspace.
+
+The guard against a mismatch is step 5 and not yet implemented.
+
 ### 2.3 Explicit state
 
-These quantities carry over between cycles today:
+These quantities carry over between cycles:
 
-| Quantity | Today | Proposed |
+| Quantity | At `ae95ab3` | Now (steps 2 and 4) |
 |-----------------|---------------------|----------------------------------|
 | `rjFailCount` | counter in `smcfcs.core()` | `cycleState$rjFailCount`, accumulated |
-| `flexsurvFailCount` | counter, updated with `<<-` | `cycleState$flexsurvFailCount` |
-| `flexsurvEsts` | warm start when `cyclenum > 1` | `cycleState$flexsurvEsts`; `NULL` means first cycle |
+| `flexsurvFailCount` | counter, updated with `<<-` from a `tryCatch()` error handler | `cycleState$flexsurvFailCount`, accumulated; a failed fit returns `NULL` and is counted by the caller of `tryCatch()` |
+| `flexsurvEsts` | initial values for the next fit when `cyclenum > 1` | `cycleState$flexsurvEsts`; `NULL` means first cycle |
+| last flexsurv fit (`ymod`) | kept in `smcfcs.core()`; reused when a fit fails, and its knots reused with `originalKnots = TRUE` | `cycleState$flexsurvFit` |
 | substantive-model coefficients at end of cycle | written to `smCoefIter[imp, , cyclenum]` | `cycleState$smCoef`; `smcfcs.core()` fills `smCoefIter` |
-| preparation (setup) | done once per `smcfcs()` call | `cycleState$setup`, redone if the arguments change (2.2) |
+| preparation (setup) | done once per `smcfcs()` call | `cycleState$setup`, redone if the arguments change (2.2, step 5) |
 
-The coefficients are `outcomeModBeta`, except for `compet`, where they are the cause-specific vectors joined into one (`totalCoefVec`). Today they are written at two places: after the outcome update for models with an outcome step, and after the last partially observed variable for the survival models (lines 978–1000). In both cases `smcfcs.cycle()` puts the final value of the cycle in `cycleState$smCoef`.
+The coefficients are `outcomeModBeta`, except for `compet`, where they are the cause-specific vectors joined into one (`totalCoefVec`). They are taken after the last partially observed variable (lines 978–1000), for every model. For flexsurv with `imputeTimes = TRUE` they are then overwritten with the draw from the time imputation (line 1375). The outcome update for lm, logistic, brlogistic and poisson draws new coefficients too, but those are not recorded. `smcfcs.cycle()` keeps exactly these values in `cycleState$smCoef`.
+
+**Between imputations.** `smcfcs.core()` starts each imputation with a new `cycleState` that holds the setup, the two failure counts and the last flexsurv fit. The flexsurv initial values are reset, so the first cycle of each imputation fits without them, as before. The last flexsurv fit is carried over on purpose, to keep results identical: if the first fit of an imputation fails, the code at `ae95ab3` silently reuses the model fitted in the previous imputation (open question 7).
+
+**A bug found along the way.** At `ae95ab3`, `smCoefIter` was allocated in the time-imputation step if `exists("smCoefIter")` was false. `exists()` also searches the global environment, so an object named `smCoefIter` in the user's workspace made `smcfcs.flexsurv()` with `imputeTimes = TRUE` and no missing covariates stop with "incorrect number of subscripts". Step 2 replaces the test with `is.null()` on a local variable, which fixes this. NEWS mentions it.
 
 `smcfcs.cycle()` does not issue warnings. The caller does: `smcfcs.core()` issues the two existing warnings at the end, unchanged, and mice writes them to `loggedEvents`.
 
 ### 2.4 What `smcfcs.core()` becomes
 
+As implemented in step 4, abridged:
+
 ``` r
-setup <- smcfcs.setup(...)
+setup <- smcfcs.setup(originaldata, smtype, smformula, method, ...)
+list2env(setup, envir = environment())
+rjFailCount <- 0; flexsurvFailCount <- 0; flexsurvFit <- NULL; smCoefIter <- NULL
 for (imp in 1:m) {
   # initial imputation: unchanged (lines 541-661)
-  state <- list(setup = setup)
+  state <- list(setup = setup, rjFailCount = rjFailCount,
+                flexsurvFailCount = flexsurvFailCount, flexsurvFit = flexsurvFit)
   for (cyclenum in 1:numit) {
-    if (noisy) message("Iteration ", cyclenum)
-    res <- smcfcs.cycle(imputations[[imp]], r, ..., verbose = (imp == 1 && cyclenum == 1),
+    if (noisy) message(paste("Iteration ", cyclenum))
+    res <- smcfcs.cycle(imputations[[imp]], r, smtype, smformula, method, ...,
+                        verbose = verbose && (imp == 1) && (cyclenum == 1),
                         cycleState = state)
     imputations[[imp]] <- res$data; state <- res$cycleState
-    smCoefIter[imp, , cyclenum] <- state$smCoef   # allocated after first cycle
+    if (is.null(smCoefIter)) smCoefIter <- array(0, dim = c(m, length(state$smCoef), numit))
+    smCoefIter[imp, , cyclenum] <- state$smCoef
   }
-  # accumulate fail counts
+  rjFailCount <- state$rjFailCount; flexsurvFailCount <- state$flexsurvFailCount
+  flexsurvFit <- state$flexsurvFit
 }
+# the two warnings and the return value: unchanged
 ```
 
 Random numbers are drawn in the same order as now, because neither setup nor the bookkeeping draws any. A regression test (section 4.2) checks this exactly.
@@ -182,6 +204,8 @@ The data are simulated inside the script, so every case is small and self-contai
 
 We tried this on the baseline. All 27 cases reproduce exactly. Run against the code before the fix for open question 1, exactly one case fails, `lm_missing_outcome`, which is the only case that runs the changed line.
 
+All 27 cases still reproduce exactly after each of steps 1–4, and the full test suite passed after step 1. No case in the grid has a failed flexsurv fit, so for steps 2 and 4 we also checked that path separately. We made `flexsurv::flexsurvspline()` fail on chosen calls, including the first fit of the second imputation, with and without `imputeTimes`. The code before and after each step gave identical results and identical warnings.
+
 **How this prevents errors.** Any change in which random numbers are drawn, or in their order, changes the imputations, and the test fails. The same holds for lost or stale state, a wrong setup, or a broken code path anywhere in the grid. The comparison is exact, so there is no tolerance in which a small error can hide, and a failure never depends on chance. The bias tests stay and still check that the method is correct. The reference test checks that the refactor has not changed it.
 
 **Limits.** Exact equality holds only in the environment the references were made in. Results can change without any change to smcfcs when one of these differs:
@@ -270,3 +294,18 @@ In mice:
     A third possibility is to support both, with an error if the two disagree. That gives the most flexibility, at the cost of two code paths to document and test.
 
     We recommend option A: one way to specify the model, written in mice's own place for models, with auxiliary variables chosen explicitly. Do you agree, or do you prefer mice's predictor defaults (option B)?
+
+7.  **A failed flexsurv fit reuses the previous model** (section 2.3). When `flexsurvspline()` fails, the code counts the failure and carries on with the previous fitted model. Within an imputation that is the fit from the previous variable or cycle. For the first fit of the second or a later imputation, it is the last fit of the previous imputation, made on other imputed data. For the first fit of the first imputation there is none, and smcfcs stops with an error. At `ae95ab3` the error is "object 'ymod' not found". Since step 4 the previous fit is `NULL` rather than missing, and the error comes from inside flexsurv ("non-numeric matrix extent"), which says even less. Apart from that message, the refactor keeps all of this, so that results stay identical. Is reusing a model from another imputation intended? If not, a later change could refit, or stop with a clear error, and regenerate the references in the same commit.
+
+## 6. Progress
+
+Each step is a separate commit on the branch `smcfcs-cycle` of stefvanbuuren/smcfcs. After each one the frozen-reference test (section 4.2) passes.
+
+| Step | What | Status |
+|------|------|--------|
+| 1 | Status lines via `message()`, new `verbose` argument (section 2.5) | done, `7205b69` |
+| 2 | State carried explicitly instead of via `<<-` and `exists()` (section 2.3) | done, `981297c` |
+| 3 | Preparation moved into `smcfcs.setup()` (section 2.2) | done, `260bdec` |
+| 4 | One cycle moved into `smcfcs.cycle()` (sections 2.1, 2.4) | done, `ea089a2` |
+| 5 | Redo the stored setup when the arguments change (section 2.2) | to do |
+| 6 | Contract tests (section 4.3), help page, export | to do |
