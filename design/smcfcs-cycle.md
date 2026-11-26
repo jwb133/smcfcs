@@ -148,6 +148,7 @@ imp <- mice(data, blocks = blocks, method = meth,
 Option B passes the model as `blots = list(smc = list(smformula = "y ~ x1 + I(x1^2) + x2", ...))`, gives no formula for the block, and takes auxiliary variables from mice's `predictorMatrix`.
 
 - The block holds the outcome and the incomplete covariates in the substantive model. Variables outside the block are imputed by ordinary mice methods. Inside a cycle they are treated as fixed at their current values. The block must be given explicitly through `blocks`. The wrapper checks that it contains exactly the incomplete outcome and the incomplete covariates in the substantive model, and stops with an error naming the variables to add or remove.
+- Auxiliary variables are therefore imputed by mice in blocks of their own, for example with method `"pmm"`, and enter the smc block only as completed predictors in the covariate models. This differs from the smcfcs vignette, which advises putting auxiliaries in the substantive model as extra covariates and dropping them at the analysis. If a user does give smcfcs an auxiliary to impute without putting it in the substantive model, the result is still valid: the acceptance probability then does not depend on the drawn value, so the accepted draws come from the covariate model (Jonathan's comment). But the rejection step is wasted effort there, which the mice design avoids.
 - Squares and interactions are written in the substantive-model formula, e.g. `I(x1^2)` or `x1:x2`, as in the smcfcs vignette. This is the recommended form (open question 4). A passive column is also possible. It must then be in the block, with a smcfcs-style expression without `~`, e.g. `smmethod = c(x1sq = "x1^2")`. A mice passive method (`"~I(x1^2)"`) is not suitable here, because smcfcs would not update it within a cycle.
 - The argument names follow smcfcs (`smtype`, `rjlimit`, `predictorMatrix`, and under option B `smformula`) and are passed straight through. The per-variable smcfcs methods go in `smmethod`, because `method` already means something else in mice. Defaults come from each variable's type: numeric → `norm`, binary → `logreg`, ordered factor → `podds`, other factor → `mlogit`.
 - The function has a `format` formal argument, which is how mice recognises a block method.
@@ -248,22 +249,22 @@ In mice:
 
 3.  **Keeping the preparation in `cycleState`** (section 2.2). **Settled.** The first call prepares, later calls reuse the result, and a change of arguments triggers a fresh preparation. This keeps a single exported function, and the stored preparation stays internal, so it can change freely. Jonathan agreed to it.
 
-4.  **Squares and interactions: write them in the formula.** A model with `x^2` can be specified in two ways in smcfcs. One is directly in the formula, `smformula = "y ~ x + I(x^2)"`, as in the vignette. The other is a separate column `xsq` with the passive method `"x^2"`. Both give the same substantive model. For the mice interface we recommend the formula form, for three reasons:
+4.  **Squares and interactions: write them in the formula.** **Settled.** A model with `x^2` can be specified in two ways in smcfcs. One is directly in the formula, `smformula = "y ~ x + I(x^2)"`, as in the vignette. The other is a separate column `xsq` with the passive method `"x^2"`. Both give the same substantive model. For the mice interface we recommend the formula form, for three reasons:
 
     - The user writes the same formula for imputation and for the analysis (`with(imp, lm(y ~ x + I(x^2)))`), with no extra column to create.
     - A passive column brings no extra benefit. By default it doesn't enter the imputation models of other incomplete covariates either.
     - In smcfcs's default predictor choice, a fully observed `z` that appears only inside a term like `I(z^2)` is not used as a predictor of the incomplete covariates. A passive column `zsq` doesn't help here either. Under option B of question 6, the wrapper takes the predictors from mice's `predictorMatrix`, where `z` is included by default. Under option A, the user adds `z` to `auxiliary`.
 
-    Passive columns would still work for users who want them. Do you agree with recommending the formula form?
+    Passive columns would still work for users who want them. Jonathan agreed to recommending the formula form.
 
-5.  **Name and argument order of `smcfcs.cycle()`.** Our proposals:
+5.  **Name and argument order of `smcfcs.cycle()`.** **Settled.** Our proposals:
 
     - **Name: `smcfcs.cycle()`.** It matches the existing family (`smcfcs.casecohort()`, `smcfcs.flexsurv()`, ...), so it is easy to find. Because it could be mistaken for another way to impute, its help page will make clear it is a low-level building block. It will not be added to the functions accepted by `smcfcs.parallel()`. We considered `smcfcs_cycle()` and `smcfcs.step()`. The first would be the only exported snake_case name, and the second has no real advantage.
     - **Order: grouped by purpose** (section 2.1). First comes what to update (`data`, `r`), then the model (`smtype`, `smformula`, `method`, `predictorMatrix`, `errorProneMatrix`, `restrictions`), then the controls (`rjlimit`, `noisy`, `verbose`), and last the state (`cycleState`). The alternative is to copy the order of `smcfcs()` and add `r` at the end. That would put a required argument after optional ones, only to match positions in a function that callers use with named arguments. Neither choice changes any existing function.
     - **`data`, not `originaldata`**, because the input is the completed data. The return value is `list(data, cycleState)`.
     - **`verbose` next to `noisy`.** `noisy` keeps its meaning (model summaries), and `verbose` controls the status messages. They will be documented side by side.
 
-    Any preferences, given how you name things in smcfcs?
+    Jonathan agreed to all four, as implemented in step 6. He asked whether existing code that calls `smcfcs()` keeps working. It does: the only change to `smcfcs()` is the new last argument `verbose`, so calls by position still work, the wrappers have unchanged signatures, and the reference test shows identical results.
 
 6.  **Where the mice user writes the substantive model.** mice has its own `formulas` argument, with one formula per block. When a block has a formula, mice passes it to the block method unchanged, so it can serve as the substantive model. We checked this with mice 3.20.0, including `Surv(t, d) ~ x + z`. mice then passes no predictor row. When a block has no formula, mice passes the predictor row instead, and the model has to come from `blots$smformula`. This gives two options.
 
