@@ -1,8 +1,8 @@
 # Design note: a single-cycle SMC-FCS function for use from mice
 
-Stef van Buuren, draft of 25 November 2026
+Stef van Buuren, draft of 26 November 2026
 
-Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `cee0737`, which includes the fix for re-imputing missing Poisson outcomes. CRAN has 2.0.3.
+Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3.
 
 ## 1. Goal
 
@@ -165,7 +165,7 @@ The existing suite checks two things: that smcfcs runs without error, and that i
 
 The refactor is meant to change no results at all. That allows an exact test instead of a statistical one: run the old code once, store what it produces, and require the new code to produce the same objects, bit for bit.
 
-**Step 1: generate the references before the refactor.** On master (`cee0737`), a script (`data-raw/make-references.R`, not shipped with the package) runs `smcfcs()` and its wrappers on a grid of small cases (n = 200, m = 2, numit = 3), each under its own fixed seed. It saves `impDatasets`, `smCoefIter` and any warnings as `.rds` files in `tests/testthat/`, together with the `RNGkind()` and R version used. The grid covers:
+**Step 1: generate the references before the refactor.** On master (`ae95ab3`), a script (`data-raw/make-references.R`, not shipped with the package) runs `smcfcs()` and its wrappers on a grid of small cases (n = 200, m = 2, numit = 3), each under its own fixed seed. It saves `impDatasets`, `smCoefIter` and any warnings as `.rds` files in `tests/testthat/`, together with the `RNGkind()` and R version used. The grid covers:
 
 - every `smtype`: lm, logistic, brlogistic, poisson, coxph, compet, weibull and dtsam, and the wrappers `smcfcs.casecohort()`, `smcfcs.nestedcc()`, `smcfcs.finegray()` and `smcfcs.flexsurv()`, including the imputation of censored times;
 - every covariate method: norm, latnorm (with `errorProneMatrix`), logreg, brlogreg, poisson, podds and mlogit;
@@ -181,7 +181,7 @@ The data are simulated inside the script, so every case is small and self-contai
 
 **How this prevents errors.** Any change in which random numbers are drawn, or in their order, changes the imputations, and the test fails. The same holds for lost or stale state, a wrong setup, or a broken code path anywhere in the grid. The comparison is exact, so there is no tolerance in which a small error can hide, and a failure never depends on chance. The bias tests stay and still check that the method is correct. The reference test checks that the refactor has not changed it.
 
-**Limits.** A seed gives the same results on every platform, but R's default random-number generators can change between R versions. The test therefore compares the stored `RNGkind()` with the current one and skips, with a message, if they differ. When results are changed on purpose, as with a fix for open question 1, the references are regenerated in the same commit, and the commit message says why. This is why open question 1 needs to be settled before step 1.
+**Limits.** A seed gives the same results on every platform, but R's default random-number generators can change between R versions. The test therefore compares the stored `RNGkind()` with the current one and skips, with a message, if they differ. When results are changed on purpose later, the references are regenerated in the same commit, and the commit message says why. Open question 1 was settled before step 1 for this reason: its fix (`ae95ab3`) is part of the baseline.
 
 ### 4.3 Other tests
 
@@ -205,11 +205,11 @@ In mice:
 
 ## 5. Open questions for Jonathan
 
-1.  **Outcome imputation variance (lm).** At line 1316 a missing outcome is drawn with `sd = sigmasq^0.5`, the residual variance of the fitted model, rather than the posterior draw `outcomeModResVar^0.5` computed on line 1312. Is that intended? If not, fixing it changes results, so it should land before the regression references are generated, or in its own commit.
+1.  **Outcome imputation variance (lm). Settled.** At line 1316 a missing outcome was drawn with `sd = sigmasq^0.5`, the residual variance of the fitted model, rather than the posterior draw `outcomeModResVar^0.5` computed on line 1312. This was not intended, and Jonathan fixed it in `ae95ab3`. The regression references (section 4.2) are generated after this fix.
 
-2.  **`print()` → `message()` for all callers** (section 2.5). We recommend it: the change is cosmetic, and it gives users the standard way to silence smcfcs. Are you happy with it, including the NEWS entry and the updated `expect_output()` test?
+2.  **`print()` → `message()` for all callers** (section 2.5). **Settled.** The change is cosmetic, and it gives users the standard way to silence smcfcs. Jonathan agreed to it, including the NEWS entry and the updated `expect_output()` test.
 
-3.  **Keeping the preparation in `cycleState`** (section 2.2). We propose that the first call prepares, later calls reuse the result, and a change of arguments triggers a fresh preparation. This keeps a single exported function, and the stored preparation stays internal, so you remain free to change it. Does that work for you?
+3.  **Keeping the preparation in `cycleState`** (section 2.2). **Settled.** The first call prepares, later calls reuse the result, and a change of arguments triggers a fresh preparation. This keeps a single exported function, and the stored preparation stays internal, so it can change freely. Jonathan agreed to it.
 
 4.  **Squares and interactions: write them in the formula.** A model with `x^2` can be specified in two ways in smcfcs. One is directly in the formula, `smformula = "y ~ x + I(x^2)"`, as in the vignette. The other is a separate column `xsq` with the passive method `"x^2"`. Both give the same substantive model. For the mice interface we recommend the formula form, for three reasons:
 
