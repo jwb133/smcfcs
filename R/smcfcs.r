@@ -229,8 +229,13 @@ smcfcs.dtsam <- function(originaldata, smformula, method, timeEffects = "factor"
 }
 
 # this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
-smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL,restrictions = NULL,
-                        verbose = TRUE, ...) {
+# Preparation for SMC-FCS imputation, shared by smcfcs.core() (and, later,
+# smcfcs.cycle()): works out the role of each column, checks the inputs, fits
+# the null models used for the baseline hazard, and parses the restrictions.
+# It draws no random numbers. Returns a named list of the quantities the
+# imputation loop uses.
+smcfcs.setup <- function(originaldata, smtype, smformula, method, errorProneMatrix = NULL,
+                         restrictions = NULL, verbose = TRUE, ...) {
   # get extra arguments passed in ...
   extraArgs <- list(...)
 
@@ -501,19 +506,6 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     message(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars], collapse = ",")))
   }
 
-  imputations <- list()
-  for (imp in 1:m) {
-    imputations[[imp]] <- originaldata
-  }
-
-  # State carried from one cycle to the next (and across imputations):
-  # failure counters, the flexsurv estimates used as initial values for the
-  # next fit, and the array of substantive model coefficients per cycle
-  rjFailCount <- 0
-  flexsurvFailCount <- 0
-  flexsurvEsts <- NULL
-  smCoefIter <- NULL
-
   if(!is.null(restrictions)){
     if (!requireNamespace("stringr", quietly = TRUE)) {
       stop("The package 'stringr' is required if using restrictions. Please install it.", call. = FALSE)
@@ -545,6 +537,44 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
       restrictions_work_conds[[var]] = unlist(lapply(restrictions_work[[var]], function(sub_rest){sub_rest[[2]]}))
     }
   }
+
+  # Return everything the imputation loop needs. Quantities that apply to
+  # some substantive models only are NULL for the others.
+  setup <- mget(c(
+    "extraArgs", "n", "r", "outcomeCol", "timeCol", "dCol", "d",
+    "entertimeCol", "eventCol", "setCol", "nriskCol", "H0", "H0indices",
+    "basehaz", "linpred", "outcomeModBeta", "numCauses", "cutPoints",
+    "nTimePoints", "subcoCol", "subcoMembers", "subco.weight", "list.times",
+    "smcfcsid", "smformula2", "noncases", "num.sampriskset", "smcovnames",
+    "smcovcols", "partialVars", "fullObsVars", "passiveVars",
+    "index_restrictions", "restrictions_work"
+  ), ifnotfound = list(NULL))
+  setup
+}
+
+smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL,restrictions = NULL,
+                        verbose = TRUE, ...) {
+  setup <- smcfcs.setup(originaldata, smtype, smformula, method,
+                        errorProneMatrix = errorProneMatrix, restrictions = restrictions,
+                        verbose = verbose, ...)
+  # Put the prepared quantities into this function's environment, where the
+  # loop below expects them. Some are found by formula evaluation rather than
+  # by name in the code (e.g. smcfcsid in cluster(smcfcsid) of smformula2).
+  list2env(setup, envir = environment())
+  rm(setup)
+
+  imputations <- list()
+  for (imp in 1:m) {
+    imputations[[imp]] <- originaldata
+  }
+
+  # State carried from one cycle to the next (and across imputations):
+  # failure counters, the flexsurv estimates used as initial values for the
+  # next fit, and the array of substantive model coefficients per cycle
+  rjFailCount <- 0
+  flexsurvFailCount <- 0
+  flexsurvEsts <- NULL
+  smCoefIter <- NULL
 
   for (imp in 1:m) {
     if (verbose) message(paste("Imputation ", imp))
