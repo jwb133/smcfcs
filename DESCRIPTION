@@ -26,7 +26,8 @@ Imports:
     rlang,
     checkmate,
     abind,
-    brglm2
+    brglm2,
+    utils
 Suggests:
     knitr,
     rmarkdown,

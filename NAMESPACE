@@ -3,6 +3,7 @@
 S3method(plot,smcfcs)
 export(smcfcs)
 export(smcfcs.casecohort)
+export(smcfcs.cycle)
 export(smcfcs.dtsam)
 export(smcfcs.finegray)
 export(smcfcs.flexsurv)

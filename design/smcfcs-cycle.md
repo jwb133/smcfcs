@@ -2,7 +2,7 @@
 
 Stef van Buuren, draft of 26 November 2026
 
-Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3. Line numbers refer to `R/smcfcs.r` at `ae95ab3`. Steps 1–5 of the refactor are done on the branch `smcfcs-cycle`; section 6 lists the progress and section 2 describes the code as it now stands.
+Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3. Line numbers refer to `R/smcfcs.r` at `ae95ab3`. Steps 1–6 of the refactor are done on the branch `smcfcs-cycle`; section 6 lists the progress and section 2 describes the code as it now stands.
 
 ## 1. Goal
 
@@ -36,7 +36,7 @@ The body is the `for (cyclenum in 1:numit)` loop, moved essentially unchanged: t
 
 **The original data.** The body also needs the data as originally observed, not only `r`: for restrictions, for the case-cohort and nested case-control quantities, and for flexsurv time imputation, which starts from the censoring times. In the last case `data` and `r` are not enough, because the imputed times overwrite the censoring times in `data` while `r` still marks them as observed. So `smcfcs.setup()` (section 2.2) keeps `originaldata`, and the setup is stored in `cycleState`. On a first call without a setup, `smcfcs.cycle()` rebuilds `originaldata` from `data` by setting the cells with `r == 0` to `NA`. That is exact on a first call, because no times have been imputed yet. We checked it on the reference cases (section 4.2): the rebuilt data equal the original data, apart from 0/1 columns stored as integer, which come back as double with the same values.
 
-Implemented in step 4 as an internal function. It is exported, with a help page, in step 6.
+Implemented in step 4 as an internal function, and exported with a help page in step 6. The help page documents three elements of `cycleState` as stable, because a caller needs them: `smCoef`, for convergence plots, and `rjFailCount` and `flexsurvFailCount`, for the warnings that `smcfcs.cycle()` itself does not issue. The rest of `cycleState` stays internal.
 
 **Scope.** `smcfcs.core()` will call `smcfcs.cycle()` for every `smtype`, so the function will run all model types. The "first version" restriction to lm, logistic, brlogistic, poisson, coxph and compet applies to the mice interface, and to what we document and test as supported for direct use. Case-cohort, nested case-control, dtsam, weibull, flexsurv and latnorm stay available through `smcfcs()`. They can be opened to mice later, once their extra requirements are handled: subcohort and risk-set data, flexsurv warm starts across mice iterations, and error-prone replicate measurements.
 
@@ -206,7 +206,7 @@ The data are simulated inside the script, so every case is small and self-contai
 
 We tried this on the baseline. All 27 cases reproduce exactly. Run against the code before the fix for open question 1, exactly one case fails, `lm_missing_outcome`, which is the only case that runs the changed line.
 
-All 27 cases still reproduce exactly after each of steps 1–5, and the full test suite passed after steps 1 and 5. No case in the grid has a failed flexsurv fit, so for steps 2 and 4 we also checked that path separately. We made `flexsurv::flexsurvspline()` fail on chosen calls, including the first fit of the second imputation, with and without `imputeTimes`. The code before and after each step gave identical results and identical warnings.
+All 27 cases still reproduce exactly after each of steps 1–6, and the full test suite passed after steps 1, 5 and 6. No case in the grid has a failed flexsurv fit, so for steps 2 and 4 we also checked that path separately. We made `flexsurv::flexsurvspline()` fail on chosen calls, including the first fit of the second imputation, with and without `imputeTimes`. The code before and after each step gave identical results and identical warnings.
 
 **How this prevents errors.** Any change in which random numbers are drawn, or in their order, changes the imputations, and the test fails. The same holds for lost or stale state, a wrong setup, or a broken code path anywhere in the grid. The comparison is exact, so there is no tolerance in which a small error can hide, and a failure never depends on chance. The bias tests stay and still check that the method is correct. The reference test checks that the refactor has not changed it.
 
@@ -229,6 +229,8 @@ In smcfcs:
     - cells with `r == 1` are never changed;
     - a logical `r` and a 0/1 `r` give identical results;
     - `verbose = FALSE` produces no output.
+
+    **As implemented (step 6),** in `tests/testthat/test_cycle.R`. The reproduction test runs `smcfcs()` with `m = 2` and records the input and the random-number state of the first `smcfcs.cycle()` call of each imputation. It then restores that state and runs the cycles again with `cycleState = NULL` on the first call, so the setup is rebuilt from the data. The imputed data must be equal and `smCoefIter` identical, for lm, logistic and poisson (lm and logistic with missing outcomes), coxph and compet. Two more tests cover step 5: the setup runs once over repeated calls and once per `smcfcs()` call, and again when `smformula`, `method` or `r` changes; and changing an argument after flexsurv times were imputed stops with an error. The tests compare two runs in the same session, so unlike the reference test they hold on every platform. They take under two seconds and also run on CRAN.
 3.  The existing test suite passes, with one deliberate change: the `expect_output()` in `test_errorchecks.R` becomes `expect_message()` (section 2.5).
 
 In mice:
@@ -310,4 +312,4 @@ Each step is a separate commit on the branch `smcfcs-cycle` of stefvanbuuren/smc
 | 3 | Preparation moved into `smcfcs.setup()` (section 2.2) | done, `260bdec` |
 | 4 | One cycle moved into `smcfcs.cycle()` (sections 2.1, 2.4) | done, `ea089a2` |
 | 5 | Redo the stored setup when the arguments change (section 2.2) | done |
-| 6 | Contract tests (section 4.3), help page, export | to do |
+| 6 | Contract tests (section 4.3), help page, export | done |

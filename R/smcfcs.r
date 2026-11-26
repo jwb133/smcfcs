@@ -228,9 +228,23 @@ smcfcs.dtsam <- function(originaldata, smformula, method, timeEffects = "factor"
               ...)
 }
 
-# this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
-# Preparation for SMC-FCS imputation, shared by smcfcs.core() (and, later,
-# smcfcs.cycle()): works out the role of each column, checks the inputs, fits
+# The quantities smcfcs.setup() returns. smcfcs.core() and smcfcs.cycle() put
+# them into their own environment with list2env(), so R CMD check cannot see
+# where they are defined; declaring them here avoids the "no visible binding"
+# notes for exactly these names and no others.
+setupNames <- c(
+  "extraArgs", "n", "r", "outcomeCol", "timeCol", "dCol", "d",
+  "entertimeCol", "eventCol", "setCol", "nriskCol", "H0", "H0indices",
+  "basehaz", "linpred", "outcomeModBeta", "numCauses", "cutPoints",
+  "nTimePoints", "subcoCol", "subcoMembers", "subco.weight", "list.times",
+  "smcfcsid", "smformula2", "noncases", "num.sampriskset", "smcovnames",
+  "smcovcols", "partialVars", "fullObsVars", "passiveVars",
+  "index_restrictions", "restrictions_work", "originaldata"
+)
+utils::globalVariables(setupNames)
+
+# Preparation for SMC-FCS imputation, shared by smcfcs.core() and
+# smcfcs.cycle(): works out the role of each column, checks the inputs, fits
 # the null models used for the baseline hazard, and parses the restrictions.
 # It draws no random numbers. Returns a named list of the quantities the
 # imputation loop uses.
@@ -540,15 +554,7 @@ smcfcs.setup <- function(originaldata, smtype, smformula, method, errorProneMatr
 
   # Return everything the imputation loop needs, including originaldata. Quantities that apply to
   # some substantive models only are NULL for the others.
-  setup <- mget(c(
-    "extraArgs", "n", "r", "outcomeCol", "timeCol", "dCol", "d",
-    "entertimeCol", "eventCol", "setCol", "nriskCol", "H0", "H0indices",
-    "basehaz", "linpred", "outcomeModBeta", "numCauses", "cutPoints",
-    "nTimePoints", "subcoCol", "subcoMembers", "subco.weight", "list.times",
-    "smcfcsid", "smformula2", "noncases", "num.sampriskset", "smcovnames",
-    "smcovcols", "partialVars", "fullObsVars", "passiveVars",
-    "index_restrictions", "restrictions_work", "originaldata"
-  ), ifnotfound = list(NULL))
+  setup <- mget(setupNames, ifnotfound = list(NULL))
   setup
 }
 
@@ -568,13 +574,96 @@ smcfcs.setupKey <- function(r, smtype, smformula, method, errorProneMatrix = NUL
        extraArgs = list(...))
 }
 
-# One SMC-FCS cycle: updates the passive variables, re-imputes each partially
-# observed variable in turn, and re-imputes missing outcomes (and, for
-# flexsurv with imputeTimes = TRUE, censored times). data is the current
-# completed data frame and r the original response indicators (1 = observed);
-# only cells with r == 0 are re-imputed. cycleState is NULL on the first call
-# and otherwise the value returned by the previous call. Returns
-# list(data = <updated data>, cycleState = <state>).
+#' Run a single SMC-FCS cycle
+#'
+#' Runs one cycle of substantive model compatible fully conditional
+#' specification imputation on a completed dataset. This is a low-level
+#' function for package developers who run their own imputation loop, such as
+#' a block imputation method for \pkg{mice}. \strong{Most users want
+#' \code{\link{smcfcs}}}, which creates the initial imputations and runs the
+#' cycles itself.
+#'
+#' One cycle updates the passive variables, re-imputes each partially observed
+#' variable in turn, and re-imputes missing outcomes (for \code{"lm"},
+#' \code{"logistic"}, \code{"brlogistic"} and \code{"poisson"}), exactly as one
+#' iteration of \code{\link{smcfcs}} does. Only cells with \code{r == 0} are
+#' changed.
+#'
+#' On the first call, pass \code{cycleState = NULL}. The function then prepares
+#' the imputation from \code{data}, with the cells \code{r == 0} set to
+#' \code{NA}: it works out the role of each column, checks the inputs and, for
+#' Cox and competing-risks models, fits the null model for the baseline hazard.
+#' On later calls, pass the \code{cycleState} returned by the previous call, so
+#' the preparation is reused and the state carried from cycle to cycle. If
+#' \code{r}, \code{smtype}, \code{smformula}, \code{method},
+#' \code{errorProneMatrix}, \code{restrictions} or the arguments in \code{...}
+#' differ from those the preparation was based on, the preparation is redone.
+#' Pass a separate \code{cycleState} for each chain of imputations.
+#'
+#' All substantive model types of \code{\link{smcfcs}} run, but the function is
+#' documented and tested for direct use with \code{"lm"}, \code{"logistic"},
+#' \code{"brlogistic"}, \code{"poisson"}, \code{"coxph"} and \code{"compet"}.
+#' The other types need extra arguments in \code{...}, as passed by
+#' \code{\link{smcfcs.casecohort}}, \code{\link{smcfcs.nestedcc}},
+#' \code{\link{smcfcs.dtsam}} and \code{\link{smcfcs.flexsurv}}. For
+#' \code{"flexsurv"} with \code{imputeTimes = TRUE}, \code{data} must hold the
+#' censoring times on the first call.
+#'
+#' The function issues no warnings. The caller can report the failure counts
+#' in \code{cycleState}.
+#'
+#' @param data The current completed data frame: the partially observed
+#'   variables and any missing outcomes contain current imputations, so it has
+#'   no missing values. Columns may be reordered or added only by starting
+#'   again with \code{cycleState = NULL}.
+#' @param r The response indicators of the original data: a matrix with the
+#'   same dimensions and column order as \code{data}, 1 or \code{TRUE} where a
+#'   value was observed and 0 or \code{FALSE} where it was missing. Logical and
+#'   0/1 matrices give identical results.
+#' @param verbose logical value (default FALSE) indicating whether status
+#'   messages should be shown: the roles of the variables (when the imputation
+#'   is prepared) and the imputation model used for each variable.
+#' @param cycleState \code{NULL} on the first call, and otherwise the
+#'   \code{cycleState} element returned by the previous call.
+#' @param ... Additional arguments for some substantive model types, as passed
+#'   by the wrapper functions of \code{\link{smcfcs}}.
+#' @inheritParams smcfcs
+#'
+#' @return A list containing:
+#'
+#' \code{data} the updated completed data frame
+#'
+#' \code{cycleState} the state to pass to the next call. Its contents are
+#' internal and may change, except for these elements: \code{smCoef}, the
+#' substantive model parameter values at the end of the cycle, as recorded in
+#' \code{smCoefIter} by \code{\link{smcfcs}}; and \code{rjFailCount} and
+#' \code{flexsurvFailCount}, the numbers of rejection sampling and flexsurv
+#' fit failures, accumulated over all calls that passed on the state.
+#'
+#' @author Jonathan Bartlett \email{jonathan.bartlett1@@lshtm.ac.uk}
+#' @seealso \code{\link{smcfcs}}
+#'
+#' @examples
+#' # Linear regression with a quadratic effect of the partially observed x
+#' dat <- ex_linquad[, c("y", "z", "x")]
+#' r <- !is.na(dat)
+#' meth <- c("", "", "norm")
+#'
+#' # Initial imputation: here simply the observed mean
+#' dat$x[!r[, "x"]] <- mean(dat$x, na.rm = TRUE)
+#'
+#' set.seed(123)
+#' state <- NULL
+#' for (it in 1:10) {
+#'   res <- smcfcs.cycle(dat, r,
+#'     smtype = "lm", smformula = "y ~ z + x + I(x^2)",
+#'     method = meth, cycleState = state
+#'   )
+#'   dat <- res$data
+#'   state <- res$cycleState
+#' }
+#' state$smCoef
+#' @export
 smcfcs.cycle <- function(data, r, smtype, smformula, method, predictorMatrix = NULL,
                          errorProneMatrix = NULL, restrictions = NULL,
                          rjlimit = 1000, noisy = FALSE, verbose = FALSE,
