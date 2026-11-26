@@ -3,46 +3,61 @@
 # data-raw/make-references.R on the baseline commit. Each case is rerun
 # from its stored inputs and must give identical() results.
 #
-# Exactness depends on the environment (R version, RNG, BLAS/LAPACK and
-# the versions of the packages smcfcs calls), so a case is skipped, not
-# failed, when the environment differs from the one that made it. This is
-# also why the test is skipped on CRAN.
+# Results depend on the linear algebra in use, so there is one set of
+# references per BLAS/LAPACK combination, in reference/<label>/. The test
+# picks the set whose stored linalg_fingerprint() matches the current
+# session. A case is skipped, not failed, when the rest of the environment
+# (R version, RNG, package versions) differs from the one that made it.
+# This is also why the test is skipped on CRAN.
 
-blas_now <- blas_tag()
-ref_files <- list.files(test_path("reference", blas_now), pattern = "\\.rds$",
-                        full.names = TRUE)
+# Load the helper functions into a private environment, so that stale
+# copies in the global environment (e.g. from an earlier source() of the
+# helper in an interactive session) cannot shadow them.
+h <- new.env(parent = globalenv())
+sys.source(test_path("helper-reference.R"), envir = h)
+reference_environment <- h$reference_environment
+run_reference_case <- h$run_reference_case
+
+env_now <- reference_environment()
+
+# Find the reference set made with the same linear algebra as this session.
+ref_sets <- list.dirs(test_path("reference"), full.names = TRUE, recursive = FALSE)
+set_fingerprint <- function(dir) {
+  f <- list.files(dir, pattern = "\\.rds$", full.names = TRUE)
+  if (length(f) == 0) return(NA_character_)
+  fp <- readRDS(f[1])$environment$fingerprint
+  if (is.null(fp)) NA_character_ else fp
+}
+matching <- ref_sets[vapply(ref_sets, set_fingerprint, character(1)) %in% env_now$fingerprint]
+ref_files <- if (length(matching) > 0) {
+  list.files(matching[1], pattern = "\\.rds$", full.names = TRUE)
+} else {
+  character(0)
+}
 
 test_that("reference files are present", {
   skip_on_cran()
-  sets <- list.dirs(test_path("reference"), full.names = FALSE, recursive = FALSE)
-  expect_gt(length(sets), 0)
+  expect_gt(length(ref_sets), 0)
   if (length(ref_files) == 0) {
-    skip(paste0("no references for BLAS '", blas_now, "' (available: ",
-                paste(sets, collapse = ", "),
-                "); generate them with data-raw/make-references.R"))
+    skip(paste0("no reference set matches this session's linear algebra (BLAS ",
+                basename(env_now$BLAS), ", fingerprint ", env_now$fingerprint,
+                "; sets: ", paste(basename(ref_sets), collapse = ", "),
+                "); generate one with data-raw/make-references.R"))
   }
   expect_gt(length(ref_files), 0)
 })
 
-env_now <- reference_environment()
-
 for (f in ref_files) {
   ref <- readRDS(f)
-  test_that(paste("identical to reference:", ref$case$name), {
+  test_that(paste0("identical to reference (", basename(dirname(f)), "): ",
+                   ref$case$name), {
     skip_on_cran()
     env_ref <- ref$environment
-    for (what in c("R", "platform", "RNGkind", "BLAS", "LAPACK")) {
-      ref_val <- env_ref[[what]]
-      now_val <- env_now[[what]]
-      if (what == "BLAS") {
-        # the same library can be reported under a symlinked name
-        ref_val <- normalizePath(ref_val, mustWork = FALSE)
-        now_val <- normalizePath(now_val, mustWork = FALSE)
-      }
-      if (!identical(ref_val, now_val)) {
+    for (what in c("R", "platform", "RNGkind", "LAPACK")) {
+      if (!identical(env_ref[[what]], env_now[[what]])) {
         skip(paste0(what, " differs from the reference: reference ",
-                    paste(ref_val, collapse = " "), ", now ",
-                    paste(now_val, collapse = " ")))
+                    paste(env_ref[[what]], collapse = " "), ", now ",
+                    paste(env_now[[what]], collapse = " ")))
       }
     }
     pk <- names(env_ref$packages)

@@ -10,9 +10,34 @@ reference_dir <- function(root = ".") {
   file.path(root, "tests", "testthat", "reference")
 }
 
-# A short label for the BLAS library in use, used as the subdirectory
-# name: "Rblas" for R's reference BLAS, "vecLib" for Apple's Accelerate,
-# otherwise derived from the library's file name.
+# A fingerprint of the linear algebra actually in use: an md5 checksum of
+# a matrix product, a Cholesky factor and an eigendecomposition of fixed
+# numbers. Different BLAS/LAPACK libraries round differently, so they give
+# different fingerprints. This is more reliable than the library name
+# reported by extSoftVersion(): a session can report Accelerate (because
+# an IDE loaded it into the process) while R's arithmetic still runs
+# through R's own BLAS. The global random-number state is left unchanged.
+linalg_fingerprint <- function() {
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  if (had_seed) old_seed <- get(".Random.seed", envir = globalenv())
+  on.exit(if (had_seed) assign(".Random.seed", old_seed, envir = globalenv())
+          else rm(".Random.seed", envir = globalenv()))
+  set.seed(20261126)
+  X <- matrix(rnorm(400 * 60), 400)
+  A <- crossprod(X)
+  x <- list(gemm = A %*% t(X[1:60, ]), chol = chol(A),
+            eigen = eigen(A, symmetric = TRUE))
+  f <- tempfile()
+  on.exit(unlink(f), add = TRUE)
+  saveRDS(x, f, version = 2, compress = FALSE)
+  unname(tools::md5sum(f))
+}
+
+# A short label for the BLAS library in use, used only to name the
+# subdirectory a new set of references is written to: "Rblas" for R's
+# reference BLAS, "vecLib" for Apple's Accelerate, otherwise derived from
+# the library's file name. The test chooses a set by linalg_fingerprint(),
+# not by this label.
 blas_tag <- function(path = extSoftVersion()[["BLAS"]]) {
   p <- normalizePath(path, mustWork = FALSE)
   if (grepl("vecLib|Accelerate", p)) return("vecLib")
@@ -55,8 +80,9 @@ reference_environment <- function() {
     R = paste(R.version$major, R.version$minor, sep = "."),
     platform = R.version$platform,
     RNGkind = RNGkind(),
-    BLAS = unname(extSoftVersion()["BLAS"]),
+    BLAS = unname(extSoftVersion()["BLAS"]),   # recorded for information only
     LAPACK = La_version(),
+    fingerprint = linalg_fingerprint(),
     packages = vapply(pkgs, function(p) {
       if (requireNamespace(p, quietly = TRUE)) as.character(utils::packageVersion(p)) else NA_character_
     }, character(1))
