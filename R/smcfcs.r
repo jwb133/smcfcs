@@ -1313,7 +1313,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
             covariance <- (outcomeModResVar / sigmasq) * vcov(ymod)
             outcomeModBeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
             outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-            imputations[[imp]][imputationNeeded, outcomeCol] <- rnorm(length(imputationNeeded), outmodxb[imputationNeeded], sigmasq^0.5)
+            imputations[[imp]][imputationNeeded, outcomeCol] <- rnorm(length(imputationNeeded), outmodxb[imputationNeeded], outcomeModResVar^0.5)
           } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
             if (smtype == "logistic") {
               ymod <- glm(as.formula(smformula), family = "binomial", imputations[[imp]][r[, outcomeCol] == 1, ])
