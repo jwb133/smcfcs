@@ -165,7 +165,7 @@ The existing suite checks two things: that smcfcs runs without error, and that i
 
 The refactor is meant to change no results at all. That allows an exact test instead of a statistical one: run the old code once, store what it produces, and require the new code to produce the same objects, bit for bit.
 
-**Step 1: generate the references before the refactor.** On master (`ae95ab3`), a script (`data-raw/make-references.R`, not shipped with the package) runs `smcfcs()` and its wrappers on a grid of small cases (n = 200, m = 2, numit = 3), each under its own fixed seed. It saves `impDatasets`, `smCoefIter` and any warnings as `.rds` files in `tests/testthat/`, together with the `RNGkind()` and R version used. The grid covers:
+**Step 1: generate the references before the refactor.** A script, `data-raw/make-references.R` (not shipped with the package), loads the package source at `ae95ab3` with `pkgload::load_all()`. It runs `smcfcs()` and its wrappers on a grid of 27 small cases (mostly n = 200, m = 2, numit = 3), each under its own fixed seed. For each case it saves one `.rds` file in `tests/testthat/reference/`. The file holds the inputs (function, arguments including the data, seed), the results (`impDatasets`, `smCoefIter`, `smInfo` and any warnings), and the environment they were generated in. The grid covers:
 
 - every `smtype`: lm, logistic, brlogistic, poisson, coxph, compet, weibull and dtsam, and the wrappers `smcfcs.casecohort()`, `smcfcs.nestedcc()`, `smcfcs.finegray()` and `smcfcs.flexsurv()`, including the imputation of censored times;
 - every covariate method: norm, latnorm (with `errorProneMatrix`), logreg, brlogreg, poisson, podds and mlogit;
@@ -173,15 +173,24 @@ The refactor is meant to change no results at all. That allows an exact test ins
 - a passive variable, and an `I()` term in `smformula`;
 - restrictions on a factor covariate;
 - a user-supplied `predictorMatrix`;
-- a very small `rjlimit`, so that rejection sampling fails and the warning count becomes part of the reference.
+- a very small `rjlimit`, so that rejection sampling fails and the warning count becomes part of the reference;
+- `noisy = TRUE`.
 
-The data are simulated inside the script, so every case is small and self-contained. Each runs in well under a second, so the test does not need `skip_on_cran()`.
+The data are simulated inside the script, so every case is small and self-contained. The whole grid runs in a few seconds and the references take about 300 KB. Because the inputs are stored with each reference, the test does not depend on the simulation code.
 
-**Step 2: check every refactoring commit against the references.** A test file re-runs each case with the same seed and checks that `impDatasets`, `smCoefIter` and the warnings are `identical()` to the stored versions. Because it runs on every commit of the refactor, a difference points to the commit that caused it.
+**Step 2: check every refactoring commit against the references.** A test file, `tests/testthat/test_reference.R`, re-runs each case from its stored inputs with the same seed and checks that `impDatasets`, `smCoefIter`, `smInfo` and the warnings are `identical()` to the stored versions. The script and the test share one function, in `tests/testthat/helper-reference.R`, that runs a case. It discards printed output and messages, because the refactor turns `print()` into `message()` on purpose (section 2.5). Because the test runs on every commit of the refactor, a difference points to the commit that caused it.
+
+We tried this on the baseline. All 27 cases reproduce exactly. Run against the code before the fix for open question 1, exactly one case fails, `lm_missing_outcome`, which is the only case that runs the changed line.
 
 **How this prevents errors.** Any change in which random numbers are drawn, or in their order, changes the imputations, and the test fails. The same holds for lost or stale state, a wrong setup, or a broken code path anywhere in the grid. The comparison is exact, so there is no tolerance in which a small error can hide, and a failure never depends on chance. The bias tests stay and still check that the method is correct. The reference test checks that the refactor has not changed it.
 
-**Limits.** A seed gives the same results on every platform, but R's default random-number generators can change between R versions. The test therefore compares the stored `RNGkind()` with the current one and skips, with a message, if they differ. When results are changed on purpose later, the references are regenerated in the same commit, and the commit message says why. Open question 1 was settled before step 1 for this reason: its fix (`ae95ab3`) is part of the baseline.
+**Limits.** Exact equality holds only in the environment the references were made in. Results can change without any change to smcfcs when one of these differs:
+
+- the R version or `RNGkind()`;
+- the BLAS or LAPACK library, because `MASS::mvrnorm()` uses an eigendecomposition, whose rounding depends on the library;
+- the versions of the packages smcfcs calls: MASS, survival, VGAM, brglm2, flexsurv and kmi.
+
+The test therefore compares the stored environment with the current one and skips a case, with a message saying what differs, rather than fail. For the same reason it is `skip_on_cran()`. It is a guard for the refactor, run on the developer's machine, not a test that holds on every platform. After the refactor, the references can be regenerated whenever the environment changes. When results are changed on purpose later, the references are regenerated in the same commit, and the commit message says why. Open question 1 was settled before step 1 for this reason: its fix (`ae95ab3`) is part of the baseline.
 
 ### 4.3 Other tests
 
