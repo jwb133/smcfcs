@@ -552,6 +552,22 @@ smcfcs.setup <- function(originaldata, smtype, smformula, method, errorProneMatr
   setup
 }
 
+# The arguments smcfcs.setup() depends on, in a form that identical() can
+# compare: smcfcs.cycle() redoes a stored setup when they change. r is
+# included because the setup is prepared from the data with the cells
+# r == 0 set to NA; it is stored as a logical matrix without dimnames, so a
+# logical r and a 0/1 r give the same key. predictorMatrix, rjlimit, noisy
+# and verbose are left out: the setup does not use them (verbose only
+# controls its messages).
+smcfcs.setupKey <- function(r, smtype, smformula, method, errorProneMatrix = NULL,
+                            restrictions = NULL, ...) {
+  r <- as.matrix(r) != 0
+  dimnames(r) <- NULL
+  list(r = r, smtype = smtype, smformula = smformula, method = method,
+       errorProneMatrix = errorProneMatrix, restrictions = restrictions,
+       extraArgs = list(...))
+}
+
 # One SMC-FCS cycle: updates the passive variables, re-imputes each partially
 # observed variable in turn, and re-imputes missing outcomes (and, for
 # flexsurv with imputeTimes = TRUE, censored times). data is the current
@@ -563,14 +579,31 @@ smcfcs.cycle <- function(data, r, smtype, smformula, method, predictorMatrix = N
                          errorProneMatrix = NULL, restrictions = NULL,
                          rjlimit = 1000, noisy = FALSE, verbose = FALSE,
                          cycleState = NULL, ...) {
-  if (is.null(cycleState$setup)) {
-    # First call: prepare from the data as originally observed. Censored
-    # flexsurv times have not been imputed yet, so data still holds them.
+  # The stored setup is reused only if it was prepared from the same
+  # arguments; otherwise it is prepared afresh
+  setupKey <- smcfcs.setupKey(r, smtype, smformula, method, errorProneMatrix,
+                              restrictions, ...)
+  if (is.null(cycleState$setup) || !identical(cycleState$setupKey, setupKey)) {
+    if (!is.null(cycleState$setup)) {
+      # After a cycle with imputeTimes = TRUE, data holds imputed times
+      # instead of the censoring times, so originaldata cannot be rebuilt
+      oldKey <- cycleState$setupKey
+      if (identical(oldKey$smtype, "flexsurv") && isTRUE(oldKey$extraArgs$imputeTimes)) {
+        stop("The arguments of smcfcs.cycle() changed after censored times were imputed. Start again from the original data with cycleState = NULL.")
+      }
+      # State fitted under the old setup does not apply to the new one
+      cycleState$flexsurvEsts <- NULL
+      cycleState$flexsurvFit <- NULL
+    }
+    # Prepare from the data as originally observed. On a first call,
+    # censored flexsurv times have not been imputed yet, so data still holds
+    # them.
     originaldata <- data
     originaldata[r == 0] <- NA
     cycleState$setup <- smcfcs.setup(originaldata, smtype, smformula, method,
                                      errorProneMatrix = errorProneMatrix,
                                      restrictions = restrictions, verbose = verbose, ...)
+    cycleState$setupKey <- setupKey
   }
   # Put the prepared quantities (including originaldata and r) into this
   # function's environment, where the code below expects them
@@ -1324,6 +1357,9 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
   # Put the prepared quantities into this function's environment, where the
   # initial imputation below expects them
   list2env(setup, envir = environment())
+  # Lets smcfcs.cycle() reuse the setup instead of preparing it again
+  setupKey <- smcfcs.setupKey(r, smtype, smformula, method, errorProneMatrix,
+                              restrictions, ...)
 
   imputations <- list()
   for (imp in 1:m) {
@@ -1464,7 +1500,7 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
 
     # A new imputation starts from the first cycle. The failure counts and
     # the last flexsurv fit carry over, as they did before the refactor.
-    state <- list(setup = setup, rjFailCount = rjFailCount,
+    state <- list(setup = setup, setupKey = setupKey, rjFailCount = rjFailCount,
                   flexsurvFailCount = flexsurvFailCount, flexsurvFit = flexsurvFit)
     for (cyclenum in 1:numit) {
       if (noisy == TRUE) {

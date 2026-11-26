@@ -2,7 +2,7 @@
 
 Stef van Buuren, draft of 26 November 2026
 
-Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3. Line numbers refer to `R/smcfcs.r` at `ae95ab3`. Steps 1–4 of the refactor are done on the branch `smcfcs-cycle`; section 6 lists the progress and section 2 describes the code as it now stands.
+Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3. Line numbers refer to `R/smcfcs.r` at `ae95ab3`. Steps 1–5 of the refactor are done on the branch `smcfcs-cycle`; section 6 lists the progress and section 2 describes the code as it now stands.
 
 ## 1. Goal
 
@@ -60,7 +60,9 @@ The contents of the stored preparation stay internal. If needed later, an option
 
 **As implemented (step 3).** `smcfcs.setup(originaldata, smtype, smformula, method, errorProneMatrix, restrictions, verbose, ...)` contains the preparation code unchanged, including the messages about the variables' roles. It returns a named list of the 35 quantities the imputation needs, among them `n`, `r`, the column numbers, `partialVars`, the null-model quantities, the parsed restrictions and `originaldata`. Quantities that do not apply to the substantive model, such as `numCauses` for anything but `compet`, are `NULL`. `smcfcs.core()` and `smcfcs.cycle()` put the list into their own environment with `list2env()`, so the code that uses the quantities is unchanged. Unpacking is needed in any case for one of them: `smformula2` for case-cohort contains `cluster(smcfcsid)`, so `smcfcsid` has to exist where the formula is evaluated, although the code never refers to it by name. `codetools::findGlobals()` confirms that every variable the two functions read without defining it comes from the setup list. So none of them can fall back to an object of the same name in the user's workspace.
 
-The guard against a mismatch is step 5 and not yet implemented.
+**As implemented (step 5).** The key that is compared is built by an internal function, `smcfcs.setupKey()`. It holds `smtype`, `smformula`, `method`, `errorProneMatrix`, `restrictions`, the extra arguments in `...`, and `r`. `r` is included because the setup is prepared from `data` with the cells `r == 0` set to `NA`. It is stored as a logical matrix without dimnames, so a logical `r` and a 0/1 `r` give the same key. `predictorMatrix`, `rjlimit`, `noisy` and `verbose` are left out, because the setup does not use them (`verbose` only controls its messages). `smcfcs.cycle()` builds the key on every call and compares it with `identical()` to the key stored in `cycleState$setupKey`. If they differ, or there is no setup yet, it prepares the setup afresh, as on a first call. `smcfcs.core()` puts the key in the state together with the setup, so its cycles reuse the setup and the preparation still runs once per `smcfcs()` call. Changing the formula, `method` or `r` between calls redoes the setup; feeding back the state with the same arguments does not.
+
+Two details on a redo. The flexsurv initial values and the last flexsurv fit are dropped, because they belong to the old model; the failure counts are kept. And for flexsurv with `imputeTimes = TRUE`, `originaldata` cannot be rebuilt once a cycle has run, because `data` then holds imputed times instead of the censoring times (section 2.1). In that case `smcfcs.cycle()` stops with an error that says to start again with `cycleState = NULL`. A formula is compared with its environment, so a caller that builds the same formula anew inside a function on each call (rather than reusing one object, as mice does) would redo the setup each time. A character `smformula`, or a formula created once, has no such problem. That is wasteful but gives correct results.
 
 ### 2.3 Explicit state
 
@@ -73,7 +75,7 @@ These quantities carry over between cycles:
 | `flexsurvEsts` | initial values for the next fit when `cyclenum > 1` | `cycleState$flexsurvEsts`; `NULL` means first cycle |
 | last flexsurv fit (`ymod`) | kept in `smcfcs.core()`; reused when a fit fails, and its knots reused with `originalKnots = TRUE` | `cycleState$flexsurvFit` |
 | substantive-model coefficients at end of cycle | written to `smCoefIter[imp, , cyclenum]` | `cycleState$smCoef`; `smcfcs.core()` fills `smCoefIter` |
-| preparation (setup) | done once per `smcfcs()` call | `cycleState$setup`, redone if the arguments change (2.2, step 5) |
+| preparation (setup) | done once per `smcfcs()` call | `cycleState$setup`, redone if the arguments change (2.2, step 5); the arguments it was based on are in `cycleState$setupKey` |
 
 The coefficients are `outcomeModBeta`, except for `compet`, where they are the cause-specific vectors joined into one (`totalCoefVec`). They are taken after the last partially observed variable (lines 978–1000), for every model. For flexsurv with `imputeTimes = TRUE` they are then overwritten with the draw from the time imputation (line 1375). The outcome update for lm, logistic, brlogistic and poisson draws new coefficients too, but those are not recorded. `smcfcs.cycle()` keeps exactly these values in `cycleState$smCoef`.
 
@@ -204,7 +206,7 @@ The data are simulated inside the script, so every case is small and self-contai
 
 We tried this on the baseline. All 27 cases reproduce exactly. Run against the code before the fix for open question 1, exactly one case fails, `lm_missing_outcome`, which is the only case that runs the changed line.
 
-All 27 cases still reproduce exactly after each of steps 1–4, and the full test suite passed after step 1. No case in the grid has a failed flexsurv fit, so for steps 2 and 4 we also checked that path separately. We made `flexsurv::flexsurvspline()` fail on chosen calls, including the first fit of the second imputation, with and without `imputeTimes`. The code before and after each step gave identical results and identical warnings.
+All 27 cases still reproduce exactly after each of steps 1–5, and the full test suite passed after steps 1 and 5. No case in the grid has a failed flexsurv fit, so for steps 2 and 4 we also checked that path separately. We made `flexsurv::flexsurvspline()` fail on chosen calls, including the first fit of the second imputation, with and without `imputeTimes`. The code before and after each step gave identical results and identical warnings.
 
 **How this prevents errors.** Any change in which random numbers are drawn, or in their order, changes the imputations, and the test fails. The same holds for lost or stale state, a wrong setup, or a broken code path anywhere in the grid. The comparison is exact, so there is no tolerance in which a small error can hide, and a failure never depends on chance. The bias tests stay and still check that the method is correct. The reference test checks that the refactor has not changed it.
 
@@ -307,5 +309,5 @@ Each step is a separate commit on the branch `smcfcs-cycle` of stefvanbuuren/smc
 | 2 | State carried explicitly instead of via `<<-` and `exists()` (section 2.3) | done, `981297c` |
 | 3 | Preparation moved into `smcfcs.setup()` (section 2.2) | done, `260bdec` |
 | 4 | One cycle moved into `smcfcs.cycle()` (sections 2.1, 2.4) | done, `ea089a2` |
-| 5 | Redo the stored setup when the arguments change (section 2.2) | to do |
+| 5 | Redo the stored setup when the arguments change (section 2.2) | done |
 | 6 | Contract tests (section 4.3), help page, export | to do |
