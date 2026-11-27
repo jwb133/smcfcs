@@ -37,7 +37,7 @@ test_that("Checking outcome model check for logistic models", {
 })
 
 test_that("Checking outcome model check for logistic models", {
-  expect_output({
+  expect_message({
     set.seed(1234)
     n <- 100
     x <- rnorm(n)

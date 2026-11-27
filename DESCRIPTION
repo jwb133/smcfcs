@@ -1,12 +1,13 @@
 Package: smcfcs
 Title: Multiple Imputation of Covariates by Substantive Model Compatible Fully
     Conditional Specification
-Version: 2.0.3
+Version: 2.1.0
 Authors@R: c(person("Jonathan", "Bartlett", email = "jonathan.bartlett1@lshtm.ac.uk",role = c("aut", "cre")),
     person("Ruth", "Keogh", email = "ruth.keogh@lshtm.ac.uk",role = c("aut")),
     person("Edouard F.", "Bonneville",role = c("aut")),
     person("Lars", "van der Burg",role = c("aut")),
-    person("Claus Thorn", "Ekstrøm",role = c("ctb")))
+    person("Claus Thorn", "Ekstrøm",role = c("ctb")),
+    person("Stef", "van Buuren",role = c("ctb")))
 URL: https://github.com/jwb133/smcfcs
 Description: Implements multiple imputation of missing covariates by
     Substantive Model Compatible Fully Conditional Specification.
@@ -26,7 +27,8 @@ Imports:
     rlang,
     checkmate,
     abind,
-    brglm2
+    brglm2,
+    utils
 Suggests:
     knitr,
     rmarkdown,

@@ -15,7 +15,8 @@ smcfcs(
   rjlimit = 1000,
   noisy = FALSE,
   errorProneMatrix = NULL,
-  restrictions = NULL
+  restrictions = NULL,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -80,6 +81,11 @@ coarsened factor level covariates. This is where for a factor variable for
 some individuals we do not their value of the variable but we do know
 it belongs to some subset of the sample space. For further details
 on how to specify this argument, see \code{vignette("coarsening", package = "smcfcs")}.}
+
+\item{verbose}{logical value (default TRUE) indicating whether status messages should be shown:
+the roles of the variables, the imputation number, and the imputation model used for each
+variable. These are issued with \code{message()}, so they can also be silenced with
+\code{suppressMessages()}. \code{noisy} controls the model summaries separately.}
 }
 \value{
 A list containing:

@@ -85,6 +85,10 @@
 #' increase the \code{rjlimit} until the warning does not appear.
 #' @param noisy logical value (default FALSE) indicating whether output should be noisy, which can
 #' be useful for debugging or checking that models being used are as desired.
+#' @param verbose logical value (default TRUE) indicating whether status messages should be shown:
+#' the roles of the variables, the imputation number, and the imputation model used for each
+#' variable. These are issued with \code{message()}, so they can also be silenced with
+#' \code{suppressMessages()}. \code{noisy} controls the model summaries separately.
 #' @param errorProneMatrix An optional matrix which if specified indicates that some variables
 #' are measured with classical measurement error. If the i'th variable is measured with error
 #' by variables j and k, then the (i,j) and (i,k) entries of this matrix should be 1, with the
@@ -113,9 +117,9 @@
 #' @import stats
 #' @importFrom survival Surv
 #' @export
-smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL, restrictions = NULL) {
+smcfcs <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL, restrictions = NULL, verbose = TRUE) {
   # call core  smcfcs function, passing through arguments
-  smcfcs.core(originaldata, smtype, smformula, method, predictorMatrix, m, numit, rjlimit, noisy, errorProneMatrix = errorProneMatrix, restrictions = restrictions)
+  smcfcs.core(originaldata, smtype, smformula, method, predictorMatrix, m, numit, rjlimit, noisy, errorProneMatrix = errorProneMatrix, restrictions = restrictions, verbose = verbose)
 }
 
 #' Substantive model compatible fully conditional specification imputation of covariates for case cohort studies
@@ -224,9 +228,28 @@ smcfcs.dtsam <- function(originaldata, smformula, method, timeEffects = "factor"
               ...)
 }
 
-# this is the core of the smcfcs function, called by wrapper functions for certain different substantive models
-smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL,restrictions = NULL,
-                        ...) {
+# The quantities smcfcs.setup() returns. smcfcs.core() and smcfcs.cycle() put
+# them into their own environment with list2env(), so R CMD check cannot see
+# where they are defined; declaring them here avoids the "no visible binding"
+# notes for exactly these names and no others.
+setupNames <- c(
+  "extraArgs", "n", "r", "outcomeCol", "timeCol", "dCol", "d",
+  "entertimeCol", "eventCol", "setCol", "nriskCol", "H0", "H0indices",
+  "basehaz", "linpred", "outcomeModBeta", "numCauses", "cutPoints",
+  "nTimePoints", "subcoCol", "subcoMembers", "subco.weight", "list.times",
+  "smcfcsid", "smformula2", "noncases", "num.sampriskset", "smcovnames",
+  "smcovcols", "partialVars", "fullObsVars", "passiveVars",
+  "index_restrictions", "restrictions_work", "originaldata"
+)
+utils::globalVariables(setupNames)
+
+# Preparation for SMC-FCS imputation, shared by smcfcs.core() and
+# smcfcs.cycle(): works out the role of each column, checks the inputs, fits
+# the null models used for the baseline hazard, and parses the restrictions.
+# It draws no random numbers. Returns a named list of the quantities the
+# imputation loop uses.
+smcfcs.setup <- function(originaldata, smtype, smformula, method, errorProneMatrix = NULL,
+                         restrictions = NULL, verbose = TRUE, ...) {
   # get extra arguments passed in ...
   extraArgs <- list(...)
 
@@ -490,18 +513,12 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
   passiveVars <- which((method != "") & (method != "norm") & (method != "logreg") & (method != "poisson") & (method != "podds") &
     (method != "mlogit") & (method != "latnorm") & (method != "brlogreg"))
 
-  print(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol], collapse = ",")))
-  print(paste("Passive variables:", paste(colnames(originaldata)[passiveVars], collapse = ",")))
-  print(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars], collapse = ",")))
-  print(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars], collapse = ",")))
-
-  imputations <- list()
-  for (imp in 1:m) {
-    imputations[[imp]] <- originaldata
+  if (verbose) {
+    message(paste("Outcome variable(s):", paste(colnames(originaldata)[outcomeCol], collapse = ",")))
+    message(paste("Passive variables:", paste(colnames(originaldata)[passiveVars], collapse = ",")))
+    message(paste("Partially obs. variables:", paste(colnames(originaldata)[partialVars], collapse = ",")))
+    message(paste("Fully obs. substantive model variables:", paste(colnames(originaldata)[fullObsVars], collapse = ",")))
   }
-
-  rjFailCount <- 0
-  flexsurvFailCount <- 0
 
   if(!is.null(restrictions)){
     if (!requireNamespace("stringr", quietly = TRUE)) {
@@ -535,8 +552,920 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     }
   }
 
+  # Return everything the imputation loop needs, including originaldata. Quantities that apply to
+  # some substantive models only are NULL for the others.
+  setup <- mget(setupNames, ifnotfound = list(NULL))
+  setup
+}
+
+# The arguments smcfcs.setup() depends on, in a form that identical() can
+# compare: smcfcs.cycle() redoes a stored setup when they change. r is
+# included because the setup is prepared from the data with the cells
+# r == 0 set to NA; it is stored as a logical matrix without dimnames, so a
+# logical r and a 0/1 r give the same key. predictorMatrix, rjlimit, noisy
+# and verbose are left out: the setup does not use them (verbose only
+# controls its messages).
+smcfcs.setupKey <- function(r, smtype, smformula, method, errorProneMatrix = NULL,
+                            restrictions = NULL, ...) {
+  r <- as.matrix(r) != 0
+  dimnames(r) <- NULL
+  list(r = r, smtype = smtype, smformula = smformula, method = method,
+       errorProneMatrix = errorProneMatrix, restrictions = restrictions,
+       extraArgs = list(...))
+}
+
+#' Run a single SMC-FCS cycle
+#'
+#' Runs one cycle of substantive model compatible fully conditional
+#' specification imputation on a completed dataset. This is a low-level
+#' function for package developers who run their own imputation loop, such as
+#' a block imputation method for \pkg{mice}. \strong{Most users want
+#' \code{\link{smcfcs}}}, which creates the initial imputations and runs the
+#' cycles itself.
+#'
+#' One cycle updates the passive variables, re-imputes each partially observed
+#' variable in turn, and re-imputes missing outcomes (for \code{"lm"},
+#' \code{"logistic"}, \code{"brlogistic"} and \code{"poisson"}), exactly as one
+#' iteration of \code{\link{smcfcs}} does. Only cells with \code{r == 0} are
+#' changed.
+#'
+#' On the first call, pass \code{cycleState = NULL}. The function then prepares
+#' the imputation from \code{data}, with the cells \code{r == 0} set to
+#' \code{NA}: it works out the role of each column, checks the inputs and, for
+#' Cox and competing-risks models, fits the null model for the baseline hazard.
+#' On later calls, pass the \code{cycleState} returned by the previous call, so
+#' the preparation is reused and the state carried from cycle to cycle. If
+#' \code{r}, \code{smtype}, \code{smformula}, \code{method},
+#' \code{errorProneMatrix}, \code{restrictions} or the arguments in \code{...}
+#' differ from those the preparation was based on, the preparation is redone.
+#' Pass a separate \code{cycleState} for each chain of imputations.
+#'
+#' All substantive model types of \code{\link{smcfcs}} run, but the function is
+#' documented and tested for direct use with \code{"lm"}, \code{"logistic"},
+#' \code{"brlogistic"}, \code{"poisson"}, \code{"coxph"} and \code{"compet"}.
+#' The other types need extra arguments in \code{...}, as passed by
+#' \code{\link{smcfcs.casecohort}}, \code{\link{smcfcs.nestedcc}},
+#' \code{\link{smcfcs.dtsam}} and \code{\link{smcfcs.flexsurv}}. For
+#' \code{"flexsurv"} with \code{imputeTimes = TRUE}, \code{data} must hold the
+#' censoring times on the first call.
+#'
+#' The function issues no warnings. The caller can report the failure counts
+#' in \code{cycleState}.
+#'
+#' @param data The current completed data frame: the partially observed
+#'   variables and any missing outcomes contain current imputations, so it has
+#'   no missing values. Columns may be reordered or added only by starting
+#'   again with \code{cycleState = NULL}.
+#' @param r The response indicators of the original data: a matrix with the
+#'   same dimensions and column order as \code{data}, 1 or \code{TRUE} where a
+#'   value was observed and 0 or \code{FALSE} where it was missing. Logical and
+#'   0/1 matrices give identical results.
+#' @param verbose logical value (default FALSE) indicating whether status
+#'   messages should be shown: the roles of the variables (when the imputation
+#'   is prepared) and the imputation model used for each variable.
+#' @param cycleState \code{NULL} on the first call, and otherwise the
+#'   \code{cycleState} element returned by the previous call.
+#' @param ... Additional arguments for some substantive model types, as passed
+#'   by the wrapper functions of \code{\link{smcfcs}}.
+#' @inheritParams smcfcs
+#'
+#' @return A list containing:
+#'
+#' \code{data} the updated completed data frame
+#'
+#' \code{cycleState} the state to pass to the next call. Its contents are
+#' internal and may change, except for these elements: \code{smCoef}, the
+#' substantive model parameter values at the end of the cycle, as recorded in
+#' \code{smCoefIter} by \code{\link{smcfcs}}; and \code{rjFailCount} and
+#' \code{flexsurvFailCount}, the numbers of rejection sampling and flexsurv
+#' fit failures, accumulated over all calls that passed on the state.
+#'
+#' @author Jonathan Bartlett \email{jonathan.bartlett1@@lshtm.ac.uk}
+#' @author Stef van Buuren
+#'
+#' @seealso \code{\link{smcfcs}}
+#'
+#' @examples
+#' # Linear regression with a quadratic effect of the partially observed x
+#' dat <- ex_linquad[, c("y", "z", "x")]
+#' r <- !is.na(dat)
+#' meth <- c("", "", "norm")
+#'
+#' # Initial imputation: here simply the observed mean
+#' dat$x[!r[, "x"]] <- mean(dat$x, na.rm = TRUE)
+#'
+#' set.seed(123)
+#' state <- NULL
+#' for (it in 1:10) {
+#'   res <- smcfcs.cycle(dat, r,
+#'     smtype = "lm", smformula = "y ~ z + x + I(x^2)",
+#'     method = meth, cycleState = state
+#'   )
+#'   dat <- res$data
+#'   state <- res$cycleState
+#' }
+#' state$smCoef
+#' @export
+smcfcs.cycle <- function(data, r, smtype, smformula, method, predictorMatrix = NULL,
+                         errorProneMatrix = NULL, restrictions = NULL,
+                         rjlimit = 1000, noisy = FALSE, verbose = FALSE,
+                         cycleState = NULL, ...) {
+  # The stored setup is reused only if it was prepared from the same
+  # arguments; otherwise it is prepared afresh
+  setupKey <- smcfcs.setupKey(r, smtype, smformula, method, errorProneMatrix,
+                              restrictions, ...)
+  if (is.null(cycleState$setup) || !identical(cycleState$setupKey, setupKey)) {
+    if (!is.null(cycleState$setup)) {
+      # After a cycle with imputeTimes = TRUE, data holds imputed times
+      # instead of the censoring times, so originaldata cannot be rebuilt
+      oldKey <- cycleState$setupKey
+      if (identical(oldKey$smtype, "flexsurv") && isTRUE(oldKey$extraArgs$imputeTimes)) {
+        stop("The arguments of smcfcs.cycle() changed after censored times were imputed. Start again from the original data with cycleState = NULL.")
+      }
+      # State fitted under the old setup does not apply to the new one
+      cycleState$flexsurvEsts <- NULL
+      cycleState$flexsurvFit <- NULL
+    }
+    # Prepare from the data as originally observed. On a first call,
+    # censored flexsurv times have not been imputed yet, so data still holds
+    # them.
+    originaldata <- data
+    originaldata[r == 0] <- NA
+    cycleState$setup <- smcfcs.setup(originaldata, smtype, smformula, method,
+                                     errorProneMatrix = errorProneMatrix,
+                                     restrictions = restrictions, verbose = verbose, ...)
+    cycleState$setupKey <- setupKey
+  }
+  # Put the prepared quantities (including originaldata and r) into this
+  # function's environment, where the code below expects them
+  list2env(cycleState$setup, envir = environment())
+
+  # State carried over from the previous cycle
+  rjFailCount <- if (is.null(cycleState$rjFailCount)) 0 else cycleState$rjFailCount
+  flexsurvFailCount <- if (is.null(cycleState$flexsurvFailCount)) 0 else cycleState$flexsurvFailCount
+  # flexsurv: estimates from the previous cycle, used as initial values (NULL
+  # in the first cycle), and the last fitted model, used when a fit fails
+  flexsurvEsts <- cycleState$flexsurvEsts
+  firstCycle <- is.null(flexsurvEsts)
+  ymod <- cycleState$flexsurvFit
+  smCoef <- NULL
+
+  # update passive variable(s)
+  data <- updatePassiveVars(data, method, passiveVars)
+
+  if (length(partialVars)>0) {
+    for (var in 1:length(partialVars)) {
+    targetCol <- partialVars[var]
+    if (is.null(predictorMatrix)) {
+      predictorCols <- c(partialVars[!partialVars %in% targetCol], fullObsVars)
+    } else {
+      predictorCols <- which(predictorMatrix[targetCol, ] == 1)
+      # ensure that user has not included outcome variable(s) here
+      predictorCols <- predictorCols[!predictorCols %in% outcomeCol]
+    }
+    if (verbose) {
+      if (method[targetCol] == "latnorm") {
+        message(paste("Imputing: ", colnames(data)[targetCol], " using ", paste(colnames(data)[c(predictorCols, which(errorProneMatrix[targetCol, ] == 1))], collapse = ","), " plus outcome", collapse = ","))
+      } else {
+        message(paste("Imputing: ", colnames(data)[targetCol], " using ", paste(colnames(data)[predictorCols], collapse = ","), " plus outcome", collapse = ","))
+      }
+    }
+    if (length(predictorCols) > 0) {
+      xmodformula <- as.formula(paste(colnames(data)[targetCol], "~", paste(colnames(data)[predictorCols], collapse = "+"), sep = ""))
+    } else {
+      xmodformula <- as.formula(paste(colnames(data)[targetCol], "~1", sep = ""))
+    }
+    if (smtype == "casecohort") {
+      xmoddata <- data[subcoMembers, ]
+    } else if (smtype == "nestedcc") {
+      xmoddata <- data[noncases, ]
+    } else {
+      xmoddata <- data
+    }
+    if (method[targetCol] == "norm") {
+      # estimate parameters of covariate model
+      xmod <- lm(xmodformula, data = xmoddata)
+      # take draw from posterior of covariate model parameters
+      beta <- xmod$coef
+      sigmasq <- summary(xmod)$sigma^2
+      newsigmasq <- (sigmasq * xmod$df) / rchisq(1, xmod$df)
+      covariance <- (newsigmasq / sigmasq) * vcov(xmod)
+      newbeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
+      # calculate fitted values
+      if ((smtype == "casecohort") | (smtype == "nestedcc")) {
+        xfitted <- model.matrix(xmodformula, data = data) %*% newbeta
+      } else {
+        xfitted <- model.matrix(xmod) %*% newbeta
+      }
+    } else if (method[targetCol] == "latnorm") {
+      # estimate parameters of covariate model
+      xmod <- lm(xmodformula, data = xmoddata)
+      # take draw from posterior of covariate model parameters
+      beta <- xmod$coef
+      sigmasq <- summary(xmod)$sigma^2
+      # draw from sigmasq posterior based on proper inverse gamma prior for sigmasq
+      # prior equivalent to 1 observation and guess of sigmasq=1
+      newsigmasq <- 1 / rgamma(1, shape = ((n + 1) / 2), rate = ((n * sigmasq + 1) / 2))
+      covariance <- (newsigmasq / sigmasq) * vcov(xmod)
+      newbeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
+      # calculate fitted values
+      if ((smtype == "casecohort") | (smtype == "nestedcc")) {
+        xfitted <- model.matrix(xmodformula, data = data) %*% newbeta
+      } else {
+        xfitted <- model.matrix(xmod) %*% newbeta
+      }
+
+      # estimate error variance and draw new value of error variance
+      errorProneCols <- which(errorProneMatrix[targetCol, ] == 1)
+      xmat <- matrix(data[, targetCol], nrow = nrow(data), ncol = length(errorProneCols))
+      uVec <- c(as.matrix(data[, errorProneCols] - xmat))
+      sigmausq <- mean(uVec^2)
+      # take draw from posterior of error variance, using proper inverse gamma prior
+      sum_ni <- n * length(errorProneCols)
+      sigmausq <- 1 / rgamma(1, shape = ((sum_ni + 1) / 2), rate = ((sum_ni * sigmausq + 1) / 2))
+
+      # re-impute any originally missing error-prone measurements, based on classical error model assumption
+      for (measure in 1:length(errorProneCols)) {
+        nToImpute <- n - sum(r[, errorProneCols[measure]])
+        if (nToImpute > 0) {
+          # then some values need imputing
+          data[r[, errorProneCols[measure]] == 0, errorProneCols[measure]] <- data[r[, errorProneCols[measure]] == 0, targetCol] +
+            rnorm(nToImpute, 0, sd = sqrt(sigmausq))
+        }
+      }
+
+      # calculate conditional mean and variance of X|everything else except outcome
+      wmean <- rowMeans(data[, errorProneCols])
+      lambda <- newsigmasq / (newsigmasq + sigmausq / length(errorProneCols))
+      xfitted <- xfitted + lambda * (wmean - xfitted)
+      newsigmasq <- rep(newsigmasq * (1 - lambda), n)
+    } else if (method[targetCol] == "logreg") {
+      xmod <- glm(xmodformula, family = "binomial", data = xmoddata)
+      newbeta <- modPostDraw(xmod)
+      if ((smtype == "casecohort") | (smtype == "nestedcc")) {
+        xfitted <- plogis(model.matrix(xmodformula, data = data) %*% newbeta)
+      } else {
+        xfitted <- plogis(model.matrix(xmod) %*% newbeta)
+      }
+    } else if (method[targetCol] == "brlogreg") {
+      xmod <- glm(xmodformula, family = "binomial", data = xmoddata, method = brglm2::brglmFit)
+      newbeta <- modPostDraw(xmod)
+      if ((smtype == "casecohort") | (smtype == "nestedcc")) {
+        xfitted <- plogis(model.matrix(xmodformula, data = data) %*% newbeta)
+      } else {
+        xfitted <- plogis(model.matrix(xmod) %*% newbeta)
+      }
+    } else if (method[targetCol] == "poisson") {
+      xmod <- glm(xmodformula, family = "poisson", data = xmoddata)
+      newbeta <- modPostDraw(xmod)
+      if ((smtype == "casecohort") | (smtype == "nestedcc")) {
+        xfitted <- exp(model.matrix(xmodformula, data = data) %*% newbeta)
+      } else {
+        xfitted <- exp(model.matrix(xmod) %*% newbeta)
+      }
+    } else if (method[targetCol] == "podds") {
+      if (is.ordered(data[, targetCol]) == FALSE) stop("Variables to be imputed using method podds must be stored as ordered factors.")
+      xmod <- MASS::polr(xmodformula, data = xmoddata, Hess=TRUE)
+      xmod.dummy <- MASS::polr(xmodformula, data = data, Hess=TRUE)
+      polr_cutpts <- xmod$zeta
+      # Thanks to Ed Bonneville: polr does maximization using first cutpoint and then log differences
+      # in the cut-points. So we extract estimates use this transformation, and then apply a MVN draw
+      polr_theta <- c(xmod$coefficients, polr_cutpts[1], log(diff(polr_cutpts)))
+      newtheta <- polr_theta + MASS::mvrnorm(1, mu = rep(0, length(polr_theta)), Sigma = MASS::ginv(xmod$Hessian))
+      # extract new 'coefficients'
+      newbeta <- newtheta[seq_along(xmod$coefficients)]
+      # transform back to cutpoints
+      newcutpoints <- cumsum(c(newtheta[length(xmod$coefficients)+1], exp(newtheta[-(1:(length(xmod$coefficients)+1))])))
+      # calculate fitted probabilities
+      polr_cumlogitprob <- array(0, dim=c(dim(data)[1],length(newcutpoints)))
+      for (j in 1:length(newcutpoints)) {
+        polr_cumlogitprob[,j] <- model.matrix(xmod) %*% c(-newcutpoints[j],newbeta)
+      }
+      polr_cumprobs <- cbind(rep(1,dim(data)[1]),plogis(polr_cumlogitprob))
+      xfitted <- cbind(-t(apply(polr_cumprobs, MARGIN=1, FUN=diff)), polr_cumprobs[,dim(polr_cumprobs)[2]])
+    } else if (method[targetCol] == "mlogit") {
+      if (is.factor(data[, targetCol]) == FALSE) stop("Variables to be imputed using method mlogit must be stored as factors.")
+      xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel = 1), data = xmoddata)
+      newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu = rep(0, ncol(VGAM::vcov(xmod))), Sigma = VGAM::vcov(xmod))
+      xmod@coefficients <- newbeta
+      xfitted <- VGAM::predictvglm(xmod, newdata = data, type = "response")
+    }
+    if (noisy == TRUE) {
+      print(summary(xmod))
+    }
+
+    # estimate parameters of substantive model
+    if (smtype == "lm") {
+      ymod <- lm(as.formula(smformula), data)
+      beta <- ymod$coef
+      sigmasq <- summary(ymod)$sigma^2
+      varcov <- vcov(ymod)
+      outcomeModResVar <- (sigmasq * ymod$df) / rchisq(1, ymod$df)
+      covariance <- (outcomeModResVar / sigmasq) * vcov(ymod)
+      outcomeModBeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
+      if (smtype == "logistic") {
+        ymod <- glm(as.formula(smformula), family = "binomial", data)
+      } else {
+        ymod <- glm(as.formula(smformula),
+          family = "binomial", data,
+          method = brglm2::brglmFit
+        )
+      }
+      outcomeModBeta <- modPostDraw(ymod)
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    } else if (smtype == "dtsam") {
+      # split data to long form
+      longData <- survival::survSplit(as.formula(smformula), data = data, cut = cutPoints)
+      # fit logistic model
+      if (extraArgs$timeEffects == "factor") {
+        dtsamFormula <- paste(colnames(data)[dCol], "~-1+factor(tstart)+",
+          strsplit(smformula, "~")[[1]][2],
+          sep = ""
+        )
+      } else if (extraArgs$timeEffects == "linear") {
+        # linear time effect
+        dtsamFormula <- paste(colnames(data)[dCol], "~tstart+",
+          strsplit(smformula, "~")[[1]][2],
+          sep = ""
+        )
+      } else {
+        # quadratic effect of time
+        dtsamFormula <- paste(colnames(data)[dCol], "~tstart+I(tstart^2)+",
+          strsplit(smformula, "~")[[1]][2],
+          sep = ""
+        )
+      }
+      ymod <- glm(as.formula(dtsamFormula), family = "binomial", data = longData)
+      outcomeModBeta <- modPostDraw(ymod)
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    } else if (smtype == "poisson") {
+      ymod <- glm(as.formula(smformula), family = "poisson", data)
+      outcomeModBeta <- modPostDraw(ymod)
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    } else if (smtype == "coxph") {
+      ymod <- survival::coxph(as.formula(smformula), data,
+        control = survival::coxph.control(timefix = FALSE), model = TRUE
+      )
+      outcomeModBeta <- modPostDraw(ymod)
+      ymod$coefficients <- outcomeModBeta
+      basehaz <- survival::basehaz(ymod, centered = FALSE)[, 1]
+      H0 <- basehaz[H0indices]
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    } else if (smtype == "flexsurv") {
+      # A fit that fails returns NULL: the failure is counted and ymod
+      # keeps its previous value
+      if (firstCycle) {
+        fit <- tryCatch(
+          flexsurv::flexsurvspline(as.formula(smformula), data,
+                                   k=extraArgs$k, scale="hazard"),
+          error = function(e) NULL)
+      } else {
+        # use previous estimates as initial values, to try and prevent non-convergence
+        fit <- tryCatch(
+          {
+            # first attempt to fit model
+            if (extraArgs$originalKnots==FALSE) {
+              flexsurv::flexsurvspline(as.formula(smformula), data,
+                                       k=extraArgs$k, scale="hazard",
+                                       inits=flexsurvEsts)
+            } else {
+              flexsurv::flexsurvspline(as.formula(smformula), data,
+                                       scale="hazard",
+                                       knots=ymod$knots[2:(length(ymod$knots)-1)],
+                                       inits=flexsurvEsts)
+            }
+          },
+          error = function(e) NULL)
+      }
+      if (is.null(fit)) {
+        flexsurvFailCount <- flexsurvFailCount + 1
+      } else {
+        ymod <- fit
+      }
+      # save parameter estimates to use as initial values in subsequent iterations
+      # to help prevent convergence problems
+      flexsurvEsts <- ymod$res.t[,1]
+      outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
+      # overwrite model estimates in fitted model object
+      ymod$res.t[,1] <- outcomeModBeta
+      if (noisy == TRUE) {
+        print(ymod)
+      }
+    } else if (smtype == "weibull") {
+      ymod <- survival::survreg(as.formula(smformula), data = data, dist = "weibull")
+      outcomeModBeta <- c(coef(ymod), log(ymod$scale)) +
+        MASS::mvrnorm(1, mu = rep(0, ncol(vcov(ymod))), Sigma = vcov(ymod))
+      weibullScale <- exp(utils::tail(outcomeModBeta, 1))
+      outcomeModBeta <- utils::head(outcomeModBeta, -1)
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    } else if (smtype == "compet") {
+      for (cause in 1:numCauses) {
+        ymod <- survival::coxph(as.formula(smformula[[cause]]), data,
+          control = survival::coxph.control(timefix = FALSE), model = TRUE
+        )
+        outcomeModBeta[[cause]] <- modPostDraw(ymod)
+        ymod$coefficients <- outcomeModBeta[[cause]]
+        basehaz <- survival::basehaz(ymod, centered = FALSE)[, 1]
+        H0[[cause]] <- basehaz[H0indices[[cause]]]
+        if (noisy == TRUE) {
+          print(summary(ymod))
+        }
+      }
+    } else if (smtype == "casecohort") {
+      ymod <- survival::coxph(as.formula(smformula2), data,
+        control = survival::coxph.control(timefix = FALSE)
+      )
+      outcomeModBeta <- modPostDraw(ymod)
+
+      cumhaz.denom.elements <- exp(model.matrix(as.formula(smformula), data)[, -1] %*% outcomeModBeta)
+      cumhaz.denom <- sapply(list.times, function(x) {
+        sum(cumhaz.denom.elements[which(originaldata[, timeCol] >= x)] * subco.weight[which(originaldata[, timeCol] >= x)])
+      })
+      exp.func.denom <- cumsum(1 / cumhaz.denom)
+      H0.fun <- stepfun(list.times, c(0, exp.func.denom))
+      H0 <- H0.fun(originaldata[, timeCol])
+
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    } else if (smtype == "nestedcc") {
+      ymod <- survival::coxph(as.formula(smformula), data,
+        control = survival::coxph.control(timefix = FALSE)
+      )
+      outcomeModBeta <- modPostDraw(ymod)
+
+      explan.matrix <- model.matrix(ymod)
+      cumbasehaz.denom <- exp(matrix(outcomeModBeta, nrow = 1) %*% t(explan.matrix)) * originaldata[, nriskCol] / num.sampriskset
+      cumbasehaz.denom <- ave(cumbasehaz.denom, originaldata[, setCol], FUN = sum)[originaldata[, dCol] == 1] # this is the denominator of the contribution to the cumulative baseline hazard at each event time
+      cumbasehaz.t <- originaldata[, timeCol][originaldata[, dCol] == 1] # times to which the baseline cumulative hazards refer
+      H0 <- unlist(lapply(originaldata[, timeCol], function(x) {
+        sum((1 / cumbasehaz.denom)[cumbasehaz.t <= x])
+      }))
+
+      if (noisy == TRUE) {
+        print(summary(ymod))
+      }
+    }
+
+    if (var == length(partialVars)) {
+      # then we have reached end of a cycle: keep the substantive model coefficients
+      if (smtype == "compet") {
+        totalCoefVec <- outcomeModBeta[[1]]
+        for (cause in 2:numCauses) {
+          totalCoefVec <- c(totalCoefVec, outcomeModBeta[[cause]])
+        }
+        smCoef <- totalCoefVec
+      } else {
+        smCoef <- outcomeModBeta
+      }
+    }
+
+    # impute x, either directly where possibly, or using rejection sampling otherwise
+    imputationNeeded <- (1:n)[r[, targetCol] == 0]
+
+    if ((method[targetCol] == "logreg") | (method[targetCol] == "podds") | (method[targetCol] == "mlogit") |
+      (method[targetCol] == "brlogreg")) {
+      # directly sample
+      if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
+        numberOutcomes <- 2
+        fittedMean <- cbind(1 - xfitted, xfitted)
+      } else {
+        numberOutcomes <- nlevels(data[, targetCol])
+        fittedMean <- xfitted
+      }
+
+      outcomeDensCovDens <- array(dim = c(length(imputationNeeded), numberOutcomes), 0)
+
+      for (xMisVal in 1:numberOutcomes) {
+        if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
+          if (is.factor(data[, targetCol]) == TRUE) {
+            valToImpute <- levels(data[, targetCol])[xMisVal]
+          } else {
+            valToImpute <- xMisVal - 1
+          }
+        } else {
+          valToImpute <- levels(data[, targetCol])[xMisVal]
+        }
+        data[imputationNeeded, targetCol] <- valToImpute
+
+        # update passive variables
+        data <- updatePassiveVars(data, method, passiveVars)
+
+        if (smtype == "lm") {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          deviation <- data[imputationNeeded, outcomeCol] - outmodxb[imputationNeeded]
+          outcomeDens <- dnorm(deviation, mean = 0, sd = outcomeModResVar^0.5)
+        } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          prob <- plogis(outmodxb[imputationNeeded])
+          outcomeDens <- prob * data[imputationNeeded, outcomeCol] + (1 - prob) * (1 - data[imputationNeeded, outcomeCol])
+        } else if (smtype == "dtsam") {
+          outcomeDens <- dtsamOutcomeDens(
+            data, extraArgs$timeEffects, outcomeModBeta, nTimePoints,
+            smformula, timeCol, dCol
+          )[imputationNeeded]
+        } else if (smtype == "poisson") {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          outcomeDens <- dpois(data[imputationNeeded, outcomeCol], exp(outmodxb[imputationNeeded]))
+        } else if (smtype == "weibull") {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          # weibull survival function
+          outcomeDens <- (1 - d[imputationNeeded]) * (1 - survival::psurvreg(data[imputationNeeded, timeCol], mean = outmodxb[imputationNeeded], scale = weibullScale)) +
+            d[imputationNeeded] * (survival::dsurvreg(data[imputationNeeded, timeCol], mean = outmodxb[imputationNeeded], scale = weibullScale))
+        } else if ((smtype == "coxph") | (smtype == "casecohort")) {
+          outmodxb <- model.matrix(as.formula(smformula), data)
+          outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+          outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded])) * (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
+        } else if (smtype == "flexsurv") {
+          survEst <- summary(ymod, newdata=data[imputationNeeded,], type="survival",
+                             ci=FALSE, t=data[imputationNeeded,timeCol],
+                             cross=FALSE, tidy=TRUE)
+          survEst <- as.numeric(as.matrix(survEst)[,"est"])
+          hazEst <- summary(ymod, newdata=data[imputationNeeded,], type="hazard",
+                            ci=FALSE, t=data[imputationNeeded,timeCol],
+                            cross=FALSE, tidy=TRUE)
+          hazEst <- as.numeric(as.matrix(hazEst)[,"est"])
+          outcomeDens <- survEst*(hazEst^data[imputationNeeded,dCol])
+        } else if (smtype == "nestedcc") {
+          outmodxb <- model.matrix(as.formula(smformula2), data)
+          outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+          outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded])) * (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
+        } else if (smtype == "compet") {
+          outcomeDens <- rep(1, length(imputationNeeded))
+          for (cause in 1:numCauses) {
+            outmodxb <- model.matrix(linpred[[cause]], data)
+            outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
+            outcomeDens <- outcomeDens * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded])) * (exp(outmodxb[imputationNeeded])^(d[imputationNeeded] == cause))
+          }
+        }
+        outcomeDensCovDens[, xMisVal] <- outcomeDens * fittedMean[imputationNeeded, xMisVal]
+      }
+
+      if(!is.null(restrictions) && var %in% index_restrictions){
+        len_restrictions = length(restrictions_work[[var]])
+
+        ## For each information source, a separate step is run
+        for(i in 1:len_restrictions){
+          restrictions_work_vari = restrictions_work[[var]][[i]]
+          res_var = restrictions_work_vari[[1]]; res_cond = restrictions_work_vari[[2]]; res_opts = restrictions_work_vari[[3]]
+
+          ## If a column is not compatible with the restricting information, the probability for that column is set to 0
+          outcomeDensCovDens[which(originaldata[imputationNeeded, res_var] == res_cond), !(levels(data[, targetCol]) %in% res_opts)] = 0
+        }
+      }
+
+      directImpProbs <- outcomeDensCovDens / rowSums(outcomeDensCovDens)
+
+      if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
+        directImpProbs <- directImpProbs[, 2]
+        if (is.factor(data[, targetCol]) == TRUE) {
+          data[imputationNeeded, targetCol] <- levels(data[, targetCol])[1]
+          data[imputationNeeded, targetCol][rbinom(length(imputationNeeded), 1, directImpProbs) == 1] <- levels(data[, targetCol])[2]
+        } else {
+          data[imputationNeeded, targetCol] <- rbinom(length(imputationNeeded), 1, directImpProbs)
+        }
+      } else {
+        data[imputationNeeded, targetCol] <- levels(data[, targetCol])[apply(directImpProbs, 1, catdraw)]
+      }
+
+      # update passive variables
+      data <- updatePassiveVars(data, method, passiveVars)
+    } else {
+      # use rejection sampling
+      # first draw for all subjects who need imputing, using a small number of attempts
+      firstTryLimit <- 25
+      j <- 1
+
+      while ((length(imputationNeeded) > 0) & (j < firstTryLimit)) {
+        # sample from covariate model
+        if ((method[targetCol] == "norm") | (method[targetCol] == "latnorm")) {
+          data[imputationNeeded, targetCol] <- rnorm(length(imputationNeeded), xfitted[imputationNeeded], newsigmasq^0.5)
+        } else if (method[targetCol] == "poisson") {
+          data[imputationNeeded, targetCol] <- rpois(length(imputationNeeded), xfitted[imputationNeeded])
+        }
+
+        # update passive variables
+        data <- updatePassiveVars(data, method, passiveVars)
+
+        # accept/reject
+        uDraw <- runif(length(imputationNeeded))
+        if (smtype == "lm") {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          deviation <- data[imputationNeeded, outcomeCol] - outmodxb[imputationNeeded]
+          reject <- 1 * (log(uDraw) > -(deviation^2) / (2 * array(outcomeModResVar, dim = c(length(imputationNeeded), 1))))
+        } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          prob <- plogis(outmodxb[imputationNeeded])
+          prob <- prob * data[imputationNeeded, outcomeCol] + (1 - prob) * (1 - data[imputationNeeded, outcomeCol])
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "dtsam") {
+          prob <- dtsamOutcomeDens(
+            data, extraArgs$timeEffects, outcomeModBeta, nTimePoints,
+            smformula, timeCol, dCol
+          )[imputationNeeded]
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "poisson") {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          prob <- dpois(data[imputationNeeded, outcomeCol], exp(outmodxb[imputationNeeded]))
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "weibull") {
+          outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+          s_t <- 1 - survival::psurvreg(data[imputationNeeded, timeCol], mean = outmodxb[imputationNeeded], scale = weibullScale)
+          prob <- -exp(1) * log(s_t) * s_t
+          prob <- d[imputationNeeded] * prob + (1 - d[imputationNeeded]) * s_t
+          reject <- 1 * (uDraw > prob)
+        } else if ((smtype == "coxph") | (smtype == "casecohort")) {
+          outmodxb <- model.matrix(as.formula(smformula), data)
+          outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+          s_t <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))
+          prob <- exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))) * H0[imputationNeeded]
+          prob <- d[imputationNeeded] * prob + (1 - d[imputationNeeded]) * s_t
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "flexsurv") {
+          survEst <- summary(ymod, newdata=data[imputationNeeded,], type="survival",
+                             ci=FALSE, t=data[imputationNeeded,timeCol],
+                             cross=FALSE, tidy=TRUE)
+          survEst <- as.matrix(survEst)[,"est"]
+          hazEst <- summary(ymod, newdata=data[imputationNeeded,], type="hazard",
+                            ci=FALSE, t=data[imputationNeeded,timeCol],
+                            cross=FALSE, tidy=TRUE)
+          hazEst <- as.matrix(hazEst)[,"est"]
+          cumhazEst <- summary(ymod, newdata=data[imputationNeeded,], type="cumhaz",
+                            ci=FALSE, t=data[imputationNeeded,timeCol],
+                            cross=FALSE, tidy=TRUE)
+          cumhazEst <- as.matrix(cumhazEst)[,"est"]
+          prob <- data[imputationNeeded,dCol] * (survEst*exp(1)*cumhazEst) +
+            (1 - data[imputationNeeded,dCol]) * survEst
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "nestedcc") {
+          outmodxb <- model.matrix(as.formula(smformula2), data)
+          outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+          s_t <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))
+          prob <- exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))) * H0[imputationNeeded]
+          prob <- d[imputationNeeded] * prob + (1 - d[imputationNeeded]) * s_t
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "compet") {
+          prob <- rep(1, length(imputationNeeded))
+          for (cause in 1:numCauses) {
+            outmodxb <- model.matrix(linpred[[cause]], data)
+            outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
+            prob <- prob * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded])) * (H0[[cause]][imputationNeeded] * exp(1 + outmodxb[imputationNeeded]))^(d[imputationNeeded] == cause)
+          }
+          reject <- 1 * (uDraw > prob)
+        }
+        imputationNeeded <- imputationNeeded[reject == 1]
+
+        j <- j + 1
+      }
+
+      # now, for those remaining, who must have low acceptance probabilities, sample by subject
+      for (i in imputationNeeded) {
+        tempData <- data[i, ]
+        tempData <- tempData[rep(1, rjlimit), ]
+        if (method[targetCol] == "norm") {
+          tempData[, targetCol] <- rnorm(rjlimit, xfitted[i], newsigmasq^0.5)
+        } else if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
+          tempData[, targetCol] <- rbinom(rjlimit, size = 1, xfitted[i])
+        } else if (method[targetCol] == "poisson") {
+          tempData[, targetCol] <- rpois(rjlimit, xfitted[i])
+        } else if (method[targetCol] == "latnorm") {
+          tempData[, targetCol] <- rnorm(rjlimit, xfitted[i], newsigmasq[i]^0.5)
+        }
+
+        # passively impute
+        tempData <- updatePassiveVars(tempData, method, passiveVars)
+
+        # accept reject
+        uDraw <- runif(rjlimit)
+        if (smtype == "lm") {
+          outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
+          deviation <- tempData[, outcomeCol] - outmodxb
+          reject <- 1 * (log(uDraw) > -(deviation^2) / (2 * array(outcomeModResVar, dim = c(rjlimit, 1))))
+        } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
+          outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
+          prob <- plogis(outmodxb)
+          prob <- prob * tempData[, outcomeCol] + (1 - prob) * (1 - tempData[, outcomeCol])
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "dtsam") {
+          prob <- dtsamOutcomeDens(
+            tempData, extraArgs$timeEffects, outcomeModBeta, nTimePoints,
+            smformula, timeCol, dCol
+          )
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "poisson") {
+          outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
+          prob <- dpois(tempData[, outcomeCol], exp(outmodxb))
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "weibull") {
+          outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
+          s_t <- 1 - survival::psurvreg(tempData[, timeCol], mean = outmodxb, scale = weibullScale)
+          if (d[i] == 1) {
+            prob <- -exp(1) * log(s_t) * s_t
+            # the following line fixes a numerical error which occurs if s_t=0 for any draws
+            prob[is.na(prob)] <- 0
+          } else {
+            prob <- s_t
+          }
+          reject <- 1 * (uDraw > prob)
+        } else if ((smtype == "coxph") | (smtype == "casecohort")) {
+          outmodxb <- model.matrix(as.formula(smformula), tempData)
+          outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+          s_t <- exp(-H0[i] * exp(outmodxb))
+          prob <- exp(1 + outmodxb - (H0[i] * exp(outmodxb))) * H0[i]
+          prob <- d[i] * prob + (1 - d[i]) * s_t
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "flexsurv") {
+          survEst <- summary(ymod, newdata=tempData, type="survival",
+                             ci=FALSE, t=tempData[,timeCol],
+                             cross=FALSE, tidy=TRUE)
+          survEst <- as.matrix(survEst)[,"est"]
+          hazEst <- summary(ymod, newdata=tempData, type="hazard",
+                            ci=FALSE, t=tempData[,timeCol],
+                            cross=FALSE, tidy=TRUE)
+          hazEst <- as.matrix(hazEst)[,"est"]
+          cumhazEst <- summary(ymod, newdata=tempData, type="cumhaz",
+                               ci=FALSE, t=tempData[,timeCol],
+                               cross=FALSE, tidy=TRUE)
+          cumhazEst <- as.matrix(cumhazEst)[,"est"]
+          prob <- data[i,dCol] * (survEst*exp(1)*cumhazEst) +
+            (1 - data[i,dCol]) * survEst
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "nestedcc") {
+          outmodxb <- model.matrix(as.formula(smformula2), tempData)
+          outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
+          s_t <- exp(-H0[i] * exp(outmodxb))
+          prob <- exp(1 + outmodxb - (H0[i] * exp(outmodxb))) * H0[i]
+          prob <- d[i] * prob + (1 - d[i]) * s_t
+          reject <- 1 * (uDraw > prob)
+        } else if (smtype == "compet") {
+          prob <- rep(1, rjlimit)
+          for (cause in 1:numCauses) {
+            outmodxb <- model.matrix(linpred[[cause]], tempData)
+            outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
+            prob <- prob * exp(-H0[[cause]][i] * exp(outmodxb)) * (H0[[cause]][i] * exp(1 + outmodxb))^(d[i] == cause)
+          }
+          reject <- 1 * (uDraw > prob)
+        }
+        if (sum(reject) < rjlimit) {
+          data[i, targetCol] <- tempData[reject == 0, targetCol][1]
+        } else {
+          rjFailCount <- rjFailCount + 1
+        }
+      }
+      # update passive variables
+      data <- updatePassiveVars(data, method, passiveVars)
+    }
+  }
+  }
+
+  # imputations of missing outcomes, if present (using proper imputation), for regression, logistic
+  # and Poisson substantive models
+  if ((smtype == "lm") | (smtype == "logistic") | (smtype == "brlogistic") | (smtype == "poisson")) {
+    if (sum(r[, outcomeCol]) < n) {
+      imputationNeeded <- (1:n)[r[, outcomeCol] == 0]
+      # estimate parameters of substantive model using those with outcomes observed
+      if (smtype == "lm") {
+        ymod <- lm(as.formula(smformula), data[r[, outcomeCol] == 1, ])
+        beta <- ymod$coef
+        sigmasq <- summary(ymod)$sigma^2
+        varcov <- vcov(ymod)
+        outcomeModResVar <- (sigmasq * ymod$df) / rchisq(1, ymod$df)
+        covariance <- (outcomeModResVar / sigmasq) * vcov(ymod)
+        outcomeModBeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
+        outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+        data[imputationNeeded, outcomeCol] <- rnorm(length(imputationNeeded), outmodxb[imputationNeeded], outcomeModResVar^0.5)
+      } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
+        if (smtype == "logistic") {
+          ymod <- glm(as.formula(smformula), family = "binomial", data[r[, outcomeCol] == 1, ])
+        } else {
+          ymod <- glm(as.formula(smformula),
+            family = "binomial", data[r[, outcomeCol] == 1, ],
+            method = brglm2::brglmFit
+          )
+        }
+        outcomeModBeta <- modPostDraw(ymod)
+        outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+        prob <- plogis(outmodxb[imputationNeeded])
+        data[imputationNeeded, outcomeCol] <- rbinom(length(imputationNeeded), 1, prob)
+      } else if (smtype == "poisson") {
+        ymod <- glm(as.formula(smformula), family = "poisson", data[r[, outcomeCol] == 1, ])
+        outcomeModBeta <- modPostDraw(ymod)
+        outmodxb <- model.matrix(as.formula(smformula), data) %*% outcomeModBeta
+        data[imputationNeeded, outcomeCol] <- rpois(length(imputationNeeded), exp(outmodxb[imputationNeeded]))
+      }
+    }
+  } else if (smtype == "flexsurv") {
+    if (extraArgs$imputeTimes==TRUE) {
+      # impute censored times
+      # A fit that fails returns NULL: the failure is counted and ymod
+      # keeps its previous value
+      if (firstCycle) {
+        fit <- tryCatch(
+          flexsurv::flexsurvspline(as.formula(smformula), data,
+                                   k=extraArgs$k, scale="hazard"),
+          error = function(e) NULL)
+      } else {
+        # use previous estimates as initial values, to try and prevent non-convergence
+        fit <- tryCatch(
+          {
+            if (extraArgs$originalKnots==FALSE) {
+              flexsurv::flexsurvspline(as.formula(smformula), data,
+                                       k=extraArgs$k, scale="hazard",
+                                       inits=flexsurvEsts)
+            } else {
+              # use knots based on fit to original dataset where censored times had not been imputed
+              flexsurv::flexsurvspline(as.formula(smformula), data,
+                                       scale="hazard",
+                                       knots=ymod$knots[2:(length(ymod$knots)-1)],
+                                       inits=flexsurvEsts)
+            }
+          },
+          error = function(e) NULL)
+      }
+      if (is.null(fit)) {
+        flexsurvFailCount <- flexsurvFailCount + 1
+      } else {
+        ymod <- fit
+      }
+      flexsurvEsts <- ymod$res.t[,1]
+      outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
+
+      smCoef <- outcomeModBeta
+
+      # overwrite model estimates in fitted model object
+      ymod$res.t[,1] <- outcomeModBeta
+      if (noisy == TRUE) {
+        print(ymod)
+      }
+
+      # impute censored times
+      if (is.null(extraArgs$censtime)) {
+        # impute all censored times
+        timeImp <- simulate(ymod, nsim=1, newdata=data[d==0,],
+                          start=originaldata[d==0,timeCol])
+        data[d==0,timeCol] <- timeImp$time_1
+        data[,dCol] <- 1
+      } else {
+        # impute but still impose censoring at specified value(s)
+        timeImp <- simulate(ymod, nsim=1, newdata=data[d==0,],
+                            start=originaldata[d==0,timeCol],
+                            censtime=extraArgs$censtime)
+        data[d==0,timeCol] <- timeImp$time_1
+        data[d==0,dCol] <- timeImp$event_1
+      }
+    }
+  }
+
+  cycleState$rjFailCount <- rjFailCount
+  cycleState$flexsurvFailCount <- flexsurvFailCount
+  if (smtype == "flexsurv") {
+    cycleState$flexsurvEsts <- flexsurvEsts
+    cycleState$flexsurvFit <- ymod
+  }
+  cycleState$smCoef <- smCoef
+  list(data = data, cycleState = cycleState)
+}
+
+smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix = NULL, m = 5, numit = 10, rjlimit = 1000, noisy = FALSE, errorProneMatrix = NULL,restrictions = NULL,
+                        verbose = TRUE, ...) {
+  setup <- smcfcs.setup(originaldata, smtype, smformula, method,
+                        errorProneMatrix = errorProneMatrix, restrictions = restrictions,
+                        verbose = verbose, ...)
+  # Put the prepared quantities into this function's environment, where the
+  # initial imputation below expects them
+  list2env(setup, envir = environment())
+  # Lets smcfcs.cycle() reuse the setup instead of preparing it again
+  setupKey <- smcfcs.setupKey(r, smtype, smformula, method, errorProneMatrix,
+                              restrictions, ...)
+
+  imputations <- list()
   for (imp in 1:m) {
-    print(paste("Imputation ", imp))
+    imputations[[imp]] <- originaldata
+  }
+
+  # Kept across imputations: the failure counters, the last flexsurv fit
+  # (used if a fit fails), and the substantive model coefficients per cycle
+  rjFailCount <- 0
+  flexsurvFailCount <- 0
+  flexsurvFit <- NULL
+  smCoefIter <- NULL
+
+  for (imp in 1:m) {
+    if (verbose) message(paste("Imputation ", imp))
 
     # initial imputation of each partially observed variable based on observed values
     if (length(partialVars)>0) {
@@ -620,8 +1549,8 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
     # initial imputations of missing outcomes, if present (using improper imputation)
     if ((smtype == "lm") | (smtype == "logistic") | (smtype == "brlogistic") | (smtype == "poisson")) {
       if (sum(r[, outcomeCol]) < n) {
-        if (imp == 1) {
-          print("Imputing missing outcomes using specified substantive model.")
+        if (verbose && (imp == 1)) {
+          message("Imputing missing outcomes using specified substantive model.")
         }
         # update passive variable(s)
         imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
@@ -660,744 +1589,30 @@ smcfcs.core <- function(originaldata, smtype, smformula, method, predictorMatrix
       }
     }
 
+    # A new imputation starts from the first cycle. The failure counts and
+    # the last flexsurv fit carry over, as they did before the refactor.
+    state <- list(setup = setup, setupKey = setupKey, rjFailCount = rjFailCount,
+                  flexsurvFailCount = flexsurvFailCount, flexsurvFit = flexsurvFit)
     for (cyclenum in 1:numit) {
       if (noisy == TRUE) {
-        print(paste("Iteration ", cyclenum))
+        message(paste("Iteration ", cyclenum))
       }
-      # update passive variable(s)
-      imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
-
-      if (length(partialVars)>0) {
-        for (var in 1:length(partialVars)) {
-        targetCol <- partialVars[var]
-        if (is.null(predictorMatrix)) {
-          predictorCols <- c(partialVars[!partialVars %in% targetCol], fullObsVars)
-        } else {
-          predictorCols <- which(predictorMatrix[targetCol, ] == 1)
-          # ensure that user has not included outcome variable(s) here
-          predictorCols <- predictorCols[!predictorCols %in% outcomeCol]
-        }
-        if ((imp == 1) & (cyclenum == 1)) {
-          if (method[targetCol] == "latnorm") {
-            print(paste("Imputing: ", colnames(imputations[[imp]])[targetCol], " using ", paste(colnames(imputations[[imp]])[c(predictorCols, which(errorProneMatrix[targetCol, ] == 1))], collapse = ","), " plus outcome", collapse = ","))
-          } else {
-            print(paste("Imputing: ", colnames(imputations[[imp]])[targetCol], " using ", paste(colnames(imputations[[imp]])[predictorCols], collapse = ","), " plus outcome", collapse = ","))
-          }
-        }
-        if (length(predictorCols) > 0) {
-          xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~", paste(colnames(imputations[[imp]])[predictorCols], collapse = "+"), sep = ""))
-        } else {
-          xmodformula <- as.formula(paste(colnames(imputations[[imp]])[targetCol], "~1", sep = ""))
-        }
-        if (smtype == "casecohort") {
-          xmoddata <- imputations[[imp]][subcoMembers, ]
-        } else if (smtype == "nestedcc") {
-          xmoddata <- imputations[[imp]][noncases, ]
-        } else {
-          xmoddata <- imputations[[imp]]
-        }
-        if (method[targetCol] == "norm") {
-          # estimate parameters of covariate model
-          xmod <- lm(xmodformula, data = xmoddata)
-          # take draw from posterior of covariate model parameters
-          beta <- xmod$coef
-          sigmasq <- summary(xmod)$sigma^2
-          newsigmasq <- (sigmasq * xmod$df) / rchisq(1, xmod$df)
-          covariance <- (newsigmasq / sigmasq) * vcov(xmod)
-          newbeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
-          # calculate fitted values
-          if ((smtype == "casecohort") | (smtype == "nestedcc")) {
-            xfitted <- model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta
-          } else {
-            xfitted <- model.matrix(xmod) %*% newbeta
-          }
-        } else if (method[targetCol] == "latnorm") {
-          # estimate parameters of covariate model
-          xmod <- lm(xmodformula, data = xmoddata)
-          # take draw from posterior of covariate model parameters
-          beta <- xmod$coef
-          sigmasq <- summary(xmod)$sigma^2
-          # draw from sigmasq posterior based on proper inverse gamma prior for sigmasq
-          # prior equivalent to 1 observation and guess of sigmasq=1
-          newsigmasq <- 1 / rgamma(1, shape = ((n + 1) / 2), rate = ((n * sigmasq + 1) / 2))
-          covariance <- (newsigmasq / sigmasq) * vcov(xmod)
-          newbeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
-          # calculate fitted values
-          if ((smtype == "casecohort") | (smtype == "nestedcc")) {
-            xfitted <- model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta
-          } else {
-            xfitted <- model.matrix(xmod) %*% newbeta
-          }
-
-          # estimate error variance and draw new value of error variance
-          errorProneCols <- which(errorProneMatrix[targetCol, ] == 1)
-          xmat <- matrix(imputations[[imp]][, targetCol], nrow = nrow(imputations[[imp]]), ncol = length(errorProneCols))
-          uVec <- c(as.matrix(imputations[[imp]][, errorProneCols] - xmat))
-          sigmausq <- mean(uVec^2)
-          # take draw from posterior of error variance, using proper inverse gamma prior
-          sum_ni <- n * length(errorProneCols)
-          sigmausq <- 1 / rgamma(1, shape = ((sum_ni + 1) / 2), rate = ((sum_ni * sigmausq + 1) / 2))
-
-          # re-impute any originally missing error-prone measurements, based on classical error model assumption
-          for (measure in 1:length(errorProneCols)) {
-            nToImpute <- n - sum(r[, errorProneCols[measure]])
-            if (nToImpute > 0) {
-              # then some values need imputing
-              imputations[[imp]][r[, errorProneCols[measure]] == 0, errorProneCols[measure]] <- imputations[[imp]][r[, errorProneCols[measure]] == 0, targetCol] +
-                rnorm(nToImpute, 0, sd = sqrt(sigmausq))
-            }
-          }
-
-          # calculate conditional mean and variance of X|everything else except outcome
-          wmean <- rowMeans(imputations[[imp]][, errorProneCols])
-          lambda <- newsigmasq / (newsigmasq + sigmausq / length(errorProneCols))
-          xfitted <- xfitted + lambda * (wmean - xfitted)
-          newsigmasq <- rep(newsigmasq * (1 - lambda), n)
-        } else if (method[targetCol] == "logreg") {
-          xmod <- glm(xmodformula, family = "binomial", data = xmoddata)
-          newbeta <- modPostDraw(xmod)
-          if ((smtype == "casecohort") | (smtype == "nestedcc")) {
-            xfitted <- plogis(model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta)
-          } else {
-            xfitted <- plogis(model.matrix(xmod) %*% newbeta)
-          }
-        } else if (method[targetCol] == "brlogreg") {
-          xmod <- glm(xmodformula, family = "binomial", data = xmoddata, method = brglm2::brglmFit)
-          newbeta <- modPostDraw(xmod)
-          if ((smtype == "casecohort") | (smtype == "nestedcc")) {
-            xfitted <- plogis(model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta)
-          } else {
-            xfitted <- plogis(model.matrix(xmod) %*% newbeta)
-          }
-        } else if (method[targetCol] == "poisson") {
-          xmod <- glm(xmodformula, family = "poisson", data = xmoddata)
-          newbeta <- modPostDraw(xmod)
-          if ((smtype == "casecohort") | (smtype == "nestedcc")) {
-            xfitted <- exp(model.matrix(xmodformula, data = imputations[[imp]]) %*% newbeta)
-          } else {
-            xfitted <- exp(model.matrix(xmod) %*% newbeta)
-          }
-        } else if (method[targetCol] == "podds") {
-          if (is.ordered(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method podds must be stored as ordered factors.")
-          xmod <- MASS::polr(xmodformula, data = xmoddata, Hess=TRUE)
-          xmod.dummy <- MASS::polr(xmodformula, data = imputations[[imp]], Hess=TRUE)
-          polr_cutpts <- xmod$zeta
-          # Thanks to Ed Bonneville: polr does maximization using first cutpoint and then log differences
-          # in the cut-points. So we extract estimates use this transformation, and then apply a MVN draw
-          polr_theta <- c(xmod$coefficients, polr_cutpts[1], log(diff(polr_cutpts)))
-          newtheta <- polr_theta + MASS::mvrnorm(1, mu = rep(0, length(polr_theta)), Sigma = MASS::ginv(xmod$Hessian))
-          # extract new 'coefficients'
-          newbeta <- newtheta[seq_along(xmod$coefficients)]
-          # transform back to cutpoints
-          newcutpoints <- cumsum(c(newtheta[length(xmod$coefficients)+1], exp(newtheta[-(1:(length(xmod$coefficients)+1))])))
-          # calculate fitted probabilities
-          polr_cumlogitprob <- array(0, dim=c(dim(imputations[[imp]])[1],length(newcutpoints)))
-          for (j in 1:length(newcutpoints)) {
-            polr_cumlogitprob[,j] <- model.matrix(xmod) %*% c(-newcutpoints[j],newbeta)
-          }
-          polr_cumprobs <- cbind(rep(1,dim(imputations[[imp]])[1]),plogis(polr_cumlogitprob))
-          xfitted <- cbind(-t(apply(polr_cumprobs, MARGIN=1, FUN=diff)), polr_cumprobs[,dim(polr_cumprobs)[2]])
-        } else if (method[targetCol] == "mlogit") {
-          if (is.factor(imputations[[imp]][, targetCol]) == FALSE) stop("Variables to be imputed using method mlogit must be stored as factors.")
-          xmod <- VGAM::vglm(xmodformula, VGAM::multinomial(refLevel = 1), data = xmoddata)
-          newbeta <- VGAM::coef(xmod) + MASS::mvrnorm(1, mu = rep(0, ncol(VGAM::vcov(xmod))), Sigma = VGAM::vcov(xmod))
-          xmod@coefficients <- newbeta
-          xfitted <- VGAM::predictvglm(xmod, newdata = imputations[[imp]], type = "response")
-        }
-        if (noisy == TRUE) {
-          print(summary(xmod))
-        }
-
-        # estimate parameters of substantive model
-        if (smtype == "lm") {
-          ymod <- lm(as.formula(smformula), imputations[[imp]])
-          beta <- ymod$coef
-          sigmasq <- summary(ymod)$sigma^2
-          varcov <- vcov(ymod)
-          outcomeModResVar <- (sigmasq * ymod$df) / rchisq(1, ymod$df)
-          covariance <- (outcomeModResVar / sigmasq) * vcov(ymod)
-          outcomeModBeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
-          if (smtype == "logistic") {
-            ymod <- glm(as.formula(smformula), family = "binomial", imputations[[imp]])
-          } else {
-            ymod <- glm(as.formula(smformula),
-              family = "binomial", imputations[[imp]],
-              method = brglm2::brglmFit
-            )
-          }
-          outcomeModBeta <- modPostDraw(ymod)
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        } else if (smtype == "dtsam") {
-          # split data to long form
-          longData <- survival::survSplit(as.formula(smformula), data = imputations[[imp]], cut = cutPoints)
-          # fit logistic model
-          if (extraArgs$timeEffects == "factor") {
-            dtsamFormula <- paste(colnames(imputations[[imp]])[dCol], "~-1+factor(tstart)+",
-              strsplit(smformula, "~")[[1]][2],
-              sep = ""
-            )
-          } else if (extraArgs$timeEffects == "linear") {
-            # linear time effect
-            dtsamFormula <- paste(colnames(imputations[[imp]])[dCol], "~tstart+",
-              strsplit(smformula, "~")[[1]][2],
-              sep = ""
-            )
-          } else {
-            # quadratic effect of time
-            dtsamFormula <- paste(colnames(imputations[[imp]])[dCol], "~tstart+I(tstart^2)+",
-              strsplit(smformula, "~")[[1]][2],
-              sep = ""
-            )
-          }
-          ymod <- glm(as.formula(dtsamFormula), family = "binomial", data = longData)
-          outcomeModBeta <- modPostDraw(ymod)
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        } else if (smtype == "poisson") {
-          ymod <- glm(as.formula(smformula), family = "poisson", imputations[[imp]])
-          outcomeModBeta <- modPostDraw(ymod)
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        } else if (smtype == "coxph") {
-          ymod <- survival::coxph(as.formula(smformula), imputations[[imp]],
-            control = survival::coxph.control(timefix = FALSE), model = TRUE
-          )
-          outcomeModBeta <- modPostDraw(ymod)
-          ymod$coefficients <- outcomeModBeta
-          basehaz <- survival::basehaz(ymod, centered = FALSE)[, 1]
-          H0 <- basehaz[H0indices]
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        } else if (smtype == "flexsurv") {
-          if (cyclenum==1) {
-            tryCatch({
-              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                    k=extraArgs$k, scale="hazard")
-            },error = function(e) {
-              # Silently increment the failure counter
-              flexsurvFailCount <<- flexsurvFailCount + 1
-            })
-          } else {
-            # use previous estimates as initial values, to try and prevent non-convergence
-            tryCatch(
-              {
-                # first attempt to fit model
-                if (extraArgs$originalKnots==FALSE) {
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                   k=extraArgs$k, scale="hazard",
-                                                   inits=flexsurvEsts)
-                } else {
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                   scale="hazard",
-                                                   knots=ymod$knots[2:(length(ymod$knots)-1)],
-                                                   inits=flexsurvEsts)
-                }
-              },
-              error = function(e) {
-                # Silently increment the failure counter
-                flexsurvFailCount <<- flexsurvFailCount + 1
-              }
-              )
-          }
-          # save parameter estimates to use as initial values in subsequent iterations
-          # to help prevent convergence problems
-          flexsurvEsts <- ymod$res.t[,1]
-          outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
-          # overwrite model estimates in fitted model object
-          ymod$res.t[,1] <- outcomeModBeta
-          if (noisy == TRUE) {
-            print(ymod)
-          }
-        } else if (smtype == "weibull") {
-          ymod <- survival::survreg(as.formula(smformula), data = imputations[[imp]], dist = "weibull")
-          outcomeModBeta <- c(coef(ymod), log(ymod$scale)) +
-            MASS::mvrnorm(1, mu = rep(0, ncol(vcov(ymod))), Sigma = vcov(ymod))
-          weibullScale <- exp(utils::tail(outcomeModBeta, 1))
-          outcomeModBeta <- utils::head(outcomeModBeta, -1)
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        } else if (smtype == "compet") {
-          for (cause in 1:numCauses) {
-            ymod <- survival::coxph(as.formula(smformula[[cause]]), imputations[[imp]],
-              control = survival::coxph.control(timefix = FALSE), model = TRUE
-            )
-            outcomeModBeta[[cause]] <- modPostDraw(ymod)
-            ymod$coefficients <- outcomeModBeta[[cause]]
-            basehaz <- survival::basehaz(ymod, centered = FALSE)[, 1]
-            H0[[cause]] <- basehaz[H0indices[[cause]]]
-            if (noisy == TRUE) {
-              print(summary(ymod))
-            }
-          }
-        } else if (smtype == "casecohort") {
-          ymod <- survival::coxph(as.formula(smformula2), imputations[[imp]],
-            control = survival::coxph.control(timefix = FALSE)
-          )
-          outcomeModBeta <- modPostDraw(ymod)
-
-          cumhaz.denom.elements <- exp(model.matrix(as.formula(smformula), imputations[[imp]])[, -1] %*% outcomeModBeta)
-          cumhaz.denom <- sapply(list.times, function(x) {
-            sum(cumhaz.denom.elements[which(originaldata[, timeCol] >= x)] * subco.weight[which(originaldata[, timeCol] >= x)])
-          })
-          exp.func.denom <- cumsum(1 / cumhaz.denom)
-          H0.fun <- stepfun(list.times, c(0, exp.func.denom))
-          H0 <- H0.fun(originaldata[, timeCol])
-
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        } else if (smtype == "nestedcc") {
-          ymod <- survival::coxph(as.formula(smformula), imputations[[imp]],
-            control = survival::coxph.control(timefix = FALSE)
-          )
-          outcomeModBeta <- modPostDraw(ymod)
-
-          explan.matrix <- model.matrix(ymod)
-          cumbasehaz.denom <- exp(matrix(outcomeModBeta, nrow = 1) %*% t(explan.matrix)) * originaldata[, nriskCol] / num.sampriskset
-          cumbasehaz.denom <- ave(cumbasehaz.denom, originaldata[, setCol], FUN = sum)[originaldata[, dCol] == 1] # this is the denominator of the contribution to the cumulative baseline hazard at each event time
-          cumbasehaz.t <- originaldata[, timeCol][originaldata[, dCol] == 1] # times to which the baseline cumulative hazards refer
-          H0 <- unlist(lapply(originaldata[, timeCol], function(x) {
-            sum((1 / cumbasehaz.denom)[cumbasehaz.t <= x])
-          }))
-
-          if (noisy == TRUE) {
-            print(summary(ymod))
-          }
-        }
-
-        if ((imp == 1) & (cyclenum == 1) & (var == 1)) {
-          if (smtype == "compet") {
-            totalCoefVec <- outcomeModBeta[[1]]
-            for (cause in 2:numCauses) {
-              totalCoefVec <- c(totalCoefVec, outcomeModBeta[[cause]])
-            }
-            smCoefIter <- array(0, dim = c(m, length(totalCoefVec), numit))
-          } else {
-            smCoefIter <- array(0, dim = c(m, length(outcomeModBeta), numit))
-          }
-        }
-
-        if (var == length(partialVars)) {
-          # then we have reached end of a cycle
-          if (smtype == "compet") {
-            totalCoefVec <- outcomeModBeta[[1]]
-            for (cause in 2:numCauses) {
-              totalCoefVec <- c(totalCoefVec, outcomeModBeta[[cause]])
-            }
-            smCoefIter[imp, , cyclenum] <- totalCoefVec
-          } else {
-            smCoefIter[imp, , cyclenum] <- outcomeModBeta
-          }
-        }
-
-        # impute x, either directly where possibly, or using rejection sampling otherwise
-        imputationNeeded <- (1:n)[r[, targetCol] == 0]
-
-        if ((method[targetCol] == "logreg") | (method[targetCol] == "podds") | (method[targetCol] == "mlogit") |
-          (method[targetCol] == "brlogreg")) {
-          # directly sample
-          if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
-            numberOutcomes <- 2
-            fittedMean <- cbind(1 - xfitted, xfitted)
-          } else {
-            numberOutcomes <- nlevels(imputations[[imp]][, targetCol])
-            fittedMean <- xfitted
-          }
-
-          outcomeDensCovDens <- array(dim = c(length(imputationNeeded), numberOutcomes), 0)
-
-          for (xMisVal in 1:numberOutcomes) {
-            if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
-              if (is.factor(imputations[[imp]][, targetCol]) == TRUE) {
-                valToImpute <- levels(imputations[[imp]][, targetCol])[xMisVal]
-              } else {
-                valToImpute <- xMisVal - 1
-              }
-            } else {
-              valToImpute <- levels(imputations[[imp]][, targetCol])[xMisVal]
-            }
-            imputations[[imp]][imputationNeeded, targetCol] <- valToImpute
-
-            # update passive variables
-            imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
-
-            if (smtype == "lm") {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              deviation <- imputations[[imp]][imputationNeeded, outcomeCol] - outmodxb[imputationNeeded]
-              outcomeDens <- dnorm(deviation, mean = 0, sd = outcomeModResVar^0.5)
-            } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              prob <- plogis(outmodxb[imputationNeeded])
-              outcomeDens <- prob * imputations[[imp]][imputationNeeded, outcomeCol] + (1 - prob) * (1 - imputations[[imp]][imputationNeeded, outcomeCol])
-            } else if (smtype == "dtsam") {
-              outcomeDens <- dtsamOutcomeDens(
-                imputations[[imp]], extraArgs$timeEffects, outcomeModBeta, nTimePoints,
-                smformula, timeCol, dCol
-              )[imputationNeeded]
-            } else if (smtype == "poisson") {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              outcomeDens <- dpois(imputations[[imp]][imputationNeeded, outcomeCol], exp(outmodxb[imputationNeeded]))
-            } else if (smtype == "weibull") {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              # weibull survival function
-              outcomeDens <- (1 - d[imputationNeeded]) * (1 - survival::psurvreg(imputations[[imp]][imputationNeeded, timeCol], mean = outmodxb[imputationNeeded], scale = weibullScale)) +
-                d[imputationNeeded] * (survival::dsurvreg(imputations[[imp]][imputationNeeded, timeCol], mean = outmodxb[imputationNeeded], scale = weibullScale))
-            } else if ((smtype == "coxph") | (smtype == "casecohort")) {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]])
-              outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
-              outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded])) * (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
-            } else if (smtype == "flexsurv") {
-              survEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="survival",
-                                 ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
-                                 cross=FALSE, tidy=TRUE)
-              survEst <- as.numeric(as.matrix(survEst)[,"est"])
-              hazEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="hazard",
-                                ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
-                                cross=FALSE, tidy=TRUE)
-              hazEst <- as.numeric(as.matrix(hazEst)[,"est"])
-              outcomeDens <- survEst*(hazEst^imputations[[imp]][imputationNeeded,dCol])
-            } else if (smtype == "nestedcc") {
-              outmodxb <- model.matrix(as.formula(smformula2), imputations[[imp]])
-              outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
-              outcomeDens <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded])) * (exp(outmodxb[imputationNeeded])^d[imputationNeeded])
-            } else if (smtype == "compet") {
-              outcomeDens <- rep(1, length(imputationNeeded))
-              for (cause in 1:numCauses) {
-                outmodxb <- model.matrix(linpred[[cause]], imputations[[imp]])
-                outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
-                outcomeDens <- outcomeDens * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded])) * (exp(outmodxb[imputationNeeded])^(d[imputationNeeded] == cause))
-              }
-            }
-            outcomeDensCovDens[, xMisVal] <- outcomeDens * fittedMean[imputationNeeded, xMisVal]
-          }
-
-          if(!is.null(restrictions) && var %in% index_restrictions){
-            len_restrictions = length(restrictions_work[[var]])
-
-            ## For each information source, a separate step is run
-            for(i in 1:len_restrictions){
-              restrictions_work_vari = restrictions_work[[var]][[i]]
-              res_var = restrictions_work_vari[[1]]; res_cond = restrictions_work_vari[[2]]; res_opts = restrictions_work_vari[[3]]
-
-              ## If a column is not compatible with the restricting information, the probability for that column is set to 0
-              outcomeDensCovDens[which(originaldata[imputationNeeded, res_var] == res_cond), !(levels(imputations[[imp]][, targetCol]) %in% res_opts)] = 0
-            }
-          }
-
-          directImpProbs <- outcomeDensCovDens / rowSums(outcomeDensCovDens)
-
-          if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
-            directImpProbs <- directImpProbs[, 2]
-            if (is.factor(imputations[[imp]][, targetCol]) == TRUE) {
-              imputations[[imp]][imputationNeeded, targetCol] <- levels(imputations[[imp]][, targetCol])[1]
-              imputations[[imp]][imputationNeeded, targetCol][rbinom(length(imputationNeeded), 1, directImpProbs) == 1] <- levels(imputations[[imp]][, targetCol])[2]
-            } else {
-              imputations[[imp]][imputationNeeded, targetCol] <- rbinom(length(imputationNeeded), 1, directImpProbs)
-            }
-          } else {
-            imputations[[imp]][imputationNeeded, targetCol] <- levels(imputations[[imp]][, targetCol])[apply(directImpProbs, 1, catdraw)]
-          }
-
-          # update passive variables
-          imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
-        } else {
-          # use rejection sampling
-          # first draw for all subjects who need imputing, using a small number of attempts
-          firstTryLimit <- 25
-          j <- 1
-
-          while ((length(imputationNeeded) > 0) & (j < firstTryLimit)) {
-            # sample from covariate model
-            if ((method[targetCol] == "norm") | (method[targetCol] == "latnorm")) {
-              imputations[[imp]][imputationNeeded, targetCol] <- rnorm(length(imputationNeeded), xfitted[imputationNeeded], newsigmasq^0.5)
-            } else if (method[targetCol] == "poisson") {
-              imputations[[imp]][imputationNeeded, targetCol] <- rpois(length(imputationNeeded), xfitted[imputationNeeded])
-            }
-
-            # update passive variables
-            imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
-
-            # accept/reject
-            uDraw <- runif(length(imputationNeeded))
-            if (smtype == "lm") {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              deviation <- imputations[[imp]][imputationNeeded, outcomeCol] - outmodxb[imputationNeeded]
-              reject <- 1 * (log(uDraw) > -(deviation^2) / (2 * array(outcomeModResVar, dim = c(length(imputationNeeded), 1))))
-            } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              prob <- plogis(outmodxb[imputationNeeded])
-              prob <- prob * imputations[[imp]][imputationNeeded, outcomeCol] + (1 - prob) * (1 - imputations[[imp]][imputationNeeded, outcomeCol])
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "dtsam") {
-              prob <- dtsamOutcomeDens(
-                imputations[[imp]], extraArgs$timeEffects, outcomeModBeta, nTimePoints,
-                smformula, timeCol, dCol
-              )[imputationNeeded]
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "poisson") {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              prob <- dpois(imputations[[imp]][imputationNeeded, outcomeCol], exp(outmodxb[imputationNeeded]))
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "weibull") {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-              s_t <- 1 - survival::psurvreg(imputations[[imp]][imputationNeeded, timeCol], mean = outmodxb[imputationNeeded], scale = weibullScale)
-              prob <- -exp(1) * log(s_t) * s_t
-              prob <- d[imputationNeeded] * prob + (1 - d[imputationNeeded]) * s_t
-              reject <- 1 * (uDraw > prob)
-            } else if ((smtype == "coxph") | (smtype == "casecohort")) {
-              outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]])
-              outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
-              s_t <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))
-              prob <- exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))) * H0[imputationNeeded]
-              prob <- d[imputationNeeded] * prob + (1 - d[imputationNeeded]) * s_t
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "flexsurv") {
-              survEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="survival",
-                                 ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
-                                 cross=FALSE, tidy=TRUE)
-              survEst <- as.matrix(survEst)[,"est"]
-              hazEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="hazard",
-                                ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
-                                cross=FALSE, tidy=TRUE)
-              hazEst <- as.matrix(hazEst)[,"est"]
-              cumhazEst <- summary(ymod, newdata=imputations[[imp]][imputationNeeded,], type="cumhaz",
-                                ci=FALSE, t=imputations[[imp]][imputationNeeded,timeCol],
-                                cross=FALSE, tidy=TRUE)
-              cumhazEst <- as.matrix(cumhazEst)[,"est"]
-              prob <- imputations[[imp]][imputationNeeded,dCol] * (survEst*exp(1)*cumhazEst) +
-                (1 - imputations[[imp]][imputationNeeded,dCol]) * survEst
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "nestedcc") {
-              outmodxb <- model.matrix(as.formula(smformula2), imputations[[imp]])
-              outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
-              s_t <- exp(-H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))
-              prob <- exp(1 + outmodxb[imputationNeeded] - (H0[imputationNeeded] * exp(outmodxb[imputationNeeded]))) * H0[imputationNeeded]
-              prob <- d[imputationNeeded] * prob + (1 - d[imputationNeeded]) * s_t
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "compet") {
-              prob <- rep(1, length(imputationNeeded))
-              for (cause in 1:numCauses) {
-                outmodxb <- model.matrix(linpred[[cause]], imputations[[imp]])
-                outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
-                prob <- prob * exp(-H0[[cause]][imputationNeeded] * exp(outmodxb[imputationNeeded])) * (H0[[cause]][imputationNeeded] * exp(1 + outmodxb[imputationNeeded]))^(d[imputationNeeded] == cause)
-              }
-              reject <- 1 * (uDraw > prob)
-            }
-            imputationNeeded <- imputationNeeded[reject == 1]
-
-            j <- j + 1
-          }
-
-          # now, for those remaining, who must have low acceptance probabilities, sample by subject
-          for (i in imputationNeeded) {
-            tempData <- imputations[[imp]][i, ]
-            tempData <- tempData[rep(1, rjlimit), ]
-            if (method[targetCol] == "norm") {
-              tempData[, targetCol] <- rnorm(rjlimit, xfitted[i], newsigmasq^0.5)
-            } else if ((method[targetCol] == "logreg") | (method[targetCol] == "brlogreg")) {
-              tempData[, targetCol] <- rbinom(rjlimit, size = 1, xfitted[i])
-            } else if (method[targetCol] == "poisson") {
-              tempData[, targetCol] <- rpois(rjlimit, xfitted[i])
-            } else if (method[targetCol] == "latnorm") {
-              tempData[, targetCol] <- rnorm(rjlimit, xfitted[i], newsigmasq[i]^0.5)
-            }
-
-            # passively impute
-            tempData <- updatePassiveVars(tempData, method, passiveVars)
-
-            # accept reject
-            uDraw <- runif(rjlimit)
-            if (smtype == "lm") {
-              outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
-              deviation <- tempData[, outcomeCol] - outmodxb
-              reject <- 1 * (log(uDraw) > -(deviation^2) / (2 * array(outcomeModResVar, dim = c(rjlimit, 1))))
-            } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
-              outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
-              prob <- plogis(outmodxb)
-              prob <- prob * tempData[, outcomeCol] + (1 - prob) * (1 - tempData[, outcomeCol])
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "dtsam") {
-              prob <- dtsamOutcomeDens(
-                tempData, extraArgs$timeEffects, outcomeModBeta, nTimePoints,
-                smformula, timeCol, dCol
-              )
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "poisson") {
-              outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
-              prob <- dpois(tempData[, outcomeCol], exp(outmodxb))
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "weibull") {
-              outmodxb <- model.matrix(as.formula(smformula), tempData) %*% outcomeModBeta
-              s_t <- 1 - survival::psurvreg(tempData[, timeCol], mean = outmodxb, scale = weibullScale)
-              if (d[i] == 1) {
-                prob <- -exp(1) * log(s_t) * s_t
-                # the following line fixes a numerical error which occurs if s_t=0 for any draws
-                prob[is.na(prob)] <- 0
-              } else {
-                prob <- s_t
-              }
-              reject <- 1 * (uDraw > prob)
-            } else if ((smtype == "coxph") | (smtype == "casecohort")) {
-              outmodxb <- model.matrix(as.formula(smformula), tempData)
-              outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
-              s_t <- exp(-H0[i] * exp(outmodxb))
-              prob <- exp(1 + outmodxb - (H0[i] * exp(outmodxb))) * H0[i]
-              prob <- d[i] * prob + (1 - d[i]) * s_t
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "flexsurv") {
-              survEst <- summary(ymod, newdata=tempData, type="survival",
-                                 ci=FALSE, t=tempData[,timeCol],
-                                 cross=FALSE, tidy=TRUE)
-              survEst <- as.matrix(survEst)[,"est"]
-              hazEst <- summary(ymod, newdata=tempData, type="hazard",
-                                ci=FALSE, t=tempData[,timeCol],
-                                cross=FALSE, tidy=TRUE)
-              hazEst <- as.matrix(hazEst)[,"est"]
-              cumhazEst <- summary(ymod, newdata=tempData, type="cumhaz",
-                                   ci=FALSE, t=tempData[,timeCol],
-                                   cross=FALSE, tidy=TRUE)
-              cumhazEst <- as.matrix(cumhazEst)[,"est"]
-              prob <- imputations[[imp]][i,dCol] * (survEst*exp(1)*cumhazEst) +
-                (1 - imputations[[imp]][i,dCol]) * survEst
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "nestedcc") {
-              outmodxb <- model.matrix(as.formula(smformula2), tempData)
-              outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta)
-              s_t <- exp(-H0[i] * exp(outmodxb))
-              prob <- exp(1 + outmodxb - (H0[i] * exp(outmodxb))) * H0[i]
-              prob <- d[i] * prob + (1 - d[i]) * s_t
-              reject <- 1 * (uDraw > prob)
-            } else if (smtype == "compet") {
-              prob <- rep(1, rjlimit)
-              for (cause in 1:numCauses) {
-                outmodxb <- model.matrix(linpred[[cause]], tempData)
-                outmodxb <- as.matrix(outmodxb[, 2:dim(outmodxb)[2]]) %*% as.matrix(outcomeModBeta[[cause]])
-                prob <- prob * exp(-H0[[cause]][i] * exp(outmodxb)) * (H0[[cause]][i] * exp(1 + outmodxb))^(d[i] == cause)
-              }
-              reject <- 1 * (uDraw > prob)
-            }
-            if (sum(reject) < rjlimit) {
-              imputations[[imp]][i, targetCol] <- tempData[reject == 0, targetCol][1]
-            } else {
-              rjFailCount <- rjFailCount + 1
-            }
-          }
-          # update passive variables
-          imputations[[imp]] <- updatePassiveVars(imputations[[imp]], method, passiveVars)
-        }
+      res <- smcfcs.cycle(imputations[[imp]], r, smtype, smformula, method,
+                          predictorMatrix = predictorMatrix,
+                          errorProneMatrix = errorProneMatrix, restrictions = restrictions,
+                          rjlimit = rjlimit, noisy = noisy,
+                          verbose = verbose && (imp == 1) && (cyclenum == 1),
+                          cycleState = state, ...)
+      imputations[[imp]] <- res$data
+      state <- res$cycleState
+      if (is.null(smCoefIter)) {
+        smCoefIter <- array(0, dim = c(m, length(state$smCoef), numit))
       }
-      }
-
-      # imputations of missing outcomes, if present (using proper imputation), for regression, logistic
-      # and Poisson substantive models
-      if ((smtype == "lm") | (smtype == "logistic") | (smtype == "brlogistic") | (smtype == "poisson")) {
-        if (sum(r[, outcomeCol]) < n) {
-          imputationNeeded <- (1:n)[r[, outcomeCol] == 0]
-          # estimate parameters of substantive model using those with outcomes observed
-          if (smtype == "lm") {
-            ymod <- lm(as.formula(smformula), imputations[[imp]][r[, outcomeCol] == 1, ])
-            beta <- ymod$coef
-            sigmasq <- summary(ymod)$sigma^2
-            varcov <- vcov(ymod)
-            outcomeModResVar <- (sigmasq * ymod$df) / rchisq(1, ymod$df)
-            covariance <- (outcomeModResVar / sigmasq) * vcov(ymod)
-            outcomeModBeta <- beta + MASS::mvrnorm(1, mu = rep(0, ncol(covariance)), Sigma = covariance)
-            outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-            imputations[[imp]][imputationNeeded, outcomeCol] <- rnorm(length(imputationNeeded), outmodxb[imputationNeeded], outcomeModResVar^0.5)
-          } else if ((smtype == "logistic") | (smtype == "brlogistic")) {
-            if (smtype == "logistic") {
-              ymod <- glm(as.formula(smformula), family = "binomial", imputations[[imp]][r[, outcomeCol] == 1, ])
-            } else {
-              ymod <- glm(as.formula(smformula),
-                family = "binomial", imputations[[imp]][r[, outcomeCol] == 1, ],
-                method = brglm2::brglmFit
-              )
-            }
-            outcomeModBeta <- modPostDraw(ymod)
-            outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-            prob <- plogis(outmodxb[imputationNeeded])
-            imputations[[imp]][imputationNeeded, outcomeCol] <- rbinom(length(imputationNeeded), 1, prob)
-          } else if (smtype == "poisson") {
-            ymod <- glm(as.formula(smformula), family = "poisson", imputations[[imp]][r[, outcomeCol] == 1, ])
-            outcomeModBeta <- modPostDraw(ymod)
-            outmodxb <- model.matrix(as.formula(smformula), imputations[[imp]]) %*% outcomeModBeta
-            imputations[[imp]][imputationNeeded, outcomeCol] <- rpois(length(imputationNeeded), exp(outmodxb[imputationNeeded]))
-          }
-        }
-      } else if (smtype == "flexsurv") {
-        if (extraArgs$imputeTimes==TRUE) {
-          # impute censored times
-          if (cyclenum==1) {
-            tryCatch({
-              ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                               k=extraArgs$k, scale="hazard")
-            },error = function(e) {
-              # Silently increment the failure counter
-              flexsurvFailCount <<- flexsurvFailCount + 1
-            })
-          } else {
-            # use previous estimates as initial values, to try and prevent non-convergence
-            tryCatch(
-              {
-                if (extraArgs$originalKnots==FALSE) {
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                 k=extraArgs$k, scale="hazard",
-                                                 inits=flexsurvEsts)
-                } else {
-                  # use knots based on fit to original dataset where censored times had not been imputed
-                  ymod <- flexsurv::flexsurvspline(as.formula(smformula), imputations[[imp]],
-                                                   scale="hazard",
-                                                   knots=ymod$knots[2:(length(ymod$knots)-1)],
-                                                   inits=flexsurvEsts)
-                }
-              },
-              error = function(e) {
-                flexsurvFailCount <<- flexsurvFailCount + 1
-              }
-            )
-          }
-          flexsurvEsts <- ymod$res.t[,1]
-          outcomeModBeta <- as.numeric(flexsurv::normboot.flexsurvreg(ymod, B=1, raw=TRUE))
-
-          if (exists("smCoefIter")==FALSE) {
-            smCoefIter <- array(0, dim = c(m, length(outcomeModBeta), numit))
-          }
-          smCoefIter[imp, , cyclenum] <- outcomeModBeta
-
-          # overwrite model estimates in fitted model object
-          ymod$res.t[,1] <- outcomeModBeta
-          if (noisy == TRUE) {
-            print(ymod)
-          }
-
-          # impute censored times
-          if (is.null(extraArgs$censtime)) {
-            # impute all censored times
-            timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
-                              start=originaldata[d==0,timeCol])
-            imputations[[imp]][d==0,timeCol] <- timeImp$time_1
-            imputations[[imp]][,dCol] <- 1
-          } else {
-            # impute but still impose censoring at specified value(s)
-            timeImp <- simulate(ymod, nsim=1, newdata=imputations[[imp]][d==0,],
-                                start=originaldata[d==0,timeCol],
-                                censtime=extraArgs$censtime)
-            imputations[[imp]][d==0,timeCol] <- timeImp$time_1
-            imputations[[imp]][d==0,dCol] <- timeImp$event_1
-          }
-        }
-      }
+      smCoefIter[imp, , cyclenum] <- state$smCoef
     }
+    rjFailCount <- state$rjFailCount
+    flexsurvFailCount <- state$flexsurvFailCount
+    flexsurvFit <- state$flexsurvFit
   }
 
   if (rjFailCount > 0) {
