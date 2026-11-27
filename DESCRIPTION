@@ -6,7 +6,9 @@ Authors@R: c(person("Jonathan", "Bartlett", email = "jonathan.bartlett1@lshtm.ac
     person("Ruth", "Keogh", email = "ruth.keogh@lshtm.ac.uk",role = c("aut")),
     person("Edouard F.", "Bonneville",role = c("aut")),
     person("Lars", "van der Burg",role = c("aut")),
-    person("Claus Thorn", "Ekstrøm",role = c("ctb")))
+    person("Claus Thorn", "Ekstrøm",role = c("ctb")),
+    person("van Buuren", "Stef",role = c("ctb")))
+    
 URL: https://github.com/jwb133/smcfcs
 Description: Implements multiple imputation of missing covariates by
     Substantive Model Compatible Fully Conditional Specification.

@@ -641,6 +641,8 @@ smcfcs.setupKey <- function(r, smtype, smformula, method, errorProneMatrix = NUL
 #' fit failures, accumulated over all calls that passed on the state.
 #'
 #' @author Jonathan Bartlett \email{jonathan.bartlett1@@lshtm.ac.uk}
+#' @author Stef van Buuren
+#'
 #' @seealso \code{\link{smcfcs}}
 #'
 #' @examples

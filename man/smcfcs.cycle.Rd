@@ -170,4 +170,6 @@ state$smCoef
 }
 \author{
 Jonathan Bartlett \email{jonathan.bartlett1@lshtm.ac.uk}
+
+Stef van Buuren
 }
