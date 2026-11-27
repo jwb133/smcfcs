@@ -1,13 +1,25 @@
-Development version - status messages (variable roles, imputation number, imputation
-models) are now issued with message() instead of print(), so they can be silenced with
-suppressMessages() or the new verbose argument (default TRUE). noisy = TRUE still prints
-the model summaries; its "Iteration" lines are now messages too. Also fixes an error
-("incorrect number of subscripts") in smcfcs.flexsurv() with imputeTimes = TRUE and no
-missing covariates when the workspace contained an object named smCoefIter.
-New function smcfcs.cycle(), which runs a single SMC-FCS cycle on a completed dataset. It is a
-low-level building block for packages that run their own imputation loop, such as a block
-imputation method for mice; most users want smcfcs(). smcfcs() now calls it for each
-iteration, with identical results.
+Version 2.1.0
+
+* New function `smcfcs.cycle()`, which runs a single SMC-FCS cycle on a completed
+  dataset. It is a low-level building block for packages that run their own
+  imputation loop, such as a block imputation method for mice; most users want
+  `smcfcs()`. `smcfcs()` now calls it for each iteration, with identical results.
+  `smcfcs.cycle()` and the associated restructuring were contributed by
+  Stef van Buuren.
+
+* Status messages (variable roles, imputation number, imputation models) are now
+  issued with `message()` instead of `print()`, so they can be silenced with
+  `suppressMessages()` or the new `verbose` argument (default `TRUE`).
+  `noisy = TRUE` still prints the model summaries; its "Iteration" lines are now
+  messages too.
+
+* Fixed an error ("incorrect number of subscripts") in `smcfcs.flexsurv()` with
+  `imputeTimes = TRUE` and no missing covariates when the workspace contained an
+  object named `smCoefIter`.
+  
+* Fixed outcome residual variance used when imputing missing outcomes for
+  linear (`"lm"`) substantive models: it was using point estimate of residual
+  variance, rather than posterior draw.
 
 Version 2.0.3 - fix to imputation of missing Poisson outcomes (spotted by Stef van Buuren).
 
