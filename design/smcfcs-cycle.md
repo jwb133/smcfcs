@@ -1,8 +1,8 @@
 # Design note: a single-cycle SMC-FCS function for use from mice
 
-Stef van Buuren, draft of 26 November 2026
+Stef van Buuren, 27 November 2026
 
-Status: draft for discussion with Jonathan Bartlett. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3. Line numbers refer to `R/smcfcs.r` at `ae95ab3`. Steps 1–6 of the refactor are done on the branch `smcfcs-cycle`; section 6 lists the progress and section 2 describes the code as it now stands.
+Status: all questions settled with Jonathan Bartlett (section 5); the code is in review as jwb133/smcfcs#39. Based on smcfcs master at commit `ae95ab3`, which includes the fix for re-imputing missing Poisson outcomes (`cee0737`) and the fix for the outcome imputation variance (open question 1). CRAN has 2.0.3. Line numbers refer to `R/smcfcs.r` at `ae95ab3`. Steps 1–6 of the refactor are done on the branch `smcfcs-cycle-code` (the design was discussed in #38, from the branch `smcfcs-cycle`); section 6 lists the progress and section 2 describes the code as it now stands.
 
 ## 1. Goal
 
@@ -133,7 +133,7 @@ Wrappers such as `smcfcs.finegray()` (see the comment at its line 185) and mice 
 
 Working name: `mice.impute.smc()`. The name is open, but it must not be `smcfcs`. miceadds already exports a `mice.impute.smcfcs()`, which is its own implementation, with different arguments. mice looks up `mice.impute.<method>` from inside its own namespace, so a mice function of that name would always win. Existing miceadds users with `method = "smcfcs"` would then silently get the new function. smcfcs goes in Suggests.
 
-The substantive model can be given in two ways, discussed in open question 6. Option A, which we recommend, uses mice's own `formulas` argument:
+The substantive model can be given in two ways, discussed in open question 6. Option A, which was chosen, uses mice's own `formulas` argument:
 
 ``` r
 blocks <- make.blocks(list(smc = c("y", "x1", "x2"), "aux1", "aux2"))
@@ -241,7 +241,7 @@ In mice:
 - An unsupported `smtype` gives a clear error.
 - The `miceadds` example still runs.
 
-## 5. Open questions for Jonathan
+## 5. Questions for Jonathan (all settled)
 
 1.  **Outcome imputation variance (lm). Settled.** At line 1316 a missing outcome was drawn with `sd = sigmasq^0.5`, the residual variance of the fitted model, rather than the posterior draw `outcomeModResVar^0.5` computed on line 1312. This was not intended, and Jonathan fixed it in `ae95ab3`. The regression references (section 4.2) are generated after this fix.
 
@@ -306,7 +306,7 @@ In mice:
 
 ## 6. Progress
 
-Each step is a separate commit on the branch `smcfcs-cycle` of stefvanbuuren/smcfcs. After each one the frozen-reference test (section 4.2) passes.
+Each step is a separate commit on the branch `smcfcs-cycle-code` of stefvanbuuren/smcfcs (PR #39). After each one the frozen-reference test (section 4.2) passes.
 
 | Step | What | Status |
 |------|------|--------|
